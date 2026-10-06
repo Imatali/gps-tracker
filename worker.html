@@ -1,61 +1,10 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Жумушчу</title><style>body{margin:0;font-family:Inter,sans-serif;background:#f6f7fb;padding:14px;text-align:center}.card{background:#fff;border-radius:16px;padding:18px;border:1px solid #eef2f7;max-width:400px;margin:20px auto}.btn{width:100%;padding:14px;border-radius:12px;border:0;font-weight:800;font-size:16px;cursor:pointer}.btn-green{background:#16a34a;color:#fff}.inp,.sel{width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin:8px 0;font-size:15px;box-sizing:border-box}</style></head><body><div class="card"><h2>🏥 Кадамжай ЖДПБ</h2><div id="step1"><input id="name" class="inp" placeholder="Аты-жөнүңүз"><select id="dept" class="sel"><option value="">Бөлүм жүктөлүүдө... ⏳</option></select><button class="btn btn-green" onclick="start()">📍 Жумушту баштоо</button><p id="info" style="font-size:11px;color:#94a3b8;margin-top:8px"></p></div><div id="step2" style="display:none"><h3 id="hello"></h3><div style="font-size:48px">📍</div><p id="status">GPS...</p><p><b id="myDept">-</b></p><p id="last" style="font-size:12px;color:#64748b"></p><button class="btn" style="background:#fee2e2;color:#dc2626;margin-top:12px" onclick="stop()">⏹ Токтотуу</button></div></div>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<script>
-const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
-firebase.initializeApp(cfg);const db=firebase.database();
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Жумушчу</title><style>body{margin:0;font-family:Inter,sans-serif;background:#f6f7fb;padding:14px;text-align:center}.card{background:#fff;border-radius:16px;padding:18px;border:1px solid #eef2f7;max-width:400px;margin:20px auto}.btn{width:100%;padding:14px;border-radius:12px;border:0;font-weight:800;font-size:16px;cursor:pointer}.btn-green{background:#16a34a;color:#fff}.inp,.sel{width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:10px;margin:8px 0;font-size:15px;box-sizing:border-box}</style></head><body><div class="card"><h2>🏥 Кадамжай</h2><div id="step1"><input id="name" class="inp" placeholder="Аты-жөнүңүз"><select id="dept" class="sel"><option value="">Бөлүм жүктөлүүдө...</option></select><button class="btn btn-green" onclick="start()">📍 Жумушту баштоо</button><p id="info" style="font-size:11px;color:#94a3b8"></p></div><div id="step2" style="display:none"><h3 id="hello"></h3><div style="font-size:48px">📍</div><p id="status">GPS...</p><p><b id="myDept">-</b></p><p id="last" style="font-size:12px;color:#64748b"></p><button class="btn" style="background:#fee2e2;color:#dc2626;margin-top:12px" onclick="stop()">⏹ Токтотуу</button></div></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
+const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};firebase.initializeApp(cfg);const db=firebase.database();
 let watchId=null,myId=null,deptsList={};
-
-function renderDepts(){
-  let sel=document.getElementById('dept'); let cur=sel.value;
-  sel.innerHTML='<option value="">Бөлүм тандаңыз...</option>';
-  Object.keys(deptsList).sort().forEach(id=>{
-    let o=document.createElement('option'); o.value=id; o.textContent=deptsList[id]; sel.appendChild(o);
-  });
-  if(cur) sel.value=cur;
-  document.getElementById('info').innerText=Object.keys(deptsList).length+' бөлүм Firebase\'ден келди ✅';
-}
-
-// НЕГИЗГИ СЫР - assign_v3 ден бөлүмдөрдү чогултуу + depts папкасынан да
-db.ref('osh/assign_v3').on('value',s=>{
-  let v=s.val()||{};
-  Object.values(v).forEach(x=>{
-    if(x.deptId){ deptsList[x.deptId]=x.deptName||x.deptId; }
-    if(x.dept &&!x.deptId){ deptsList[x.dept]=x.dept; }
-  });
-  if(Object.keys(deptsList).length>0) renderDepts();
-});
-db.ref('osh/depts').on('value',s=>{
-  let v=s.val(); if(!v) return;
-  Object.keys(v).forEach(k=>{ deptsList[k]=v[k].name||v[k]||k; });
-  renderDepts();
-});
-
-function start(){
-  let n=document.getElementById('name').value.trim();
-  let d=document.getElementById('dept').value;
-  if(!n){alert('Атыңызды жазыңыз');return;}
-  if(!d){alert('Бөлүм тандаңыз');return;}
-  myId=n.toLowerCase().replace(/[^a-z0-9а-яёөүң]+/gi,'_');
-  let savedId=localStorage.getItem('kadamjai_myid');
-  let savedDept=localStorage.getItem('kadamjai_mydept');
-  if(savedId && savedDept && savedId===myId && savedDept!==d){
-    alert('⚠️ Сиз башка бөлүмдү тандадыңыз ('+savedDept+' → '+d+').\nАдминге кайрылыңыз!');
-    document.getElementById('dept').value=savedDept; return;
-  }
-  localStorage.setItem('kadamjai_myid',myId);
-  localStorage.setItem('kadamjai_myname',n);
-  localStorage.setItem('kadamjai_mydept',d);
-  db.ref('osh/assign_v3/'+myId).set({deptId:d,deptName:deptsList[d]||d,start:"08:00",end:"18:00",autoAssigned:true,ts:Date.now()});
-  document.getElementById('step1').style.display='none';
-  document.getElementById('step2').style.display='block';
-  document.getElementById('hello').innerText='Салам, '+n+'!';
-  document.getElementById('myDept').innerText='Бөлүм: '+(deptsList[d]||d);
-  watchId=navigator.geolocation.watchPosition(pos=>{
-    db.ref('osh/workers/'+myId).set({name:n,dept:d,deptName:deptsList[d]||d,lat:pos.coords.latitude,lng:pos.coords.longitude,ts:Date.now()});
-    document.getElementById('status').innerText=`📍 ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} ✅`;
-    document.getElementById('last').innerText=new Date().toLocaleTimeString('ky-KG');
-  },e=>{document.getElementById('status').innerText='GPS ката: '+e.message;},{enableHighAccuracy:true});
-}
-function stop(){ if(watchId) navigator.geolocation.clearWatch(watchId); if(myId) db.ref('osh/workers/'+myId).remove(); localStorage.clear(); location.reload(); }
-window.onload=()=>{ let sn=localStorage.getItem('kadamjai_myname'); if(sn) document.getElementById('name').value=sn; let sd=localStorage.getItem('kadamjai_mydept'); if(sd) setTimeout(()=>{document.getElementById('dept').value=sd;},800); }
+function renderDepts(){let sel=document.getElementById('dept');let cur=sel.value;sel.innerHTML='<option value="">Бөлүм тандаңыз...</option>';Object.keys(deptsList).sort().forEach(id=>{let o=document.createElement('option');o.value=id;o.textContent=deptsList[id].name||deptsList[id];sel.appendChild(o);});if(cur)sel.value=cur;document.getElementById('info').innerText=Object.keys(deptsList).length+' бөлүм келди ✅';}
+db.ref('osh/depts').on('value',s=>{let v=s.val()||{};Object.keys(v).forEach(k=>{deptsList[k]=v[k];});if(Object.keys(deptsList).length>0)renderDepts();});
+db.ref('osh/assign_v3').on('value',s=>{let v=s.val()||{};Object.values(v).forEach(x=>{if(x.deptId &&!deptsList[x.deptId]) deptsList[x.deptId]={name:x.deptName||x.deptId};});renderDepts();});
+function start(){let n=document.getElementById('name').value.trim();let d=document.getElementById('dept').value;if(!n){alert('Атыңызды жазыңыз');return;}if(!d){alert('Бөлүм тандаңыз');return;}myId=n.toLowerCase().replace(/[^a-z0-9а-яёүң]+/gi,'_');let savedId=localStorage.getItem('kadamjai_myid');let savedDept=localStorage.getItem('kadamjai_mydept');if(savedId&&savedDept&&savedId===myId&&savedDept!==d){alert('⚠️ Сиз башка бөлүмдү тандадыңыз ('+savedDept+' → '+d+'). Админге кайрылыңыз!');document.getElementById('dept').value=savedDept;return;}localStorage.setItem('kadamjai_myid',myId);localStorage.setItem('kadamjai_myname',n);localStorage.setItem('kadamjai_mydept',d);db.ref('osh/assign_v3/'+myId).set({deptId:d,deptName:deptsList[d]?.name||d,start:"08:00",end:"18:00",autoAssigned:true,ts:Date.now()});document.getElementById('step1').style.display='none';document.getElementById('step2').style.display='block';document.getElementById('hello').innerText='Салам, '+n+'!';document.getElementById('myDept').innerText='Бөлүм: '+(deptsList[d]?.name||d);watchId=navigator.geolocation.watchPosition(pos=>{db.ref('osh/workers/'+myId).set({name:n,dept:d,deptName:deptsList[d]?.name||d,lat:pos.coords.latitude,lng:pos.coords.longitude,ts:Date.now()});document.getElementById('status').innerText=`📍 ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)} ✅`;document.getElementById('last').innerText=new Date().toLocaleTimeString('ky-KG');},e=>{document.getElementById('status').innerText='GPS ката: '+e.message;},{enableHighAccuracy:true});}
+function stop(){if(watchId)navigator.geolocation.clearWatch(watchId);if(myId)db.ref('osh/workers/'+myId).remove();localStorage.clear();location.reload();}
+window.onload=()=>{let sn=localStorage.getItem('kadamjai_myname');if(sn)document.getElementById('name').value=sn;let sd=localStorage.getItem('kadamjai_mydept');if(sd)setTimeout(()=>{document.getElementById('dept').value=sd;},800);}
 </script></body></html>
