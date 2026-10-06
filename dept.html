@@ -1,60 +1,123 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Оңдолду</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><style>body{margin:0;background:#f6f7fb;font-family:Inter,sans-serif}header{background:#fff;padding:10px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between}#map{height:50vh;border-radius:12px;border:1px solid #e2e8f0}.card{background:#fff;border-radius:12px;padding:10px;border:1px solid #eef2f7;margin-top:8px}.btn{border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:11px}.btn-dark{background:#0f172a;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-red{background:#fee2e2;color:#ef4444}.assign{padding:8px;background:#f8fafc;border-radius:9px;margin-bottom:5px;border:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}</style></head><body><header><button class="btn" onclick="location.href='admin.html'">← Башкы</button><div><b id="deptName"></b><br><small id="info"></small></div><button class="btn btn-dark" onclick="location.reload()">↻</button></header><div style="padding:10px"><div id="map"></div><div class="card"><b>👥 Жумушчулар - Иматали маселеси оңдолду</b><div id="list" style="margin-top:8px"></div></div></div><script>
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бөлүм</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><style>body{margin:0;background:#f6f7fb;font-family:Inter,sans-serif}header{background:#fff;padding:10px 14px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center}#map{height:48vh;border-radius:12px;border:1px solid #e2e8f0}.card{background:#fff;border-radius:12px;padding:12px;border:1px solid #eef2f7;margin-top:10px}.btn{border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:11px}.btn-dark{background:#0f172a;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-red{background:#fee2e2;color:#dc2626}.btn-ghost{background:#f1f5f9}.assign{display:flex;justify-content:space-between;align-items:center;padding:9px;background:#f8fafc;border-radius:10px;margin-bottom:6px;border:1px solid #f1f5f9;gap:6px}.assign.assigned{background:#dcfce7;border-color:#bbf7d0}.time{border:1px solid #e2e8f0;border-radius:7px;padding:5px;width:78px;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th{color:#64748b;text-align:left;padding:6px 4px;border-bottom:1px solid #eef2f7}td{padding:6px 4px;border-bottom:1px solid #f8fafc}</style></head><body><header><button class="btn btn-ghost" onclick="location.href='admin.html'">← Башкы</button><div style="text-align:center"><b id="dName"></b><br><small id="dInfo" style="color:#64748b"></small></div><button class="btn btn-dark" onclick="location.reload()">↻</button></header><div style="padding:10px"><div id="map"></div>
+
+<div class="card"><b>👥 Жумушчуну бекитүү</b><br><small style="color:#64748b">Кантип колдоносуң: ар бир жумушчунун жанында "+ Бекитүү" бас. Ошол замат 2 саат чыгат: Келүү / Кетүү. Мисалы: 08:00 жана 17:30 деп жазып Сактоо бас.</small><div id="assignList" style="margin-top:8px"></div></div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="card" style="border-left:4px solid #16a34a"><b>🟢 Жумушта (<span id="inC">0</span>)</b><div id="inL"></div></div><div class="card" style="border-left:4px solid #ef4444"><b>🔴 Сыртта (<span id="outC">0</span>)</b><div id="outL"></div></div></div>
+
+<div class="card"><b>📋 Келди / Кетти (Бүгүн)</b><table><thead><tr><th>Аты</th><th>График</th><th>Келди</th><th>Кетти</th><th>Баа</th></tr></thead><tbody id="histBody"></tbody></table></div>
+
+</div><script>
 const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
 firebase.initializeApp(cfg);const db=firebase.database();
-let map=L.map('map').setView([40.13,71.75],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let map=L.map('map').setView([40.13,71.75],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 const deptId=new URLSearchParams(location.search).get('dept')||'kdo';
 let DEPTS=JSON.parse(localStorage.getItem('kadamjai_depts_final')||'[]');
 let dept=DEPTS.find(d=>d.id==deptId)||{id:deptId,name:deptId,color:'#0064e0'};
-document.getElementById('deptName').innerText=dept.name;
+document.getElementById('dName').innerText=dept.name;document.getElementById('dName').style.color=dept.color;
 let allZones=JSON.parse(localStorage.getItem('kadamjai_zones_v3')||'[]');
 let zones=allZones.filter(z=>z.deptId==dept.id);
-let workers={};let markers=[];
+let workers={},markers={},prevState={};
 
-// ЖАҢЫ ТАЗА САКТОО - V3
 function getAssign(){return JSON.parse(localStorage.getItem('kadamjai_assign_v3')||'{}');}
-function saveAssign(obj){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(obj));db.ref('osh/assign_v3').set(obj);}
+function saveAssign(a){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(a));db.ref('osh/assign_v3').set(a);}
 
-function renderZones(){markers.forEach(m=>map.removeLayer(m));markers=[];zones.forEach(z=>markers.push(L.polygon(z.points,{color:dept.color,weight:3,fillColor:dept.color,fillOpacity:.25}).addTo(map)));}renderZones();
+// Тарых
+function getHist(){return JSON.parse(localStorage.getItem('kadamjai_history_'+dept.id)||'[]');}
+function addHist(name,type){
+let h=getHist();let now=new Date();
+let date=now.toLocaleDateString('ky-KG');let time=now.toLocaleTimeString('ky-KG',{hour:'2-digit',minute:'2-digit'});
+h.unshift({name,type,date,time,ts:Date.now()});localStorage.setItem('kadamjai_history_'+dept.id,JSON.stringify(h.slice(0,500)));
+renderHist();
+}
+function toMin(t){if(!t)return 0;let [h,m]=t.split(':').map(Number);return h*60+m;}
+
+function renderHist(){
+let assign=getAssign();
+let logs=getHist();let today=new Date().toLocaleDateString('ky-KG');
+let todays=logs.filter(l=>l.date==today);
+let byName={};
+todays.forEach(l=>{if(!byName[l.name])byName[l.name]={in:null,out:null};if(l.type=='in'&&!byName[l.name].in)byName[l.name].in=l.time;if(l.type=='out')byName[l.name].out=l.time;});
+let rows='';
+Object.keys(getAssign()).filter(k=>getAssign()[k].deptId==dept.id).forEach(wId=>{
+let w=workers[wId];let name=w?w.name:wId;let sch=getAssign()[wId];
+let b=byName[name]||{in:'-',out:'-'};
+let status='-';
+if(b.in && b.in!='-'){
+let diff=toMin(b.in.slice(0,5))-toMin(sch.start);
+if(diff<=10) status='<span style="color:#16a34a">✅ Убагында</span>';
+else status=`<span style="color:#dc2626;font-weight:700">⚠️ Кечикти ${diff}м</span>`;
+}
+rows+=`<tr><td><b>${name}</b></td><td>${sch.start}-${sch.end}</td><td>${b.in||'-'}</td><td>${b.out||'-'}</td><td>${status}</td></tr>`;
+});
+document.getElementById('histBody').innerHTML=rows||'<tr><td colspan=5 style="text-align:center;color:#94a3b8">Бүгүн эч ким келе элек</td></tr>';
+}
+
+function renderZones(){Object.values(markers).forEach(m=>map.removeLayer(m));markers={};zones.forEach(z=>{let p=L.polygon(z.points,{color:dept.color,weight:3,fillColor:dept.color,fillOpacity:.2}).addTo(map);markers['z'+Date.now()]=p;});}
+renderZones();
 
 function render(){
 let assign=getAssign();
-let html='';
+let assignedIds=Object.keys(assign).filter(k=>assign[k].deptId==dept.id);
+let inH='',outH='',assignH='';
+
+// Бекитүү тизмеси - БАШКА БӨЛҮМ ТУУРАЛУУ МААЛЫМАТ ЖОК
 Object.keys(workers).forEach(wId=>{
-let w=workers[wId];
-let cur=assign[wId];
+let w=workers[wId];let cur=assign[wId];
 if(cur && cur.deptId==dept.id){
-// Ушул бөлүмдө
-html+=`<div class="assign" style="background:#dcfce7;border-color:#16a34a"><b>${w.name} ✅ Ушул бөлүмдө</b><button class="btn btn-red" onclick="unassign('${wId}')">Алып салуу</button></div>`;
-}else if(cur){
-// БАШКА БӨЛҮМДӨ - мына ушул жер оңдолду
-let other=DEPTS.find(d=>d.id==cur.deptId)?.name||cur.deptId;
-html+=`<div class="assign" style="background:#fef3c7"><div><b>${w.name}</b><br><small style="color:#92400e">📌 Азыр ${other}да</small></div><button class="btn btn-green" onclick="moveHere('${wId}')">Ушул жакка которуу</button></div>`;
+// Ушул бөлүмгө бекитилген - саатын өзгөртө алат, автомат сакталат
+assignH+=`<div class="assign assigned"><div><b>${w.name}</b><br><small>✅ Бекитилген</small></div><div style="display:flex;gap:4px;align-items:center"><input class="time" type="time" value="${cur.start}" onchange="updTime('${wId}','start',this.value)"><input class="time" type="time" value="${cur.end}" onchange="updTime('${wId}','end',this.value)"><button class="btn btn-red" onclick="unassign('${wId}')">✕</button></div></div>`;
 }else{
-// Бош
-html+=`<div class="assign"><b>${w.name} - бош</b><button class="btn btn-dark" onclick="moveHere('${wId}')">Бекитүү</button></div>`;
+// Бош - башка бөлүмдөбү же жокпу көрсөтпөйбүз, жөн гана бекитүү чыгат
+assignH+=`<div class="assign"><div><b>${w.name}</b><br><small style="color:#64748b">Бош</small></div><div style="display:flex;gap:4px;align-items:center"><input class="time" id="ns-${wId}" type="time" value="08:00"><input class="time" id="ne-${wId}" type="time" value="17:00"><button class="btn btn-dark" onclick="doAssign('${wId}')">+ Бекитүү</button></div></div>`;
 }
 });
-document.getElementById('list').innerHTML=html||'Эч ким жок';
-document.getElementById('info').innerText=`${zones.length} зона • ${Object.keys(assign).filter(k=>assign[k].deptId==dept.id).length} бекитилген`;
+
+// Жумушта / Сыртта
+assignedIds.forEach(wId=>{
+let w=workers[wId];if(!w)return;
+let sch=assign[wId];
+if(w._inside) inH+=`<div class="assign assigned"><b>${w.name}</b><small>${sch.start}-${sch.end}</small></div>`;
+else outH+=`<div class="assign"><b>${w.name}</b><small>${sch.start}-${sch.end}</small></div>`;
+});
+
+document.getElementById('assignList').innerHTML=assignH||'Жумушчулар жүктөлүүдө...';
+document.getElementById('inL').innerHTML=inH||'<small>Жок</small>';
+document.getElementById('outL').innerHTML=outH||'<small>Баары ордунда</small>';
+document.getElementById('inC').innerText=assignedIds.filter(id=>workers[id]?._inside).length;
+document.getElementById('outC').innerText=assignedIds.filter(id=>!workers[id]?._inside).length;
+document.getElementById('dInfo').innerText=`${zones.length} зона • ${assignedIds.length} бекитилген`;
+renderHist();
 }
 
-window.moveHere=function(wId){
+window.doAssign=function(wId){
+let s=document.getElementById('ns-'+wId).value||'08:00';
+let e=document.getElementById('ne-'+wId).value||'17:00';
 let a=getAssign();
-a[wId]={deptId:dept.id,start:'08:00',end:'17:00'};
-saveAssign(a);
-render();
+a[wId]={deptId:dept.id,start:s,end:e}; // башка бөлүмдөн автомат алынат
+saveAssign(a);render();
 };
-window.unassign=function(wId){
-let a=getAssign();delete a[wId];saveAssign(a);render();
+window.updTime=function(wId,field,val){
+let a=getAssign();if(!a[wId])return;a[wId][field]=val;saveAssign(a);renderHist();
 };
+window.unassign=function(wId){let a=getAssign();delete a[wId];saveAssign(a);render();};
 
-// Firebaseден окуу
+// Firebase
 db.ref('osh/assign_v3').on('value',s=>{if(s.val()){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(s.val()));render();}});
-// Миграция эскиден
-let oldV2=JSON.parse(localStorage.getItem('kadamjai_assign_v2')||'null');
-if(oldV2 &&!localStorage.getItem('kadamjai_assign_v3')){saveAssign(oldV2);}
+
+function checkInside(lat,lng){
+for(let z of zones){let poly=z.points;let ok=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];let inter=((yi>lng)!=(yj>lng))&&(lat<(xj-xi)*(lng-yi)/(yj-yi)+xi);if(inter)ok=!ok;}if(ok) return true;}return false;
+}
 
 db.ref('osh/workers').on('value',snap=>{
-workers={};snap.forEach(ch=>{workers[ch.key]=ch.val();});render();
+let newWorkers={};
+snap.forEach(ch=>{let v=ch.val();let inside=checkInside(v.lat,v.lng);v._inside=inside;newWorkers[ch.key]=v;
+let was=prevState[ch.key];
+if(was!==undefined && was!==inside && getAssign()[ch.key]?.deptId==dept.id){
+addHist(v.name, inside?'in':'out');
+}
+prevState[ch.key]=inside;
 });
+workers=newWorkers;render();
+});
+render();
 </script></body></html>
