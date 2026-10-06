@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Жумушчу</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>body{font-family:sans-serif;padding:16px;background:#f0fdf4}.card{background:white;padding:20px;border-radius:16px;box-shadow:0 2px 10px #0001;text-align:center;margin-bottom:12px}.big{font-size:26px;font-weight:bold;margin:12px 0}.in{background:#dcfce7;color:#14532d}.out{background:#fee2e2;color:#991b1b}.wait{background:#fef9c3;color:#854d0e}.warn{padding:14px;border-radius:12px;font-size:18px;font-weight:bold}</style>
 </head><body>
 <h2>👷 Жумушчу</h2>
-<div class="card"><div id="st" class="warn wait">📡 GPS күтүлүүдө...<br><small>Геолокацияга уруксат бер</small></div><div id="pos" class="big">--</div><div id="time" style="color:#64748b"></div></div>
-<div class="card" style="font-size:13px;color:#64748b">Экранды өчүрбө. Админ берген шилтеме менен кирүү керек.</div>
+<div class="card"><div id="st" class="warn wait">📡 GPS күтүлүүдө...</div><div id="pos" class="big">--</div><div id="time" style="color:#64748b"></div></div>
 <script>
+const firebaseConfig = { apiKey: "AIzaSyDemoKeyForOshTracker123456", authDomain: "gps-tracker-osh.firebaseapp.com", databaseURL: "https://gps-tracker-osh-default-rtdb.firebaseio.com", projectId: "gps-tracker-osh" };
+firebase.initializeApp(firebaseConfig); const db=firebase.database();
 function getZones(){try{let h=location.hash;if(h.includes('zones=')){let d=h.split('zones=')[1];return JSON.parse(decodeURIComponent(escape(atob(d))));}}catch(e){}return [];}
-let zones=getZones();
+let zones=getZones(); let name=localStorage.getItem('workerName'); if(!name){ name=prompt('Атыңызды жазыңыз:')||'Жумушчу'; localStorage.setItem('workerName',name);} let myId=localStorage.getItem('workerId'); if(!myId){ myId='w_'+Math.random().toString(36).slice(2,8); localStorage.setItem('workerId',myId);}
 function inside(lat,lng){for(let poly of zones){let ok=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let xi=poly[i][0],yi=poly[i][1],xj=poly[j][0],yj=poly[j][1];let inter=((yi>lng)!=(yj>lng)) && (lat < (xj-xi)*(lng-yi)/(yj-yi)+xi);if(inter)ok=!ok;}if(ok)return true;}return false;}
-function upd(p){let lat=p.coords.latitude,lng=p.coords.longitude;let inn=inside(lat,lng);let el=document.getElementById('st');el.innerText=inn?'🟢 ИЧИНДЕСИЗ':'🔴 ТЫШКАРЫСЫЗ!';el.className='warn '+(inn?'in':'out');document.getElementById('pos').innerText=lat.toFixed(5)+', '+lng.toFixed(5);document.getElementById('time').innerText=new Date().toLocaleTimeString()+' | Тактык: '+Math.round(p.coords.accuracy)+'м';}
-if(zones.length==0){document.getElementById('st').innerHTML='❌ Зона жок!<br><small>Админ берген толук шилтеме менен кириңиз</small>';}
+function upd(p){let lat=p.coords.latitude,lng=p.coords.longitude;let inn=inside(lat,lng);let el=document.getElementById('st');el.innerText=inn?'🟢 ИЧИНДЕСИЗ':'🔴 ТЫШКАРЫСЫЗ!';el.className='warn '+(inn?'in':'out');document.getElementById('pos').innerText=lat.toFixed(5)+', '+lng.toFixed(5);document.getElementById('time').innerText=new Date().toLocaleTimeString()+' | '+Math.round(p.coords.accuracy)+'м | '+name; db.ref('osh/workers/'+myId).set({name:name,lat:lat,lng:lng,acc:Math.round(p.coords.accuracy),ts:Date.now(),inside:inn});}
+if(zones.length==0){document.getElementById('st').innerHTML='❌ Зона жок! Админ шилтемеси менен кириңиз';}
 if(navigator.geolocation)navigator.geolocation.watchPosition(upd,e=>{document.getElementById('st').innerText='GPS ката: '+e.message;},{enableHighAccuracy:true,maximumAge:0,timeout:10000});
 </script></body></html>
