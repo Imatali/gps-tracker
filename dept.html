@@ -1,1 +1,60 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бөлүм - Оңдолгон</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><style>body{margin:0;background:#f6f7fb;font-family:Inter,sans-serif}header{background:#fff;padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}#map{height:52vh;border-radius:14px;border:1px solid #e2e8f0}.card{background:#fff;border-radius:14px;padding:12px;border:1px solid #eef2f7;margin-bottom:10px}.btn{border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:11px}.btn-dark{background:#0f172a;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-red{background:#ef4444;color:#fff}.btn-ghost{background:#f1f5f9}.select{border:1px solid #e2e8f0;border-radius:8px;padding:6px}.assign{padding:9px;background:#f8fafc;border-radius:10px;margin-bottom:6px;border:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}</style></head><body><header><button class="btn btn-ghost" onclick="location.href='admin.html'">← Башкы</button><div><b id="deptName"></b><br><small id="deptInfo" style="color:#64748b"></small></div><button class="btn btn-dark" onclick="fixAll()">🧹 Тазалоо</button></header><div style="display:grid;grid-template-columns:1.6fr.9fr;gap:10px;padding:10px"><div><div id="map"></div><div class="card" style="margin-top:8px"><b>👥 Бекитүү (Оңдолгон)</b><small style="display:block;color:#64748b">Бир жумушчу бир гана бөлүмдө болот. Которулса автомат өчөт.</small><div id="assignList" style="margin-top:8px"></div></div></div><div><div class="card" style="border-left:5px solid #16a34a"><b>🟢 Жумушта (<span id="inCount">0</span>)</b><div id="inList"></div></div><div class="card" style="border-left:5px solid #ef4444"><b>🔴 Сыртта (<span id="outCount">0</span>)</b><div id="outList"></div></div></div></div><script>const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};firebase.initializeApp(cfg);const db=firebase.database();let map=L.map('map').setView([40.13,71.75],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);const deptId=new URLSearchParams(location.search).get('dept')||'kdo';let DEPTS=JSON.parse(localStorage.getItem('kadamjai_depts_final')||'[]');let dept=DEPTS.find(d=>d.id==deptId)||{id:deptId,name:deptId,color:'#0064e0'};document.getElementById('deptName').innerText=dept.name;document.getElementById('deptName').style.color=dept.color;let allZones=JSON.parse(localStorage.getItem('kadamjai_zones_v3')||'[]');let zones=allZones.filter(z=>z.deptId==dept.id);let assign=JSON.parse(localStorage.getItem('kadamjai_assign_v2')||'{}');let oldAssign=JSON.parse(localStorage.getItem('kadamjai_assign')||'null');if(oldAssign){Object.keys(oldAssign).forEach(k=>{if(!assign[k]) assign[k]={deptId:oldAssign[k],start:'08:00',end:'17:00'}});localStorage.removeItem('kadamjai_assign');db.ref('osh/assign').remove();localStorage.setItem('kadamjai_assign_v2',JSON.stringify(assign));}let workersCache={},markers={},prev={},zoneLayers=[];function saveAssign(){localStorage.setItem('kadamjai_assign_v2',JSON.stringify(assign));db.ref('osh/assign_v2').set(assign);}function renderZones(){zoneLayers.forEach(l=>map.removeLayer(l));zoneLayers=[];zones.forEach(z=>zoneLayers.push(L.polygon(z.points,{color:dept.color,weight:3,fillColor:dept.color,fillOpacity:.25}).addTo(map)));}renderZones();function checkInside(lat,lng){for(let z of zones){let p=z.points;let ok=false;for(let i=0,j=p.length-1;i<p.length;j=i++){let xi=p[i][0],yi=p[i][1],xj=p[j][0],yj=p[j][1];let inter=((yi>lng)!=(yj>lng))&&(lat<(xj-xi)*(lng-yi)/(yj-yi)+xi);if(inter)ok=!ok;}if(ok) return z;}return null;}function renderWorkers(){let inH='',outH='',assH='';let assignedHere=Object.keys(assign).filter(k=>assign[k].deptId==dept.id);assignedHere.forEach(wId=>{let w=workersCache[wId];let sch=assign[wId];let nm=w?w.name:wId;if(w&&w._inside) inH+=`<div class="assign" style="background:${dept.color}15"><b>${nm}</b><small>${sch.start}-${sch.end} 🟢</small></div>`;else outH+=`<div class="assign" style="background:#fef2f2"><b>${nm}</b><small>🔴 ${sch.start}-${sch.end}</small></div>`;});Object.keys(workersCache).forEach(wId=>{let w=workersCache[wId];let cur=assign[wId];if(cur&&cur.deptId==dept.id){assH+=`<div class="assign" style="background:#dcfce7"><b>${w.name}</b><span><small>${cur.start}-${cur.end}</small> <button class="btn btn-red" onclick="unassign('${wId}')">Алып салуу</button></span></div>`;}else{let label=cur? (DEPTS.find(d=>d.id==cur.deptId)?.name||cur.deptId)+'да' : 'бош';assH+=`<div class="assign"><div><b>${w.name}</b><br><small style="color:#64748b">${label}</small></div><div style="display:flex;gap:4px;align-items:center"><input type="time" id="ns-${wId}" value="08:00" class="select" style="width:85px"><input type="time" id="ne-${wId}" value="17:00" class="select" style="width:85px"><button class="btn btn-green" onclick="doAssign('${wId}')">${cur?'Которуу':'Бекитүү'}</button></div></div>`;}});document.getElementById('inList').innerHTML=inH||'<small>Жок</small>';document.getElementById('outList').innerHTML=outH||'<small>Баары ордунда</small>';document.getElementById('assignList').innerHTML=assH||'<small>Эч ким онлайн эмес</small>';document.getElementById('inCount').innerText=assignedHere.filter(id=>workersCache[id]?._inside).length;document.getElementById('outCount').innerText=assignedHere.filter(id=>!workersCache[id]?._inside).length;document.getElementById('deptInfo').innerText=`${zones.length} зона • ${assignedHere.length} бекитилген`;}window.doAssign=function(wId){let s=document.getElementById('ns-'+wId).value||'08:00';let e=document.getElementById('ne-'+wId).value||'17:00';let old=assign[wId]?assign[wId].deptId:null;assign[wId]={deptId:dept.id,start:s,end:e};saveAssign();if(old&&old!=dept.id){alert(`✅ ${workersCache[wId]?.name||wId} ${DEPTS.find(d=>d.id==old)?.name||old}дан алынып, ${dept.name}га которулду!`);}renderWorkers();};window.unassign=function(wId){delete assign[wId];saveAssign();renderWorkers();};window.fixAll=function(){if(!confirm('Бардык эски бекитүүлөрдү тазалайбызбы?'))return;localStorage.removeItem('kadamjai_assign');db.ref('osh/assign').remove();alert('Тазаланды!');location.reload();};db.ref('osh/assign_v2').on('value',s=>{if(s.val()){assign=s.val();localStorage.setItem('kadamjai_assign_v2',JSON.stringify(assign));renderWorkers();}});db.ref('osh/workers').on('value',snap=>{workersCache={};Object.values(markers).forEach(m=>map.removeLayer(m));markers={};snap.forEach(ch=>{let v=ch.val();let hit=checkInside(v.lat,v.lng);v._inside=!!hit;workersCache[ch.key]=v;if(v._inside){let ic=L.divIcon({html:`<div style="background:${dept.color};color:#fff;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:800;border:2px solid #fff">${v.name}</div>`,className:''});markers[ch.key]=L.marker([v.lat,v.lng],{icon:ic}).addTo(map);}});renderWorkers();});</script></body></html>
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Оңдолду</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><style>body{margin:0;background:#f6f7fb;font-family:Inter,sans-serif}header{background:#fff;padding:10px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between}#map{height:50vh;border-radius:12px;border:1px solid #e2e8f0}.card{background:#fff;border-radius:12px;padding:10px;border:1px solid #eef2f7;margin-top:8px}.btn{border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:11px}.btn-dark{background:#0f172a;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-red{background:#fee2e2;color:#ef4444}.assign{padding:8px;background:#f8fafc;border-radius:9px;margin-bottom:5px;border:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}</style></head><body><header><button class="btn" onclick="location.href='admin.html'">← Башкы</button><div><b id="deptName"></b><br><small id="info"></small></div><button class="btn btn-dark" onclick="location.reload()">↻</button></header><div style="padding:10px"><div id="map"></div><div class="card"><b>👥 Жумушчулар - Иматали маселеси оңдолду</b><div id="list" style="margin-top:8px"></div></div></div><script>
+const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
+firebase.initializeApp(cfg);const db=firebase.database();
+let map=L.map('map').setView([40.13,71.75],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+const deptId=new URLSearchParams(location.search).get('dept')||'kdo';
+let DEPTS=JSON.parse(localStorage.getItem('kadamjai_depts_final')||'[]');
+let dept=DEPTS.find(d=>d.id==deptId)||{id:deptId,name:deptId,color:'#0064e0'};
+document.getElementById('deptName').innerText=dept.name;
+let allZones=JSON.parse(localStorage.getItem('kadamjai_zones_v3')||'[]');
+let zones=allZones.filter(z=>z.deptId==dept.id);
+let workers={};let markers=[];
+
+// ЖАҢЫ ТАЗА САКТОО - V3
+function getAssign(){return JSON.parse(localStorage.getItem('kadamjai_assign_v3')||'{}');}
+function saveAssign(obj){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(obj));db.ref('osh/assign_v3').set(obj);}
+
+function renderZones(){markers.forEach(m=>map.removeLayer(m));markers=[];zones.forEach(z=>markers.push(L.polygon(z.points,{color:dept.color,weight:3,fillColor:dept.color,fillOpacity:.25}).addTo(map)));}renderZones();
+
+function render(){
+let assign=getAssign();
+let html='';
+Object.keys(workers).forEach(wId=>{
+let w=workers[wId];
+let cur=assign[wId];
+if(cur && cur.deptId==dept.id){
+// Ушул бөлүмдө
+html+=`<div class="assign" style="background:#dcfce7;border-color:#16a34a"><b>${w.name} ✅ Ушул бөлүмдө</b><button class="btn btn-red" onclick="unassign('${wId}')">Алып салуу</button></div>`;
+}else if(cur){
+// БАШКА БӨЛҮМДӨ - мына ушул жер оңдолду
+let other=DEPTS.find(d=>d.id==cur.deptId)?.name||cur.deptId;
+html+=`<div class="assign" style="background:#fef3c7"><div><b>${w.name}</b><br><small style="color:#92400e">📌 Азыр ${other}да</small></div><button class="btn btn-green" onclick="moveHere('${wId}')">Ушул жакка которуу</button></div>`;
+}else{
+// Бош
+html+=`<div class="assign"><b>${w.name} - бош</b><button class="btn btn-dark" onclick="moveHere('${wId}')">Бекитүү</button></div>`;
+}
+});
+document.getElementById('list').innerHTML=html||'Эч ким жок';
+document.getElementById('info').innerText=`${zones.length} зона • ${Object.keys(assign).filter(k=>assign[k].deptId==dept.id).length} бекитилген`;
+}
+
+window.moveHere=function(wId){
+let a=getAssign();
+a[wId]={deptId:dept.id,start:'08:00',end:'17:00'};
+saveAssign(a);
+render();
+};
+window.unassign=function(wId){
+let a=getAssign();delete a[wId];saveAssign(a);render();
+};
+
+// Firebaseден окуу
+db.ref('osh/assign_v3').on('value',s=>{if(s.val()){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(s.val()));render();}});
+// Миграция эскиден
+let oldV2=JSON.parse(localStorage.getItem('kadamjai_assign_v2')||'null');
+if(oldV2 &&!localStorage.getItem('kadamjai_assign_v3')){saveAssign(oldV2);}
+
+db.ref('osh/workers').on('value',snap=>{
+workers={};snap.forEach(ch=>{workers[ch.key]=ch.val();});render();
+});
+</script></body></html>
