@@ -16,56 +16,41 @@ button{background:#111;color:white;border:0}
 <body>
 <div class="box">
 <h2>📍 Кадамжай ЖДПБ</h2>
-<p>Жумушка кирүү</p>
-<input id="name" placeholder="Аты-жөнүңүз: Мисалы Асанов Үсөн">
-<select id="dept">
-<option value="admin">Администрация</option>
-<option value="buh">Бухгалтерия</option>
-<option value="kdo">КДО</option>
-<option value="terapia">Терапия</option>
-<option value="gsv1">ГСВ №1</option>
-<option value="gsv2">ГСВ №2</option>
-<option value="gsv3">ГСВ №3</option>
-</select>
+<input id="name" placeholder="Аты-жөнүңүз">
+<select id="dept"><option>Бөлүмдөр жүктөлүүдө...</option></select>
 <button onclick="startWork()">Жумушту баштоо</button>
-<div id="status">Геолокация күтүлүүдө...</div>
+<div id="status">Бөлүмдөр админден жүктөлүүдө...</div>
 </div>
 <script>
 const firebaseConfig={databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
 firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
 let workerId=localStorage.getItem('workerId')||'w_'+Date.now();
 localStorage.setItem('workerId',workerId);
-let watchId=null;
-
+db.ref('osh/departments').on('value',snap=>{
+  const depts=snap.val()||{};
+  const sel=document.getElementById('dept');
+  const saved=localStorage.getItem('workerDept');
+  sel.innerHTML='';
+  Object.entries(depts).forEach(([id,info])=>{
+    const opt=document.createElement('option'); opt.value=id; opt.textContent=info.name;
+    if(id===saved) opt.selected=true; sel.appendChild(opt);
+  });
+  document.getElementById('status').innerText='✅ '+Object.keys(depts).length+' бөлүм жүктөлдү';
+});
 function startWork(){
  const name=document.getElementById('name').value.trim();
  const dept=document.getElementById('dept').value;
  if(!name){alert('Атыңызды жазыңыз');return;}
- localStorage.setItem('workerName',name);
- localStorage.setItem('workerDept',dept);
- document.getElementById('status').innerText='✅ Ишке кирдиңиз, геолокация жөнөтүлүүдө...';
+ localStorage.setItem('workerName',name); localStorage.setItem('workerDept',dept);
  if(navigator.geolocation){
-   watchId=navigator.geolocation.watchPosition(pos=>{
-     const data={
-       name:name,
-       deptId:dept,
-       lat:pos.coords.latitude,
-       lng:pos.coords.longitude,
-       accuracy:pos.coords.accuracy,
-       lastSeen:Date.now(),
-       online:true
-     };
-     firebase.database().ref('osh/workers/'+workerId).set(data);
-     document.getElementById('status').innerText=`📡 Жөнөтүлдү: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-   },err=>{
-     document.getElementById('status').innerText='❌ Геолокацияга уруксат бериңиз: '+err.message;
-   },{enableHighAccuracy:true,maximumAge:0,timeout:10000});
- }else{alert('Телефон геолокацияны колдобойт');}
+   navigator.geolocation.watchPosition(pos=>{
+     db.ref('osh/workers/'+workerId).set({name:name,deptId:dept,lat:pos.coords.latitude,lng:pos.coords.longitude,lastSeen:Date.now(),online:true});
+     document.getElementById('status').innerText='📡 Жөнөтүлдү: '+pos.coords.latitude.toFixed(5);
+   },e=>{document.getElementById('status').innerText='❌ Уруксат бериңиз: '+e.message},{enableHighAccuracy:true});
+ }
 }
-window.onload=()=>{
- const savedName=localStorage.getItem('workerName');
- if(savedName) document.getElementById('name').value=savedName;
-}
+window.onload=()=>{const n=localStorage.getItem('workerName'); if(n) document.getElementById('name').value=n;}
 </script>
 </body>
 </html>
