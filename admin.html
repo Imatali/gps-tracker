@@ -1,71 +1,91 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Кадамжай - Админ</title>
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="UTF-8">
+<title>Кадамжай ЖДПБ Админ</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
-body{margin:0;background:#f6f7fb;font-family:Inter,system-ui,sans-serif}
-header{background:#fff;padding:14px 16px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20}
-.filterBar{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;background:#f8fafc;padding:10px;border-radius:14px;border:1px solid #eef2f7}
-.chip{padding:7px 12px;border-radius:99px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;font-size:11px;font-weight:800;transition:.2s}
-.chip.active{background:#0f172a;color:#fff;border-color:#0f172a}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:12px}
-@media(min-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
-.card{background:#fff;border-radius:18px;padding:14px;border:1px solid #eef2f7;cursor:pointer;position:relative;overflow:hidden;transition:.2s}
-.card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.06)}
-.top{height:5px;position:absolute;top:0;left:0;right:0}
-.stat{display:flex;gap:6px;margin-top:10px}
-.mini{flex:1;background:#f8fafc;border-radius:10px;padding:6px;text-align:center;border:1px solid #f1f5f9}
-.mini small{font-size:9px;color:#64748b;display:block;font-weight:700}
-.mini b{font-size:14px;color:#0f172a}
-.badge{font-size:10px;padding:4px 8px;border-radius:99px;font-weight:800;display:inline-block;margin-top:6px;margin-right:3px}
-.btn{border:0;padding:9px 14px;border-radius:10px;font-weight:800;cursor:pointer}
-.btn-dark{background:#0f172a;color:#fff}
-.btn-red{background:#fee2e2;color:#ef4444}
-.inp{border:1px solid #e2e8f0;border-radius:10px;padding:9px 12px;font-weight:600}
-.del{color:#ef4444;background:#fff;border:1px solid #fee2e2;width:28px;height:28px;border-radius:99px;cursor:pointer;font-weight:900}
-</style></head><body>
-<header>
-<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
-<div><b style="font-size:18px">🏥 Кадамжай ЖДПБ</b> <span id="cnt" style="background:#0f172a;color:#fff;padding:4px 10px;border-radius:99px;font-size:11px;margin-left:6px"></span><br><small id="totalBox" style="color:#64748b;font-weight:600"></small></div>
-<div style="display:flex;gap:6px"><input id="search" class="inp" placeholder="🔍 Бөлүм издөө..." oninput="render()" style="width:160px"><button class="btn btn-dark" onclick="addDept()">+ Бөлүм</button></div>
-</div>
-<div class="filterBar">
-<button class="chip active" id="f-all" onclick="setFilter('all')">Баары</button>
-<button class="chip" id="f-late" onclick="setFilter('late')">⏰ Кечиккен</button>
-<button class="chip" id="f-early" onclick="setFilter('early')">🏃 Эрте кеткен</button>
-<button class="chip" id="f-absent" onclick="setFilter('absent')">🚫 Келбеген</button>
-<button class="chip" id="f-in" onclick="setFilter('in')">🟢 Жумушта</button>
-<button class="chip" id="f-out" onclick="setFilter('out')">🔴 Сыртта</button>
-</div>
-<div style="display:flex;gap:6px;margin-top:10px"><input id="newName" class="inp" placeholder="Жаңы бөлүм: ГСВ №4" style="flex:1"><input id="newColor" type="color" value="#8b5cf6" style="width:44px;height:40px;border-radius:10px;border:1px solid #e2e8f0"><button class="btn btn-dark" onclick="addDept2()">Кошуу</button></div>
-</header>
-<div class="grid" id="grid"></div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+body{font-family:sans-serif;background:#f5f5f5;padding:20px}
+.card{background:white;border-radius:12px;padding:16px;margin:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:inline-block;width:260px;vertical-align:top}
+h1{font-size:20px}
+</style>
+</head>
+<body>
+<h1>Кадамжай ЖДПБ <span id="count"></span></h1>
+<div id="list"></div>
 <script>
-const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
-firebase.initializeApp(cfg);const db=firebase.database();
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "gps-tracker-osh.firebaseapp.com",
+  databaseURL: "https://gps-tracker-osh-default-rtdb.firebaseio.com",
+  projectId: "gps-tracker-osh"
+};
+firebase.initializeApp(firebaseConfig);
 
-let DEPTS=JSON.parse(localStorage.getItem('kadamjai_depts_final_v2')||'null')||[
-{id:'admin',name:'Администрация',color:'#6366f1'},
-{id:'kdo',name:'КДО',color:'#0064e0'},
-{id:'terapia',name:'Терапия',color:'#10b981'},
-{id:'gsv1',name:'ГСВ №1',color:'#16a34a'},
-{id:'gsv2',name:'ГСВ №2',color:'#f59e0b'},
-{id:'gsv3',name:'ГСВ №3',color:'#ef4444'}
-];
-let zones=JSON.parse(localStorage.getItem('kadamjai_zones_v3')||'[]');
-let assign=JSON.parse(localStorage.getItem('kadamjai_assign_v3')||'{}');
-let workers={}; let filter='all';
-function toMin(t){let[h,m]=t.split(':').map(Number);return h*60+m;}
-function save(){localStorage.setItem('kadamjai_depts_final_v2',JSON.stringify(DEPTS));localStorage.setItem('kadamjai_depts_final',JSON.stringify(DEPTS));let obj={};DEPTS.forEach(d=>obj[d.id]={name:d.name,color:d.color});db.ref('osh/depts').set(obj);}
-function ensureFromAssign(){let ch=false;Object.values(assign).forEach(a=>{if(a.deptId&&!DEPTS.find(d=>d.id===a.deptId)){DEPTS.push({id:a.deptId,name:a.deptName||a.deptId,color:'#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0')});ch=true;}});if(ch)save();}
-function getStats(deptId){let logs=JSON.parse(localStorage.getItem('kadamjai_history_'+deptId)||'[]');let today=new Date().toLocaleDateString('ky-KG');let todays=logs.filter(l=>l.date==today);let byName={};todays.forEach(l=>{if(!byName[l.name])byName[l.name]={first:null,last:null};if(l.type=='in'&&byName[l.name].first==null)byName[l.name].first=toMin(l.time.slice(0,5));if(l.type=='out')byName[l.name].last=toMin(l.time.slice(0,5));});let ass=Object.keys(assign).filter(k=>assign[k].deptId==deptId);let late=0,early=0,absent=0;ass.forEach(wId=>{let nm=workers[wId]?workers[wId].name:wId;let b=byName[nm];let sch=assign[wId];if(!b||b.first==null)absent++;else{if(b.first>toMin(sch.start||'08:00')+10)late++;if(b.last&&b.last<toMin(sch.end||'17:00')-10)early++;}});return{late,early,absent,total:ass.length};}
-window.setFilter=function(f){filter=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));document.getElementById('f-'+f).classList.add('active');render();};
-window.addDept=function(){let n=prompt('Бөлүм аты?','ГСВ №4');if(!n)return;let id=n.toLowerCase().replace(/[^a-z0-9а-яөүң]+/g,'_').replace(/^_+|_+$/g,'').slice(0,15);if(DEPTS.find(d=>d.id===id)){id=id+'_'+Date.now().toString().slice(-3)}DEPTS.push({id:id,name:n,color:'#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0')});save();render();};
-window.addDept2=function(){let n=document.getElementById('newName').value.trim();if(!n)return;let c=document.getElementById('newColor').value;let id=n.toLowerCase().replace(/[^a-z0-9а-яөүң]+/g,'_').replace(/^_+|_+$/g,'').slice(0,15);if(DEPTS.find(d=>d.id===id)){id=id+'_'+Date.now().toString().slice(-3)}DEPTS.push({id:id,name:n,color:c});save();document.getElementById('newName').value='';render();};
-window.delDept=function(e,id){e.stopPropagation();if(!confirm('Бул бөлүм өчүрүлсүнбү?'))return;DEPTS=DEPTS.filter(d=>d.id!=id);save();let all=JSON.parse(localStorage.getItem('kadamjai_zones_v3')||'[]');localStorage.setItem('kadamjai_zones_v3',JSON.stringify(all.filter(z=>z.deptId!=id)));zones=all.filter(z=>z.deptId!=id);render();};
-function render(){let q=(document.getElementById('search').value||'').toLowerCase();let stats={};DEPTS.forEach(d=>{stats[d.id]={in:0,...getStats(d.id)};});Object.keys(workers).forEach(wId=>{let a=assign[wId];if(a&&stats[a.deptId])stats[a.deptId].in++;});let list=DEPTS.filter(d=>{if(q&&!d.name.toLowerCase().includes(q))return false;let s=stats[d.id];if(filter=='late'&&s.late==0)return false;if(filter=='early'&&s.early==0)return false;if(filter=='absent'&&s.absent==0)return false;if(filter=='in'&&s.in==0)return false;if(filter=='out'&&(s.total-s.in)==0)return false;return true;});document.getElementById('cnt').innerText=list.length+' / '+DEPTS.length;document.getElementById('grid').innerHTML=list.map(d=>{let s=stats[d.id]||{total:0,in:0,late:0,early:0,absent:0};let out=s.total-s.in;let zc=zones.filter(z=>z.deptId==d.id).length;let warn='';if(s.late>0)warn+=`<span class="badge" style="background:#fef3c7;color:#92400e">⏰ ${s.late}</span>`;if(s.early>0)warn+=`<span class="badge" style="background:#ffedd5;color:#9a3412">🏃 ${s.early}</span>`;if(s.absent>0)warn+=`<span class="badge" style="background:#fee2e2;color:#991b1b">🚫 ${s.absent}</span>`;return `<div class="card" onclick="location.href='dept.html?dept=${d.id}'"><div class="top" style="background:${d.color}"></div><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">${d.name}</b><div style="display:flex;gap:6px;align-items:center"><small style="background:${d.color}15;color:${d.color};padding:3px 7px;border-radius:99px;font-weight:800">${zc}з</small><button class="del" onclick="delDept(event,'${d.id}')">✕</button></div></div><div class="stat"><div class="mini"><small>🟢 ЖУМУШТА</small><b>${s.in}</b></div><div class="mini"><small>🔴 СЫРТТА</small><b>${out}</b></div><div class="mini"><small>👥 БАРДЫГЫ</small><b>${s.total}</b></div></div><div>${warn||'<span class="badge" style="background:#dcfce7;color:#166534">✅ Тартип</span>'}</div></div>`}).join('')||`<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8">Бөлүм табылган жок</div>`;let allIn=Object.values(stats).reduce((a,b)=>a+b.in,0);let allTot=DEPTS.reduce((a,d)=>a+(stats[d.id]?.total||0),0);document.getElementById('totalBox').innerText=`🟢 ${allIn} жумушта • 👥 ${allTot} бекитилген`; }
-db.ref('osh/workers').on('value',snap=>{let w={};snap.forEach(ch=>{w[ch.key]=ch.val();});workers=w;render();});
-db.ref('osh/assign_v3').on('value',s=>{if(s.val()){assign=s.val();localStorage.setItem('kadamjai_assign_v3',JSON.stringify(assign));ensureFromAssign();render();}});
-db.ref('osh/depts').on('value',s=>{let v=s.val();if(v&&Object.keys(v).length>0){let hasNew=false;Object.keys(v).forEach(k=>{if(!DEPTS.find(d=>d.id===k)){DEPTS.push({id:k,name:v[k].name||k,color:v[k].color||'#8b5cf6'});hasNew=true;}});if(hasNew){localStorage.setItem('kadamjai_depts_final_v2',JSON.stringify(DEPTS));render();}}});
+const ALLOWED = {
+  admin:{name:"Администрация",color:"#6366f1"},
+  buh:{name:"Бухгалтерия",color:"#f59e0b"},
+  gsv1:{name:"ГСВ №1",color:"#16a34a"},
+  gsv2:{name:"ГСВ №2",color:"#f59e0b"},
+  gsv3:{name:"ГСВ №3",color:"#ef4444"},
+  kdo:{name:"КДО",color:"#0064e0"},
+  terapia:{name:"Терапия",color:"#10b981"}
+};
+
+// ТАЗАЛОО: эски бузук бөлүмдөрдү автоматтык өчүрүү
+function cleanDepts(path){
+  firebase.database().ref(path).once('value').then(s=>{
+    const data=s.val()||{};
+    Object.keys(data).forEach(k=>{
+      const cleanK = k.replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+      if(cleanK!== k ||!ALLOWED[k]){
+        if(k!==cleanK && ALLOWED[cleanK]){ /* дубликат */ }
+        if(!ALLOWED[k]){
+          console.log('Бузук бөлүм өчүрүлдү:',k);
+          firebase.database().ref(path+'/'+k).remove();
+        }
+      }
+    });
+  });
+}
+cleanDepts('depts');
+cleanDepts('osh/depts');
+
+function render(){
+  firebase.database().ref('osh/depts').on('value', snap=>{
+    let depts = snap.val() || ALLOWED;
+    // Тек гана уруксат берилгендерди көрсөт
+    let html='';
+    Object.keys(ALLOWED).forEach(id=>{
+      const d = depts[id] || ALLOWED[id];
+      html+=`<div class="card" style="border-top:4px solid ${d.color}">
+        <b>${d.name}</b><br> <small>${id}</small>
+        <div id="c-${id}">жүктөлүүдө...</div>
+      </div>`;
+    });
+    document.getElementById('list').innerHTML=html;
+    document.getElementById('count').innerText = Object.keys(ALLOWED).length+' / '+Object.keys(ALLOWED).length;
+    countWorkers();
+  });
+}
+function countWorkers(){
+  firebase.database().ref('osh/workers').on('value', s=>{
+    const workers=s.val()||{};
+    const counts={};
+    Object.keys(ALLOWED).forEach(k=>counts[k]=0);
+    Object.values(workers).forEach(w=>{
+      let dept = (w.deptId||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+      if(counts[dept]!==undefined) counts[dept]++;
+    });
+    Object.keys(counts).forEach(k=>{
+      const el=document.getElementById('c-'+k);
+      if(el) el.innerText = `Жумушта: ${counts[k]} | Бардыгы: ${counts[k]}`;
+    });
+  });
+}
 render();
-</script></body></html>
+localStorage.removeItem('depts_cache');
+</script>
+</body>
+</html>
