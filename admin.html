@@ -2,90 +2,119 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8">
-<title>Кадамжай ЖДПБ Админ</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Кадамжай ЖДПБ - Админ</title>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
-body{font-family:sans-serif;background:#f5f5f5;padding:20px}
-.card{background:white;border-radius:12px;padding:16px;margin:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:inline-block;width:260px;vertical-align:top}
-h1{font-size:20px}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f1f5f9}
+.header{background:white;padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.1);position:sticky;top:0;z-index:10}
+.header h1{margin:0;font-size:18px;flex:1;min-width:200px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters select,.filters input{padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;padding:20px}
+.card{background:white;border-radius:14px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);border-top:4px solid #6366f1;cursor:pointer;transition:.2s}
+.card:hover{transform:translateY(-2px)}
+.card b{font-size:15px;display:block}
+.card small{color:#6b7280}
+.count{margin-top:8px;font-size:13px;color:#374151}
+.workers{padding:0 20px 20px}
+.worker{background:white;padding:12px 14px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.badge{padding:3px 8px;border-radius:20px;font-size:11px;color:white}
+.btn{padding:6px 10px;border:0;border-radius:6px;background:#e5e7eb;cursor:pointer}
 </style>
 </head>
 <body>
-<h1>Кадамжай ЖДПБ <span id="count"></span></h1>
-<div id="list"></div>
+<div class="header">
+  <h1>Кадамжай ЖДПБ <span id="deptCount">7 / 7</span></h1>
+  <div class="filters">
+    <select id="filterDept"><option value="all">Бардык бөлүмдөр</option></select>
+    <input id="searchInput" placeholder="Аты боюнча издөө...">
+    <button class="btn" onclick="clearFilters()">Тазалоо</button>
+  </div>
+</div>
+<div class="grid" id="deptGrid"></div>
+<div class="workers" id="workerList"></div>
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "gps-tracker-osh.firebaseapp.com",
   databaseURL: "https://gps-tracker-osh-default-rtdb.firebaseio.com",
   projectId: "gps-tracker-osh"
 };
 firebase.initializeApp(firebaseConfig);
-
 const ALLOWED = {
   admin:{name:"Администрация",color:"#6366f1"},
   buh:{name:"Бухгалтерия",color:"#f59e0b"},
-  gsv1:{name:"ГСВ №1",color:"#16a34a"},
+  gsv1:{name:"ГСВ №1",color:"#10b981"},
   gsv2:{name:"ГСВ №2",color:"#f59e0b"},
   gsv3:{name:"ГСВ №3",color:"#ef4444"},
-  kdo:{name:"КДО",color:"#0064e0"},
+  kdo:{name:"КДО",color:"#2563eb"},
   terapia:{name:"Терапия",color:"#10b981"}
 };
-
-// ТАЗАЛОО: эски бузук бөлүмдөрдү автоматтык өчүрүү
-function cleanDepts(path){
+function cleanId(id){
+  return (id||'').toString().replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase();
+}
+function autoClean(path){
   firebase.database().ref(path).once('value').then(s=>{
     const data=s.val()||{};
     Object.keys(data).forEach(k=>{
-      const cleanK = k.replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-      if(cleanK!== k ||!ALLOWED[k]){
-        if(k!==cleanK && ALLOWED[cleanK]){ /* дубликат */ }
-        if(!ALLOWED[k]){
-          console.log('Бузук бөлүм өчүрүлдү:',k);
-          firebase.database().ref(path+'/'+k).remove();
-        }
+      const ck = cleanId(k);
+      if(!ALLOWED[ck] || ck!==k.toLowerCase()){
+        firebase.database().ref(path+'/'+k).remove();
       }
     });
   });
 }
-cleanDepts('depts');
-cleanDepts('osh/depts');
-
-function render(){
-  firebase.database().ref('osh/depts').on('value', snap=>{
-    let depts = snap.val() || ALLOWED;
-    // Тек гана уруксат берилгендерди көрсөт
-    let html='';
-    Object.keys(ALLOWED).forEach(id=>{
-      const d = depts[id] || ALLOWED[id];
-      html+=`<div class="card" style="border-top:4px solid ${d.color}">
-        <b>${d.name}</b><br> <small>${id}</small>
-        <div id="c-${id}">жүктөлүүдө...</div>
-      </div>`;
-    });
-    document.getElementById('list').innerHTML=html;
-    document.getElementById('count').innerText = Object.keys(ALLOWED).length+' / '+Object.keys(ALLOWED).length;
-    countWorkers();
+autoClean('depts');
+autoClean('osh/depts');
+let allWorkers={};
+let selectedDept='all';
+function init(){
+  const sel=document.getElementById('filterDept');
+  Object.keys(ALLOWED).forEach(id=>{
+    const o=document.createElement('option');
+    o.value=id; o.textContent=ALLOWED[id].name;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', e=>{ selectedDept=e.target.value; renderDepts(); renderWorkers(); });
+  document.getElementById('searchInput').addEventListener('input', renderWorkers);
+  firebase.database().ref('osh/depts').on('value', snap=>{ renderDepts(); });
+  firebase.database().ref('osh/workers').on('value', snap=>{
+    allWorkers=snap.val()||{};
+    renderDepts(); renderWorkers();
   });
 }
-function countWorkers(){
-  firebase.database().ref('osh/workers').on('value', s=>{
-    const workers=s.val()||{};
-    const counts={};
-    Object.keys(ALLOWED).forEach(k=>counts[k]=0);
-    Object.values(workers).forEach(w=>{
-      let dept = (w.deptId||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-      if(counts[dept]!==undefined) counts[dept]++;
-    });
-    Object.keys(counts).forEach(k=>{
-      const el=document.getElementById('c-'+k);
-      if(el) el.innerText = `Жумушта: ${counts[k]} | Бардыгы: ${counts[k]}`;
-    });
+function renderDepts(){
+  const counts={}; Object.keys(ALLOWED).forEach(k=>counts[k]=0);
+  Object.values(allWorkers).forEach(w=>{
+    const d=cleanId(w.deptId||'');
+    if(counts[d]!==undefined) counts[d]++;
   });
+  const grid=document.getElementById('deptGrid');
+  let html='';
+  Object.keys(ALLOWED).forEach(id=>{
+    if(selectedDept!=='all' && selectedDept!==id) return;
+    const info=ALLOWED[id];
+    html+=`<div class="card" style="border-top-color:${info.color}" onclick="filterByDept('${id}')"><b>${info.name}</b><small>${id}</small><div class="count">Жумушта: ${counts[id]||0} | Бардыгы: ${counts[id]||0}</div></div>`;
+  });
+  grid.innerHTML=html;
 }
-render();
-localStorage.removeItem('depts_cache');
+function renderWorkers(){
+  const q = (document.getElementById('searchInput').value||'').toLowerCase();
+  const list=document.getElementById('workerList');
+  let html='';
+  Object.entries(allWorkers).forEach(([wid,w])=>{
+    const d=cleanId(w.deptId||'');
+    if(selectedDept!=='all' && d!==selectedDept) return;
+    if(q &&!(w.name||'').toLowerCase().includes(q)) return;
+    const deptName = ALLOWED[d]?ALLOWED[d].name:d;
+    const color = ALLOWED[d]?ALLOWED[d].color:'#999';
+    html+=`<div class="worker"><div><b>${w.name||wid}</b><br><small style="color:${color}">${deptName}</small></div><span class="badge" style="background:${color}">${d}</span></div>`;
+  });
+  list.innerHTML = html || '<div style="padding:20px;color:#999">Кызматкер жок</div>';
+}
+function filterByDept(id){ document.getElementById('filterDept').value=id; selectedDept=id; renderDepts(); renderWorkers(); }
+function clearFilters(){ document.getElementById('filterDept').value='all'; document.getElementById('searchInput').value=''; selectedDept='all'; renderDepts(); renderWorkers(); }
+init();
 </script>
 </body>
 </html>
