@@ -1,22 +1,71 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Жумушка кирүү</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<style>
+body{font-family:sans-serif;background:#f8fafc;margin:0;padding:20px}
+.box{background:white;padding:20px;border-radius:16px;max-width:400px;margin:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:10px;border:1px solid #ddd;font-size:16px}
+button{background:#111;color:white;border:0}
+#status{margin-top:12px;padding:10px;background:#ecfdf5;border-radius:10px;text-align:center}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>📍 Кадамжай ЖДПБ</h2>
+<p>Жумушка кирүү</p>
+<input id="name" placeholder="Аты-жөнүңүз: Мисалы Асанов Үсөн">
+<select id="dept">
+<option value="admin">Администрация</option>
+<option value="buh">Бухгалтерия</option>
+<option value="kdo">КДО</option>
+<option value="terapia">Терапия</option>
+<option value="gsv1">ГСВ №1</option>
+<option value="gsv2">ГСВ №2</option>
+<option value="gsv3">ГСВ №3</option>
+</select>
+<button onclick="startWork()">Жумушту баштоо</button>
+<div id="status">Геолокация күтүлүүдө...</div>
+</div>
 <script>
-//... Firebase init ошол эле...
-function assignToDept(workerId, deptId, workerName){
-  // Эски белгилерди толук тазалоо
-  const cleanDept = deptId.replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase();
-  // ALLOWED текшерүү
-  const allowedIds = ['admin','buh','gsv1','gsv2','gsv3','kdo','terapia'];
-  if(!allowedIds.includes(cleanDept)){ alert('Туура эмес бөлүм!'); return; }
+const firebaseConfig={databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
+firebase.initializeApp(firebaseConfig);
+let workerId=localStorage.getItem('workerId')||'w_'+Date.now();
+localStorage.setItem('workerId',workerId);
+let watchId=null;
 
-  const ref = firebase.database().ref('osh/workers/'+workerId);
-  ref.set({
-    name: workerName,
-    deptId: cleanDept,
-    ts: Date.now()
-  });
-  // Эски assign/assign_v3 ларды өчүр
-  firebase.database().ref('osh/assign/'+workerId).remove();
-  firebase.database().ref('osh/assign_v3/'+workerId).remove();
-  firebase.database().ref('assign/'+workerId).remove();
-  firebase.database().ref('assign_v3/'+workerId).remove();
+function startWork(){
+ const name=document.getElementById('name').value.trim();
+ const dept=document.getElementById('dept').value;
+ if(!name){alert('Атыңызды жазыңыз');return;}
+ localStorage.setItem('workerName',name);
+ localStorage.setItem('workerDept',dept);
+ document.getElementById('status').innerText='✅ Ишке кирдиңиз, геолокация жөнөтүлүүдө...';
+ if(navigator.geolocation){
+   watchId=navigator.geolocation.watchPosition(pos=>{
+     const data={
+       name:name,
+       deptId:dept,
+       lat:pos.coords.latitude,
+       lng:pos.coords.longitude,
+       accuracy:pos.coords.accuracy,
+       lastSeen:Date.now(),
+       online:true
+     };
+     firebase.database().ref('osh/workers/'+workerId).set(data);
+     document.getElementById('status').innerText=`📡 Жөнөтүлдү: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+   },err=>{
+     document.getElementById('status').innerText='❌ Геолокацияга уруксат бериңиз: '+err.message;
+   },{enableHighAccuracy:true,maximumAge:0,timeout:10000});
+ }else{alert('Телефон геолокацияны колдобойт');}
+}
+window.onload=()=>{
+ const savedName=localStorage.getItem('workerName');
+ if(savedName) document.getElementById('name').value=savedName;
 }
 </script>
+</body>
+</html>
