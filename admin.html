@@ -2,42 +2,41 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Кадамжай - Админ</title>
+<title>Кадамжай - Админ Карта менен</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
-*{box-sizing:border-box;font-family:Inter,sans-serif}
-body{margin:0;background:#f6f7fb}
-.header{position:sticky;top:0;background:white;border-bottom:1px solid #e5e7eb;padding:12px 16px;z-index:10;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
-.h-left{font-weight:700;display:flex;gap:8px;align-items:center}
+*{box-sizing:border-box;font-family:Inter,sans-serif} body{margin:0;background:#f6f7fb}
+.header{position:sticky;top:0;background:white;border-bottom:1px solid #e5e7eb;padding:10px 12px;z-index:1000;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .badge{background:#111;color:white;padding:2px 8px;border-radius:8px;font-size:12px}
-.search{border:1px solid #e5e7eb;padding:8px 12px;border-radius:10px;min-width:220px}
-.btn{border:0;border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
-.btn-black{background:#111;color:white}
-.btn-white{background:white;border:1px solid #e5e7eb}
-.filters{padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap}
-.chip{border:1px solid #e5e7eb;background:white;padding:6px 12px;border-radius:20px;font-size:13px;cursor:pointer}
+.btn{border:0;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600;font-size:13px}
+.btn-black{background:#111;color:white}.btn-white{background:white;border:1px solid #e5e7eb}
+.btn-green{background:#10b981;color:white}
+#map{height:50vh;width:100%;z-index:1}
+.filters{padding:8px 12px;display:flex;gap:6px;flex-wrap:wrap;background:white;border-bottom:1px solid #eee}
+.chip{border:1px solid #e5e7eb;background:white;padding:5px 10px;border-radius:20px;font-size:12px;cursor:pointer}
 .chip.active{background:#111;color:white}
-.add-row{padding:0 16px 10px;display:flex;gap:8px}
-.add-row input{flex:1;padding:11px;border:1px solid #e5e7eb;border-radius:12px;font-size:15px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:16px}
-.card{background:white;border-radius:16px;padding:14px;border-top:4px solid #ddd;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.card-title{font-weight:700;display:flex;justify-content:space-between}
-.del{color:#ef4444;cursor:pointer}
-.stat{margin-top:6px;font-size:12px}
-.bulk{margin:0 16px 16px;background:white;border-radius:12px;padding:12px;border:1px dashed #d1d5db}
-.bulk textarea{width:100%;height:120px;border:1px solid #e5e7eb;border-radius:8px;padding:8px}
-#detail{position:fixed;bottom:0;left:0;right:0;background:white;border-top-left-radius:20px;border-top-right-radius:20px;max-height:80vh;overflow:auto;padding:20px;box-shadow:0 -10px 30px rgba(0,0,0,.2);display:none;z-index:99}
+.add-row{padding:10px 12px;display:flex;gap:8px;background:white}
+.add-row input{flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:12px}
+.card{background:white;border-radius:14px;padding:12px;border-top:4px solid #ddd;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card.active{outline:2px solid #111}
+#detail{position:fixed;bottom:0;left:0;right:0;background:white;border-top-left-radius:20px;border-top-right-radius:20px;max-height:75vh;overflow:auto;padding:16px;display:none;z-index:2000;box-shadow:0 -10px 30px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
 <div class="header">
-<div class="h-left">📍 Кадамжай <span class="badge" id="deptCount">0</span> <span id="onlineInfo" style="font-weight:400;font-size:13px;color:#6b7280"></span></div>
-<div style="display:flex;gap:8px">
-<input id="search" class="search" placeholder="🔍 Издөө..." oninput="render()">
+<div><b>📍 Кадамжай ЖДПБ</b> <span class="badge" id="deptCount">0</span> <span id="onlineInfo" style="font-size:12px;color:#666"></span></div>
+<div style="display:flex;gap:6px">
+<input id="search" placeholder="🔍 Издөө" style="padding:7px 10px;border-radius:8px;border:1px solid #ddd" oninput="render()">
+<button class="btn btn-green" id="drawBtn" onclick="toggleDraw()">🗺️ Аймак чийүү</button>
 <button class="btn btn-white" onclick="document.getElementById('bulkBox').style.display='block'">📋 70ти кошуу</button>
 </div>
 </div>
+
+<div id="map"></div>
 
 <div class="filters">
 <div class="chip active" data-f="all" onclick="setFilter('all')">Баары</div>
@@ -46,20 +45,14 @@ body{margin:0;background:#f6f7fb}
 </div>
 
 <div class="add-row">
-<input id="newDept" placeholder="Мисалы: ГСВ №7 деп жазып Enter бас" onkeydown="if(event.key==='Enter')addOne()">
+<input id="newDept" placeholder="ГСВ №7 деп жаз..." onkeydown="if(event.key==='Enter')addOne()">
 <button class="btn btn-black" onclick="addOne()">Кошуу</button>
 </div>
 
-<div id="bulkBox" class="bulk" style="display:none">
-<b>70 бөлүмдү бир заматта:</b>
-<textarea id="bulkText" placeholder="Ар бир сап - бир бөлүм
-ГСВ №4
-ГСВ №5
-ФАП Кара-Кыштак"></textarea>
-<div style="display:flex;gap:8px;margin-top:8px">
-<button class="btn btn-black" onclick="addBulk()">Баарын кошуу</button>
-<button class="btn btn-white" onclick="document.getElementById('bulkBox').style.display='none'">Жабуу</button>
-</div>
+<div id="bulkBox" style="display:none;margin:10px;background:white;padding:12px;border-radius:12px;border:1px dashed #ccc">
+<textarea id="bulkText" style="width:100%;height:100px;border:1px solid #ddd;border-radius:8px;padding:8px" placeholder="ГСВ №4&#10;ГСВ №5&#10;ФАП..."></textarea><br>
+<button class="btn btn-black" onclick="addBulk()" style="margin-top:8px">Баарын кошуу</button>
+<button class="btn btn-white" onclick="this.parentElement.style.display='none'">Жабуу</button>
 </div>
 
 <div id="grid" class="grid"></div>
@@ -69,41 +62,101 @@ body{margin:0;background:#f6f7fb}
 const firebaseConfig={databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
-const DEPT_REF=db.ref('osh/departments');
-const WORK_REF=db.ref('osh/workers');
-let departments={}; let workers={}; let filter='all';
-const COLORS=['#8b5cf6','#f59e0b','#06b6d4','#ec4899','#10b981','#ef4444','#3b82f6'];
-const DEFAULTS={admin:{name:"Администрация",color:COLORS[0]},buh:{name:"Бухгалтерия",color:COLORS[1]},kdo:{name:"КДО",color:COLORS[2]},terapia:{name:"Терапия",color:COLORS[3]},gsv1:{name:"ГСВ №1",color:COLORS[4]},gsv2:{name:"ГСВ №2",color:COLORS[5]},gsv3:{name:"ГСВ №3",color:COLORS[6]}};
-function slug(s){return s.toLowerCase().replace(/[^a-z0-9а-яёөүң]+/g,'_').replace(/^_|_$/g,'').slice(0,40)||'dept_'+Date.now();}
+const DEPT_REF=db.ref('osh/departments'), WORK_REF=db.ref('osh/workers');
+let departments={}, workers={}, filter='all', selectedDept=null;
+let drawing=false, tempPoints=[], tempPolyline=null, deptPolygons={}, workerMarkers={};
+
+const map=L.map('map').setView([40.52, 72.68], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+const COLORS=['#8b5cf6','#f59e0b','#06b6d4','#ec4899','#10b981','#ef4444','#3b82f6','#a855f7'];
+
+function slug(s){return s.toLowerCase().replace(/[^a-z0-9а-яёөүң]+/g,'_').slice(0,40)||'dept_'+Date.now();}
 function setFilter(f){filter=f;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('active',c.dataset.f===f));render();}
-DEPT_REF.on('value',snap=>{let v=snap.val();if(!v){DEPT_REF.set(DEFAULTS);v=DEFAULTS;}departments=v;updateCount();render();});
-WORK_REF.on('value',snap=>{workers=snap.val()||{};updateCount();render();});
-function updateCount(){const total=Object.keys(departments).length;const online=Object.values(workers).filter(w=>w.online).length;document.getElementById('deptCount').innerText=total;document.getElementById('onlineInfo').innerText=`${online} жумушта • ${Object.keys(workers).length} адам`;}
-function addOne(){const input=document.getElementById('newDept');const name=input.value.trim();if(!name)return;const id=slug(name);if(departments[id]){alert('Бул бөлүм бар');return;}const color=COLORS[Object.keys(departments).length%COLORS.length];DEPT_REF.child(id).set({name,color});input.value='';}
-function addBulk(){const text=document.getElementById('bulkText').value.split('\n').map(s=>s.trim()).filter(Boolean);if(!text.length)return;let added=0;text.forEach(name=>{const id=slug(name);if(!departments[id]){DEPT_REF.child(id).set({name,color:COLORS[(Object.keys(departments).length+added)%COLORS.length]});added++;}});alert(added+' бөлүм кошулду');document.getElementById('bulkBox').style.display='none';document.getElementById('bulkText').value='';}
-function deleteDept(e,id){e.stopPropagation();if(!confirm('Өчүрөсүзбү?'))return;DEPT_REF.child(id).remove();}
+
+DEPT_REF.on('value',snap=>{
+  let v=snap.val(); if(!v){const d={admin:{name:"Администрация",color:COLORS[0]},gsv1:{name:"ГСВ №1",color:COLORS[1]}}; DEPT_REF.set(d); v=d;}
+  departments=v; drawDepartmentPolygons(); updateCount(); render();
+});
+WORK_REF.on('value',snap=>{workers=snap.val()||{}; drawWorkers(); updateCount(); render();});
+
+function updateCount(){document.getElementById('deptCount').innerText=Object.keys(departments).length; document.getElementById('onlineInfo').innerText=Object.values(workers).filter(w=>w.online).length+' жумушта';}
+
+function addOne(){const inp=document.getElementById('newDept'); const name=inp.value.trim(); if(!name)return; const id=slug(name); if(departments[id]){alert('Бар');return;} DEPT_REF.child(id).set({name,color:COLORS[Object.keys(departments).length%COLORS.length]}); inp.value='';}
+function addBulk(){const txt=document.getElementById('bulkText').value.split('\n').map(s=>s.trim()).filter(Boolean); txt.forEach(n=>{const id=slug(n); if(!departments[id]) DEPT_REF.child(id).set({name:n,color:COLORS[Object.keys(departments).length%COLORS.length]});}); document.getElementById('bulkBox').style.display='none';}
+
+function drawDepartmentPolygons(){
+  Object.values(deptPolygons).forEach(p=>map.removeLayer(p)); deptPolygons={};
+  Object.entries(departments).forEach(([id,d])=>{
+    if(d.polygon && d.polygon.length>2){
+      const poly=L.polygon(d.polygon,{color:d.color,fillOpacity:0.2,weight:2}).addTo(map);
+      poly.bindPopup(`<b>${d.name}</b><br>Аймак`);
+      poly.on('click',()=>openDept(id));
+      deptPolygons[id]=poly;
+    }
+  });
+}
+function drawWorkers(){
+  Object.values(workerMarkers).forEach(m=>map.removeLayer(m)); workerMarkers={};
+  Object.entries(workers).forEach(([wid,w])=>{
+    if(!w.lat) return;
+    const dept=departments[w.deptId]; const color=dept?dept.color:'#111';
+    const marker=L.circleMarker([w.lat,w.lng],{radius:8,color:color,fillColor:w.online?'#10b981':'#ef4444',fillOpacity:0.9,weight:2}).addTo(map);
+    marker.bindPopup(`<b>${w.name}</b><br>${dept?dept.name:''}<br>${w.online?'🟢 Жумушта':'🔴 Сыртта'}`);
+    workerMarkers[wid]=marker;
+  });
+}
+
 function openDept(id){
+  selectedDept=id; document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
   const dept=departments[id];
-  const list=Object.entries(workers).filter(([wid,w])=>w.deptId===id);
-  let html=`<h3>${dept.name}</h3><p>${list.length} жумушчу</p>`;
-  if(list.length===0) html+=`<p>Бул бөлүмгө азырынча эч ким каттала элек. Жумушчу телефондон ушул бөлүмдү тандаш керек.</p>`;
+  const list=Object.entries(workers).filter(([_,w])=>w.deptId===id);
+  if(dept.polygon) map.fitBounds(deptPolygons[id]?deptPolygons[id].getBounds():L.latLngBounds(dept.polygon));
+  if(deptPolygons[id]){const b=deptPolygons[id].getBounds(); if(b.isValid()) map.fitBounds(b);}
+  let html=`<h3>${dept.name} <small style="color:#666">${list.length} адам</small></h3>`;
+  html+=`<button class="btn btn-green" onclick="startDrawForDept('${id}')">✏️ Ушул бөлүмгө аймак чийүү</button> `;
+  html+=`<button class="btn btn-white" onclick="focusDept('${id}')">📍 Картадан көрүү</button><hr>`;
+  if(!list.length) html+=`Азырынча эч ким жок`;
   list.forEach(([wid,w])=>{
-    const time=w.lastSeen?new Date(w.lastSeen).toLocaleString():'';
-    html+=`<div style="padding:10px;border-bottom:1px solid #eee;display:flex;justify-content:space-between"><span><b>${w.name}</b><br><small>${time}</small></span><span>${w.online?'🟢':'🔴'}</span></div>`;
+    html+=`<div style="padding:8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between" onclick="focusWorker('${wid}')"><span><b>${w.name}</b><br><small>${w.lastSeen?new Date(w.lastSeen).toLocaleTimeString():''}</small></span><span>${w.online?'🟢':'🔴'} 📍</span></div>`;
   });
   html+=`<br><button class="btn btn-black" onclick="document.getElementById('detail').style.display='none'">Жабуу</button>`;
-  document.getElementById('detail').innerHTML=html;
-  document.getElementById('detail').style.display='block';
+  document.getElementById('detail').innerHTML=html; document.getElementById('detail').style.display='block';
+  render();
 }
+function focusWorker(wid){const w=workers[wid]; if(w&&w.lat){map.setView([w.lat,w.lng],16); workerMarkers[wid].openPopup();}}
+function focusDept(id){const p=deptPolygons[id]; if(p) map.fitBounds(p.getBounds());}
+
+function toggleDraw(){drawing=!drawing; document.getElementById('drawBtn').innerText=drawing?'✅ Бүттү (2 жолу бас)':'🗺️ Аймак чийүү'; document.getElementById('drawBtn').className=drawing?'btn btn-green':'btn btn-white'; if(!drawing) finishDraw();}
+let drawForDept=null;
+function startDrawForDept(id){drawForDept=id; drawing=true; tempPoints=[]; alert(id+' үчүн картаны басып аймакты чийиңиз, бүткөндө Аймак чийүү баскычын кайра басыңыз');}
+map.on('click',e=>{
+  if(!drawing) return;
+  tempPoints.push([e.latlng.lat,e.latlng.lng]);
+  if(tempPolyline) map.removeLayer(tempPolyline);
+  tempPolyline=L.polyline(tempPoints,{color:'red',dashArray:'5,10'}).addTo(map);
+  if(tempPoints.length>1) L.circleMarker(e.latlng,{radius:4,color:'red'}).addTo(map);
+});
+function finishDraw(){
+  if(tempPoints.length<3){alert('Кеминде 3 чекит чийиңиз'); tempPoints=[]; if(tempPolyline) map.removeLayer(tempPolyline); return;}
+  const target=drawForDept||selectedDept||prompt('Кайсы бөлүмгө сактайм? ID жазыңыз: '+Object.keys(departments).join(', '));
+  if(!target||!departments[target]){alert('Бөлүм табылбады'); return;}
+  DEPT_REF.child(target).update({polygon:tempPoints});
+  tempPoints=[]; if(tempPolyline){map.removeLayer(tempPolyline); tempPolyline=null;} drawForDept=null; drawing=false;
+  document.getElementById('drawBtn').innerText='🗺️ Аймак чийүү'; document.getElementById('drawBtn').className='btn btn-white';
+  alert('Аймак сакталды!');
+}
+
 function render(){
-  const grid=document.getElementById('grid');const q=document.getElementById('search').value.toLowerCase();grid.innerHTML='';
+  const grid=document.getElementById('grid'); const q=document.getElementById('search').value.toLowerCase(); grid.innerHTML='';
   Object.entries(departments).forEach(([id,dept])=>{
     if(q&&!dept.name.toLowerCase().includes(q))return;
     const deptWorkers=Object.values(workers).filter(w=>w.deptId===id);
-    const inCount=deptWorkers.filter(w=>w.online).length;
-    if(filter==='in'&&inCount===0)return;
-    const div=document.createElement('div');div.className='card';div.style.borderTopColor=dept.color;div.onclick=()=>openDept(id);
-    div.innerHTML=`<div class="card-title">${dept.name}<span class="del" onclick="deleteDept(event,'${id}')">X</span></div><div class="stat">🟢 ${inCount} | 🔴 ${deptWorkers.length-inCount} | 👥 ${deptWorkers.length}</div><div style="margin-top:6px;font-size:11px;color:#6b7280">Басып кириңиз →</div>`;
+    const inC=deptWorkers.filter(w=>w.online).length;
+    if(filter==='in'&&inC===0)return;
+    if(filter==='out'&&deptWorkers.length-inC===0&&deptWorkers.length>0)return;
+    const div=document.createElement('div'); div.className='card'+(selectedDept===id?' active':''); div.style.borderTopColor=dept.color;
+    div.onclick=()=>openDept(id);
+    div.innerHTML=`<b>${dept.name}</b> ${dept.polygon?'🗺️':''}<div style="font-size:11px;margin-top:4px">🟢 ${inC} | 🔴 ${deptWorkers.length-inC} | 👥 ${deptWorkers.length}</div>`;
     grid.appendChild(div);
   });
 }
