@@ -1,117 +1,113 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Кадамжай ЖДПБ</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Кадамжай - Админ</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:sans-serif;background:#f1f5f9}
-.header{background:white;padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.1);position:sticky;top:0;z-index:20}
-.header h1{margin:0 0 10px;font-size:18px}
-.filters{display:flex;gap:8px;flex-wrap:wrap}
-.filters select,.filters input{padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:13px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;padding:16px}
-.card{background:white;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-top:4px solid #6366f1;cursor:pointer}
-.card:hover{transform:translateY(-2px)}
-#deptDetail{display:none;padding:16px}
-#map{height:400px;border-radius:12px;margin:12px 0;background:#ddd}
-.workers.worker{background:white;padding:12px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between}
-.badge{padding:3px 8px;border-radius:12px;color:white;font-size:11px}
-.btn{padding:8px 14px;border:0;border-radius:8px;background:#6366f1;color:white;cursor:pointer}
-.btn-back{background:#e5e7eb;color:#111}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,sans-serif;background:#f8fafc}
+.top{background:white;padding:12px 16px;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,.08);position:sticky;top:0;z-index:10}
+.top h2{margin:0;font-size:20px;display:flex;gap:8px;align-items:center}
+.top h2 span{background:#111;color:white;border-radius:8px;padding:2px 8px;font-size:14px}
+.search{display:flex;gap:8px}
+.search input{padding:10px 14px;border:1px solid #e5e7eb;border-radius:12px;width:200px}
+.btn-black{background:#111;color:white;border:0;border-radius:12px;padding:10px 16px;cursor:pointer}
+.filters{display:flex;gap:8px;padding:12px 16px;flex-wrap:wrap;background:white;margin:1px 0}
+.pill{padding:8px 14px;border-radius:20px;border:1px solid #e5e7eb;background:white;cursor:pointer;font-size:13px}
+.pill.active{background:#111;color:white}
+.add-row{display:flex;gap:8px;padding:0 16px 12px;background:white}
+.add-row input{flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:12px}
+.add-row.color{width:50px;height:40px;border-radius:8px;border:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:16px}
+.card{background:white;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05);border-top:4px solid #6366f1;cursor:pointer}
+.card.head{display:flex;justify-content:space-between;align-items:center}
+.card.head b{font-size:16px}
+.card.nums{display:flex;justify-content:space-between;margin-top:12px;text-align:center}
+.card.nums small{color:#6b7280;font-size:11px}
+.card.nums b{font-size:18px}
+.tag{padding:2px 8px;border-radius:8px;background:#ecfdf5;color:#10b981;font-size:11px}
+#deptView{display:none;padding:16px;background:#f8fafc;min-height:100vh}
+#map{height:500px;border-radius:16px;margin-top:12px}
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>Кадамжай ЖДПБ <span id="count">7 / 7</span></h1>
-  <div class="filters" id="mainFilters">
-    <select id="filterDept"><option value="all">Бардык бөлүмдөр</option></select>
-    <select id="filterStatus"><option value="all">Бардык</option><option value="late">Кечиккендер</option><option value="early">Эрте кеткендер</option><option value="absent">Келбегендер</option><option value="working">Жумушта</option></select>
-    <input id="search" placeholder="Издөө...">
-  </div>
-</div>
-
 <div id="mainView">
-  <div class="grid" id="deptGrid"></div>
-  <div class="workers" id="allWorkers"></div>
+<div class="top">
+  <h2>📍 Кадамжай ЖДПБ <span id="deptCount">7/7</span><small style="font-weight:400;color:#6b7280;font-size:12px" id="workCount">0 жумушта • 0 бекитилген</small></h2>
+  <div class="search"><input id="searchDept" placeholder="🔍 Бөлүм издөө..."><button class="btn-black" onclick="addDept()">+ Бөлүм</button></div>
+</div>
+<div class="filters">
+  <button class="pill active" data-f="all" onclick="setFilter('all')">Баары</button>
+  <button class="pill" data-f="late" onclick="setFilter('late')">⏰ Кечиккен</button>
+  <button class="pill" data-f="early" onclick="setFilter('early')">🏃 Эрте кеткен</button>
+  <button class="pill" data-f="absent" onclick="setFilter('absent')">🚫 Келбеген</button>
+  <button class="pill" data-f="working" onclick="setFilter('working')">≡ Жумушта</button>
+  <button class="pill" data-f="outside" onclick="setFilter('outside')">🔴 Сыртта</button>
+</div>
+<div class="add-row"><input id="newDeptName" placeholder="Жаңы бөлүм: ГСВ №4"><input type="color" class="color" id="newDeptColor" value="#8b5cf6"><button class="btn-black" onclick="addDept()">Кошуу</button></div>
+<div class="grid" id="deptGrid"></div>
 </div>
 
-<div id="deptDetail">
-  <button class="btn btn-back" onclick="closeDept()">← Артка</button>
-  <h2 id="detailTitle"></h2>
+<div id="deptView">
+  <button class="btn-black" style="background:#e5e7eb;color:#111" onclick="closeDept()">← Артка</button>
+  <h2 id="deptTitle"></h2>
+  <p style="color:#6b7280">Аймакты чийип, сактасаңыз - кызматкер ушул аймактын ичинде болсо гана жумушта деп эсептелет</p>
   <div id="map"></div>
-  <div id="detailWorkers"></div>
+  <div id="deptWorkers" style="margin-top:16px"></div>
 </div>
 
 <script>
 const firebaseConfig={databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
 firebase.initializeApp(firebaseConfig);
-const ALLOWED={admin:{name:"Администрация",color:"#6366f1"},buh:{name:"Бухгалтерия",color:"#f59e0b"},gsv1:{name:"ГСВ №1",color:"#10b981"},gsv2:{name:"ГСВ №2",color:"#f59e0b"},gsv3:{name:"ГСВ №3",color:"#ef4444"},kdo:{name:"КДО",color:"#2563eb"},terapia:{name:"Терапия",color:"#10b981"}};
+const ALLOWED={admin:{name:"Администрация",color:"#6366f1"},buh:{name:"Бухгалтерия",color:"#f59e0b"},kdo:{name:"КДО",color:"#2563eb"},terapia:{name:"Терапия",color:"#8b5cf6"},gsv1:{name:"ГСВ №1",color:"#10b981"},gsv2:{name:"ГСВ №2",color:"#f59e0b"},gsv3:{name:"ГСВ №3",color:"#ef4444"}};
 function cleanId(id){return (id||'').toString().replace(/[\u200B-\u200D\uFEFF]/g,'').trim().toLowerCase();}
-firebase.database().ref('depts').once('value').then(s=>{Object.keys(s.val()||{}).forEach(k=>{if(!ALLOWED[cleanId(k)]) firebase.database().ref('depts/'+k).remove();});});
-firebase.database().ref('osh/depts').once('value').then(s=>{Object.keys(s.val()||{}).forEach(k=>{if(!ALLOWED[cleanId(k)]) firebase.database().ref('osh/depts/'+k).remove();});});
+let allWorkers={},filterStatus='all',map=null,drawnItems=null,currentDept=null;
 
-let allWorkers={},map=null,markers=[],selectedDept='all',selectedStatus='all';
 function init(){
-  const sel=document.getElementById('filterDept');
-  Object.keys(ALLOWED).forEach(id=>{let o=document.createElement('option');o.value=id;o.textContent=ALLOWED[id].name;sel.appendChild(o);});
-  sel.onchange=e=>{selectedDept=e.target.value;render();};
-  document.getElementById('filterStatus').onchange=e=>{selectedStatus=e.target.value;render();};
-  document.getElementById('search').oninput=render;
-  firebase.database().ref('osh/workers').on('value',s=>{allWorkers=s.val()||{};render(); if(document.getElementById('deptDetail').style.display!=='none') openDept(currentDept);});
+  firebase.database().ref('osh/depts').on('value',s=>{
+    const val=s.val()||{};
+    Object.keys(val).forEach(k=>{if(!ALLOWED[cleanId(k)] && cleanId(k)!=='gsv4'){firebase.database().ref('osh/depts/'+k).remove();}});
+    render();
+  });
+  firebase.database().ref('osh/workers').on('value',s=>{allWorkers=s.val()||{};render();});
+  document.getElementById('searchDept').oninput=render;
   render();
 }
-let currentDept=null;
+function getStatus(w){if(!w.lat) return 'absent'; if(w.isLate) return 'late'; if(w.isEarly) return 'early'; if(w.outside) return 'outside'; return 'working';}
+function setFilter(f){filterStatus=f;document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('active',p.dataset.f===f));render();}
+
 function render(){
-  const counts={};Object.keys(ALLOWED).forEach(k=>counts[k]=0);
-  Object.values(allWorkers).forEach(w=>{const d=cleanId(w.deptId);if(counts[d]!==undefined) counts[d]++;});
+  const q=(document.getElementById('searchDept').value||'').toLowerCase();
+  const counts={};Object.keys(ALLOWED).forEach(k=>counts[k]={total:0,working:0,outside:0});
+  Object.values(allWorkers).forEach(w=>{const d=cleanId(w.deptId);if(counts[d]!==undefined){counts[d].total++; if(getStatus(w)==='working') counts[d].working++; if(getStatus(w)==='outside') counts[d].outside++;}});
   let html='';Object.keys(ALLOWED).forEach(id=>{
-    if(selectedDept!=='all'&&selectedDept!==id) return;
     const inf=ALLOWED[id];
-    html+=`<div class="card" style="border-top-color:${inf.color}" onclick="openDept('${id}')"><b>${inf.name}</b><br><small>${id}</small><div style="margin-top:8px">Жумушта: ${counts[id]||0} • Бардыгы: ${counts[id]||0}</div><div style="margin-top:8px;color:${inf.color};font-size:13px">Картаны ачуу →</div></div>`;
+    if(q &&!inf.name.toLowerCase().includes(q)) return;
+    const c=counts[id]||{total:0,working:0,outside:0};
+    html+=`<div class="card" style="border-top-color:${inf.color}" onclick="openDept('${id}')"><div class="head"><b>${inf.name}</b><div style="display:flex;gap:6px"><span style="background:#f3f4f6;padding:4px 8px;border-radius:12px;font-size:12px">Оз</span><span style="color:red;cursor:pointer" onclick="event.stopPropagation();delDept('${id}')">✕</span></div></div><div class="nums"><div><small>ЖУМУШТА</small><br><b>${c.working}</b></div><div><small>🔴 СЫРТТА</small><br><b>${c.outside}</b></div><div><small>👥 БАРДЫГЫ</small><br><b>${c.total}</b></div></div><div style="margin-top:10px"><span class="tag">✅ Тартип</span></div></div>`;
   });
   document.getElementById('deptGrid').innerHTML=html;
-  renderWorkerList('allWorkers',null);
+  document.getElementById('deptCount').textContent=`${Object.keys(ALLOWED).length}/${Object.keys(ALLOWED).length}`;
 }
-function renderWorkerList(containerId, deptFilter){
-  const q=(document.getElementById('search').value||'').toLowerCase();
-  const statusFilter=selectedStatus;
-  let html='';Object.entries(allWorkers).forEach(([wid,w])=>{
-    const d=cleanId(w.deptId);if(deptFilter&&d!==deptFilter) return;
-    if(selectedDept!=='all'&&!deptFilter&&d!==selectedDept) return;
-    if(q&&!(w.name||'').toLowerCase().includes(q)) return;
-    const color=ALLOWED[d]?ALLOWED[d].color:'#999';
-    html+=`<div class="worker"><div><b>${w.name||wid}</b><br><small style="color:${color}">${ALLOWED[d]?ALLOWED[d].name:d}</small></div><span class="badge" style="background:${color}">${d}</span></div>`;
-  });
-  document.getElementById(containerId).innerHTML=html||'<div style="padding:20px;color:#999">Тизме бош</div>';
-}
+
 function openDept(id){
-  currentDept=id;const info=ALLOWED[id];
-  document.getElementById('mainView').style.display='none';
-  document.getElementById('mainFilters').style.display='none';
-  document.getElementById('deptDetail').style.display='block';
-  document.getElementById('detailTitle').innerHTML=`${info.name} <small style="color:${info.color}">${id}</small>`;
-  renderWorkerList('detailWorkers',id);
+  currentDept=id;document.getElementById('mainView').style.display='none';document.getElementById('deptView').style.display='block';
+  document.getElementById('deptTitle').textContent=ALLOWED[id].name;
   setTimeout(()=>{
-    if(!map){map=L.map('map').setView([40.1,71.7],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);}
-    markers.forEach(m=>map.removeLayer(m));markers=[];
-    Object.values(allWorkers).forEach(w=>{
-      const d=cleanId(w.deptId);if(d!==id) return;
-      if(w.lat&&w.lng){const m=L.marker([w.lat,w.lng]).addTo(map).bindPopup(w.name||'');markers.push(m);}
-    });
-    if(markers.length) {const g=L.featureGroup(markers);map.fitBounds(g.getBounds().pad(0.2));}
+    if(!map){map=L.map('map').setView([40.316,71.75],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);drawnItems=new L.FeatureGroup();map.addLayer(drawnItems);let drawControl=new L.Control.Draw({edit:{featureGroup:drawnItems},draw:{polygon:true,circle:false,marker:false,polyline:false,rectangle:true}});map.addControl(drawControl);map.on(L.Draw.Event.CREATED,e=>{drawnItems.clearLayers();drawnItems.addLayer(e.layer);savePolygon(e.layer);});}
+    firebase.database().ref('osh/depts/'+id+'/polygon').once('value').then(s=>{if(s.val()){let layer=L.geoJSON(s.val()).getLayers()[0];if(layer){drawnItems.clearLayers();drawnItems.addLayer(layer);map.fitBounds(layer.getBounds());}}});
     map.invalidateSize();
-  },100);
+  },200);
 }
-function closeDept(){
-  document.getElementById('deptDetail').style.display='none';
-  document.getElementById('mainView').style.display='block';
-  document.getElementById('mainFilters').style.display='flex';
-}
+function savePolygon(layer){let geo=layer.toGeoJSON();firebase.database().ref('osh/depts/'+currentDept+'/polygon').set(geo);alert('Аймак сакталды!');}
+function closeDept(){document.getElementById('deptView').style.display='none';document.getElementById('mainView').style.display='block';}
+function addDept(){let name=document.getElementById('newDeptName').value.trim();if(!name) return;let id=cleanId(name).replace(/\s+/g,'');firebase.database().ref('osh/depts/'+id).set({name,color:document.getElementById('newDeptColor').value});ALLOWED[id]={name,color:document.getElementById('newDeptColor').value};render();}
+function delDept(id){if(confirm('Өчүрөсүзбү?')) firebase.database().ref('osh/depts/'+id).remove();}
 init();
 </script>
 </body>
