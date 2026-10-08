@@ -5,104 +5,48 @@
 <title>Админ - ПИН</title>
 <style>
 body{font-family:system-ui;background:#f1f5f9;margin:0;padding:12px}
-.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px;max-width:1000px;margin-left:auto;margin-right:auto;box-shadow:0 2px 10px #0001}
+.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px;max-width:1000px;margin:auto;box-shadow:0 2px 10px #0001}
 input,select,button{padding:10px;border-radius:8px;border:1px solid #ddd;font-size:14px}
 button{border:0;cursor:pointer;font-weight:700}
-.btn-blue{background:#2563eb;color:#fff}
-.btn-red{background:#ef4444;color:#fff}
-.btn-orange{background:#f59e0b;color:#fff;padding:6px 10px;font-size:12px;margin-top:4px}
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #e5e7eb;padding:8px;font-size:13px;text-align:left;vertical-align:top}
-th{background:#f8fafc}
+.btn-blue{background:#2563eb;color:#fff} .btn-red{background:#ef4444;color:#fff} .btn-orange{background:#f59e0b;color:#fff;padding:6px 10px;font-size:12px}
+table{width:100%;border-collapse:collapse;margin-top:10px} th,td{border:1px solid #e5e7eb;padding:8px;font-size:13px}
+th{background:#f8fafc} a.topbtn{padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700;font-size:12px}
 </style>
 </head>
 <body>
+<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+<h3 style="margin:0">👥 Админ</h3>
+<div>
+<a class="topbtn" style="background:#e0f2fe;color:#0284c7" href="index.html">🏠 Башкы бет</a>
+<a class="topbtn" style="background:#dcfce7;color:#16a34a" href="worker.html?v=1007" target="_blank">👷 Жумушчу баракча</a>
+</div>
+</div>
+
 <div class="card">
-<h3>👥 Жумушчу кошуу + ПИН берүү</h3>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
-<input id="nameInput" placeholder="Аты-жөнү" style="flex:1;min-width:180px">
-<select id="deptInput">
-<option>Администрация</option><option>Бухгалтерия</option><option>Техотдел</option><option>Охрана</option><option>Клиника</option>
-</select>
-<button class="btn-blue" onclick="addWorker()">+ ПИН менен кошуу</button>
-<button class="btn-red" onclick="clearAll()">🗑 Баарын тазалоо</button>
+<input id="nameInput" placeholder="Аты-жөнү" style="flex:1;min-width:150px">
+<select id="deptInput"><option>Администрация</option><option>Бухгалтерия</option><option>Техотдел</option><option>Охрана</option><option>Клиника</option></select>
+<button class="btn-blue" onclick="addWorker()">+ ПИН берүү</button>
+<button class="btn-red" onclick="clearAll()">🗑 Тазалоо</button>
 </div>
-</div>
-
-<div class="card">
-<h3>ПИНдер тизмеси (жумушчуларга ушул ПИНди бересиз)</h3>
-<table id="pinsTable"><tr><th>Аты</th><th>Бөлүм</th><th>ПИН</th><th>Телефон байланыдыбы?</th><th>Өчүрүү</th></tr></table>
+<table id="pinsTable"></table>
 </div>
 
-<div class="card">
-<h3 id="workersTitle">Азыр жумушта ким бар: 0</h3>
-<table id="workersTable"></table>
-</div>
-
-<div class="card" style="font-size:11px;color:#888">v1005 | gps-tracker-osh | Сброс дайыма бар</div>
+<div class="card"><h3 id="workersTitle">Азыр жумушта: 0</h3><table id="workersTable"></table></div>
+<div class="card" style="font-size:10px;color:#888">v1007 | байланыштырылган</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-
-window.addWorker=function(){
-  let name=document.getElementById('nameInput').value.trim();
-  let bolum=document.getElementById('deptInput').value;
-  if(!name){alert('Аты жаз');return;}
-  let pin=Math.floor(1000+Math.random()*9000).toString();
-  db.ref('osh/pins/'+pin).set({name:name,bolum:bolum,deptId:1,deviceId:null,created:Date.now()}).then(()=>{
-    alert('Кошулду! ПИН: '+pin+' - '+name);
-    document.getElementById('nameInput').value='';
-  });
-}
-window.clearAll=function(){
-  if(!confirm('Баардык ПИНдер жана жумуштагылар өчөбү?')) return;
-  db.ref('osh/pins').remove();
-  db.ref('osh/workers').remove();
-}
-
-db.ref('osh/pins').on('value',snap=>{
-  let html='<tr><th>Аты</th><th>Бөлүм</th><th>ПИН</th><th>Телефон байланыдыбы?</th><th>Өчүрүү</th></tr>';
-  snap.forEach(c=>{
-    let p=c.key; let v=c.val();
-    let phoneStatus = v.deviceId 
-      ? `✅ Байланган<br><span style="font-size:10px;color:#666">${v.deviceId}</span><br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>` 
-      : `❌ Байлана элек<br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>`;
-    html+=`<tr>
-      <td>${v.name||''}</td>
-      <td>${v.bolum||''}</td>
-      <td><b style="font-size:16px">${p}</b></td>
-      <td>${phoneStatus}</td>
-      <td><button class="btn-red" onclick="delPin('${p}')">❌</button></td>
-    </tr>`;
-  });
-  if(!snap.exists()) html+='<tr><td colspan=5>Тизме бош</td></tr>';
-  document.getElementById('pinsTable').innerHTML=html;
-});
-
-db.ref('osh/workers').on('value',snap=>{
-  let html='<tr><th>Аты</th><th>Бөлүм</th><th>Убакыт</th><th>Чыгаруу</th></tr>';
-  let count=0;
-  snap.forEach(c=>{ 
-    count++; let v=c.val(); 
-    let t=v.time ? new Date(v.time).toLocaleString() : '';
-    html+=`<tr><td>${v.name}</td><td>${v.bolum||''}</td><td>${t}</td><td><button class="btn-red" onclick="delWorker('${c.key}')">Чыгаруу</button></td></tr>`; 
-  });
-  if(count==0) html+='<tr><td colspan=4>Эч ким жок</td></tr>';
-  document.getElementById('workersTable').innerHTML=html;
-  document.getElementById('workersTitle').innerText='Азыр жумушта ким бар: '+count;
-});
-
-window.delPin=function(pin){ if(confirm(pin+' өчүрөбү?')) db.ref('osh/pins/'+pin).remove(); }
-window.delWorker=function(key){ if(confirm('Чыгарабызбы?')) db.ref('osh/workers/'+key).remove(); }
-window.resetPin=function(pin){
-  if(!confirm(pin+' ПИНинин телефон кулпусун тазалайбызбы?')) return;
-  db.ref('osh/pins/'+pin).update({deviceId:null,lastSeen:null}).then(()=>{
-    alert('✅ Сброс болду: '+pin+' - эми каалаган телефондон кире алат');
-  });
-}
+window.addWorker=function(){let n=document.getElementById('nameInput').value.trim();let b=document.getElementById('deptInput').value;if(!n){alert('Аты жаз');return;}let pin=Math.floor(1000+Math.random()*9000).toString();db.ref('osh/pins/'+pin).set({name:n,bolum:b,deptId:1,deviceId:null,created:Date.now()}).then(()=>{alert('ПИН: '+pin);document.getElementById('nameInput').value='';});}
+window.clearAll=function(){if(!confirm('Баарын өчүрөбү?'))return;db.ref('osh/pins').remove();db.ref('osh/workers').remove();}
+db.ref('osh/pins').on('value',snap=>{let h='<tr><th>Аты</th><th>ПИН</th><th>Байланыш</th><th>Өчүрүү</th></tr>';snap.forEach(c=>{let p=c.key;let v=c.val();let s=v.deviceId?`✅ ${v.deviceId}<br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>`:`❌ Байлана элек<br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>`;h+=`<tr><td>${v.name}<br><small>${v.bolum}</small></td><td><b>${p}</b></td><td>${s}</td><td><button class="btn-red" onclick="delPin('${p}')">❌</button></td></tr>`;});document.getElementById('pinsTable').innerHTML=h;});
+db.ref('osh/workers').on('value',snap=>{let h='<tr><th>Аты</th><th>Убакыт</th><th></th></tr>';let cnt=0;snap.forEach(c=>{cnt++;let v=c.val();let t=v.time?new Date(v.time).toLocaleString():'';h+=`<tr><td>${v.name}</td><td>${t}</td><td><button class="btn-red" onclick="delWorker('${c.key}')">Чыгаруу</button></td></tr>`;});document.getElementById('workersTable').innerHTML=h;document.getElementById('workersTitle').innerText='Азыр жумушта: '+cnt;});
+window.delPin=function(p){if(confirm(p+' өчүрөбү?'))db.ref('osh/pins/'+p).remove();}
+window.delWorker=function(k){db.ref('osh/workers/'+k).remove();}
+window.resetPin=function(p){if(!confirm(p+' Сброс?'))return;db.ref('osh/pins/'+p).update({deviceId:null}).then(()=>alert('✅ Сброс болду'));}
 </script>
 </body>
 </html>
