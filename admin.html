@@ -24,14 +24,14 @@
 </style>
 </head>
 <body>
-<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">0</span> бөлүм</b><div><button onclick="clearWorkers()" style="padding:6px 10px;border-radius:8px;border:1px solid #fca5a5;background:#fff;color:#ef4444">🗑️ Баарын тазалоо</button> <button onclick="restore()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">♻️</button></div></div>
+<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">0</span> бөлүм | <span id="cntPeople">0</span> адам</b><div style="display:flex;gap:6px"><button onclick="clearWorkers()" style="padding:6px 10px;border-radius:8px;border:1px solid #fca5a5;background:#fff;color:#ef4444">🗑️ Баарын тазалоо</button> <button onclick="restore()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">♻️</button></div></div>
 
 <div id="mainPage">
 <div class="filters">
-<button class="f" style="background:#1d4ed8;color:#fff">🏢 Бөлүмдөр</button>
-<button class="f">📊 Жыйынтык</button>
-<button class="f">🟢 Иште</button>
-<button class="f">🔴 Сыртта</button>
+<button class="f" style="background:#1d4ed8;color:#fff">🏢 Бөлүмдөр: <span id="f_dep">0</span></button>
+<button class="f">👥 Адамдар: <span id="f_peo">0</span></button>
+<button class="f">🟢 Иште: <span id="f_in">0</span></button>
+<button class="f">🔴 Сыртта: <span id="f_out">0</span></button>
 <div style="margin-left:auto;display:flex;gap:8px">
 <input id="searchMain" oninput="render()" placeholder="🔍 Издөө..." style="border:1px solid #ddd;border-radius:20px;padding:8px 14px;min-width:200px">
 <button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 16px;border-radius:20px;cursor:pointer;font-weight:700">+ Бөлүм кошуу</button>
@@ -65,22 +65,34 @@ db.ref('osh/workers').on('value',s=>{
 function getStats(id){
  let dep = departments.find(d=>String(d.id)===String(id));
  if(!dep) return {total:0,work:0,out:0,arr:[]};
- // ЭҢ МААНИЛҮҮ: ID же АТ менен издейбиз
  let arr = Object.values(allWorkers).filter(w=>{
    return String(w.deptId)===String(id) || w.bolum===dep.name;
  });
  return {total:arr.length, work:arr.filter(w=>w.inside!==false).length, out:arr.filter(w=>w.inside===false).length, arr:arr};
 }
+
 function render(){
  let q=(document.getElementById('searchMain').value||'').toLowerCase();
  let g=document.getElementById('grid'); g.innerHTML='';
+ let totalPeople = Object.keys(allWorkers).length;
+ let totalIn = Object.values(allWorkers).filter(w=>w.inside!==false).length;
+ let totalOut = totalPeople - totalIn;
+
+ // ЖОГОРУДАГЫ ФИЛЬТРЛЕРДИ ЖАҢЫЛОО
+ document.getElementById('cntTop').innerText=departments.length;
+ document.getElementById('cntPeople').innerText=totalPeople;
+ document.getElementById('f_dep').innerText=departments.length;
+ document.getElementById('f_peo').innerText=totalPeople;
+ document.getElementById('f_in').innerText=totalIn;
+ document.getElementById('f_out').innerText=totalOut;
+
  departments.filter(d=>d && d.name && d.name.toLowerCase().includes(q)).forEach(d=>{
   let s=getStats(d.id);
   g.innerHTML+=`<div class="card" style="border-top-color:${d.color}" onclick="openDept('${d.id}')"><span class="del" onclick="event.stopPropagation();delDept('${d.id}')">❌</span><b>${d.name}</b><div style="font-size:13px;margin-top:12px;line-height:1.7">ЖУМУШТА<br><b style="font-size:20px">${s.total}</b><br>🟢 ИЧТЕ ${s.work}<br>🔴 СЫРТТА ${s.out}</div></div>`;
  });
  g.innerHTML+=`<div class="card add" onclick="addDept()">➕ Бөлүм кошуу</div>`;
- document.getElementById('cntTop').innerText=departments.length;
 }
+
 function addDept(){ let n=prompt("Жаңы бөлүм:"); if(!n) return; departments.push({id:Date.now(), name:n.trim(), color:"#64748b"}); db.ref('osh/departments').set(departments); }
 function delDept(id){ if(!confirm("Өчүрөбүзбү?")) return; departments=departments.filter(d=>String(d.id)!==String(id)); db.ref('osh/departments').set(departments); }
 function showMain(){ document.getElementById('mainPage').style.display='block'; document.getElementById('deptPage').style.display='none'; selected=null; }
@@ -100,9 +112,9 @@ function loadDept(){
  });
  if(s.arr.length===0) list.innerHTML='<div style="color:#94a3b8">Эч ким жок</div>';
 }
-function clearWorkers(){ if(!confirm("Бардык катталгандарды өчүрөбүзбү? Кайра катталасыңар")) return; db.ref('osh/workers').remove().then(()=>alert('Тазаланды')); }
+function clearWorkers(){ if(!confirm("Бардык катталгандарды өчүрөбүзбү?")) return; db.ref('osh/workers').remove().then(()=>alert('Тазаланды')); }
 function restore(){
- let base=[{id:1,name:"Администрация",color:"#6366f1"},{id:2,name:"Бухгалтерия",color:"#f59e0b"},{id:3,name:"КДО",color:"#0ea5e9"},{id:4,name:"Терапия",color:"#8b5cf6"},{id:5,name:"ГСВ №1",color:"#10b981"},{id:6,name:"ГСВ №2",color:"#06b6d4"},{id:7,name:"ГСВ №3",color:"#ef4444"},{id:8,name:"ГСВ №7",color:"#f97316"},{id:9,name:"ГСВ №9",color:"#64748b"}];
+ let base=[{id:1,name:"Администрация",color:"#6366f1"},{id:2,name:"Бухгалтерия",color:"#f59e0b"},{id:3,name:"КДО",color:"#0ea5e9"},{id:4,name:"Терапия",color:"#8b5cf6"},{id:5,name:"ГСВ №1",color:"#10b981"},{id:6,name:"ГСВ №2",color:"#06b6d4"},{id:7,name:"ГСВ №3",color:"#ef4444"},{id:8,name:"ГСВ №7",color:"#f97316"},{id:9,name:"ГСВ №9",color:"#64748b"},{id:10,name:"ГСВ №10",color:"#14b8a6"}];
  db.ref('osh/departments').set(base);
 }
 </script>
