@@ -1,48 +1,97 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Катталуу</title>
 <style>
-body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}
+body{font-family:system-ui,-apple-system;background:#f1f5f9;padding:16px;margin:0}
 .box{background:#fff;max-width:400px;margin:20px auto;padding:20px;border-radius:16px;box-shadow:0 4px 20px #0001}
 input,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:18px;box-sizing:border-box}
-button{background:#1d4ed8;color:#fff;border:0;font-weight:700}
-button.out{background:#ef4444;display:none}
-#log{font-size:13px;background:#f8fafc;padding:10px;border-radius:8px;margin-top:12px}
-.small{font-size:12px;color:#64748b;text-align:center;display:block;margin-top:16px;cursor:pointer}
-a.top{font-size:11px;color:#94a3b8;text-decoration:none;margin-right:10px}
+button{background:#1d4ed8;color:#fff;border:0;font-weight:700;cursor:pointer}
+button:disabled{background:#94a3b8}
+button.out{background:#ef4444;display:none;margin-top:16px}
+#log{font-size:13px;background:#f8fafc;padding:10px;border-radius:8px;margin-top:12px;min-height:20px;word-break:break-all}
+.small-link{display:block;text-align:center;margin-top:20px;font-size:13px;color:#64748b;text-decoration:underline;cursor:pointer}
 </style>
 </head>
 <body>
 <div class="box">
-<div style="display:flex;justify-content:space-between"><a class="top" href="index.html">🏠 Башкы бет</a><a class="top" href="admin.html?v=1007">🔑 Админ</a></div>
 <h3 id="title">📍 Жумушка келдим</h3>
-<input id="pin" type="tel" maxlength="4" placeholder="ПИН">
+<input id="pin" type="tel" maxlength="4" placeholder="ПИН: 9205">
 <button id="btn" onclick="login()">Кирүү</button>
 <div id="log">Даярдалууда...</div>
 <div id="info"></div>
 <button id="outBtn" class="out" onclick="leaveWork()">🚪 Жумуштан кеттим</button>
-<a class="small" onclick="clearPhone()">♻️ Башка ПИН / Телефон кулпусун тазалоо</a>
-<div style="font-size:10px;color:#aaa;text-align:center;margin-top:10px">v1007 | <span id="devId"></span></div>
+<a class="small-link" onclick="clearPhone()">♻️ Башка ПИН киргизүү / Телефон кулпусун тазалоо</a>
+<div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">v1006 таза</div>
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
-const logEl=document.getElementById('log');const log=t=>logEl.innerText=t;
-let lat=40.128,lng=71.726;
+const logEl = document.getElementById('log');
+const log = (t)=>{ logEl.innerText=t; };
+let lat=40.128, lng=71.726;
 try{
-firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
-const db=firebase.database();
-let deviceId=localStorage.getItem('deviceId');if(!deviceId){deviceId='d_'+Math.random().toString(36).slice(2,9);localStorage.setItem('deviceId',deviceId);}document.getElementById('devId').innerText=deviceId;
-if(location.search.includes('clear'))localStorage.clear();
-navigator.geolocation.getCurrentPosition(p=>{lat=p.coords.latitude;lng=p.coords.longitude;log('✅ GPS даяр');},()=>log('⚠️ GPS жок, бирок кирсе болот'),{enableHighAccuracy:true,timeout:8000});
-function refreshUI(){let mp=localStorage.getItem('myPin');let k=localStorage.getItem('myWorkerId');let n=localStorage.getItem('myName');if(mp&&k){document.getElementById('title').innerText='✅ Жумуштасыз: '+n+' ('+mp+')';document.getElementById('pin').style.display='none';document.getElementById('btn').style.display='none';document.getElementById('outBtn').style.display='block';}else{document.getElementById('title').innerText='📍 Жумушка келдим';document.getElementById('pin').style.display='block';document.getElementById('btn').style.display='block';document.getElementById('outBtn').style.display='none';if(mp)document.getElementById('pin').value=mp;}}
-refreshUI();
-window.clearPhone=function(){if(!confirm('Кулпуну тазалайбызбы?'))return;let old=localStorage.getItem('myPin');if(old)db.ref('osh/pins/'+old).update({deviceId:null});localStorage.removeItem('myPin');localStorage.removeItem('myWorkerId');localStorage.removeItem('myName');alert('✅ Тазаланды');location.reload();}
-window.login=function(){let pin=document.getElementById('pin').value.trim();if(pin.length!=4){alert('4 сан');return;}let old=localStorage.getItem('myPin');if(old&&old!=pin){if(!confirm(old+' кулпуланган, '+pin+' га өтөбүзбү?'))return;db.ref('osh/pins/'+old).update({deviceId:null});localStorage.removeItem('myPin');localStorage.removeItem('myWorkerId');}let b=document.getElementById('btn');b.disabled=true;b.innerText='Текшерүү...';db.ref('osh/pins/'+pin).get().then(s=>{let d=s.val();if(!d)throw new Error('ПИН жок');if(d.deviceId&&d.deviceId!=deviceId)throw new Error('Бул ПИН башка телефондо: '+d.name);let key=localStorage.getItem('myWorkerId')||db.ref('osh/workers').push().key;return db.ref('osh/workers/'+key).set({name:d.name,bolum:d.bolum,deptId:String(d.deptId||1),lat:lat,lng:lng,inside:true,time:Date.now(),pin:pin,deviceId:deviceId}).then(()=>db.ref('osh/pins/'+pin).update({deviceId:deviceId})).then(()=>{localStorage.setItem('myPin',pin);localStorage.setItem('myWorkerId',key);localStorage.setItem('myName',d.name);log('✅ '+d.name);refreshUI();});}).catch(e=>{alert(e.message);log('❌ '+e.message);b.disabled=false;b.innerText='Кирүү';});}
-window.leaveWork=function(){let k=localStorage.getItem('myWorkerId');if(k)db.ref('osh/workers/'+k).remove();localStorage.removeItem('myWorkerId');log('🚪 Чыктыңыз');refreshUI();}
-}catch(e){log('Ката:'+e.message);}
+  firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
+  const db = firebase.database();
+  let deviceId = localStorage.getItem('deviceId');
+  if(!deviceId){ deviceId='d_'+Math.random().toString(36).slice(2,9); localStorage.setItem('deviceId',deviceId); }
+  if(location.search.includes('clear')){ localStorage.clear(); log('♻️ Тазаланды'); }
+  log('📡 GPS суралууда...');
+  navigator.geolocation.getCurrentPosition(p=>{ lat=p.coords.latitude; lng=p.coords.longitude; log('✅ GPS даяр'); }, e=>{ log('⚠️ GPS жок, бирок кирсе болот'); }, {enableHighAccuracy:true, timeout:8000});
+  function refreshUI(){
+    let myPin=localStorage.getItem('myPin');
+    let myWorkerKey=localStorage.getItem('myWorkerId');
+    let myName=localStorage.getItem('myName');
+    if(myPin && myWorkerKey){
+      document.getElementById('title').innerText='✅ Жумуштасыз: '+myName+' ('+myPin+')';
+      document.getElementById('pin').style.display='none';
+      document.getElementById('btn').style.display='none';
+      document.getElementById('outBtn').style.display='block';
+    } else {
+      document.getElementById('title').innerText='📍 Жумушка келдим';
+      document.getElementById('pin').style.display='block';
+      document.getElementById('btn').style.display='block';
+      document.getElementById('btn').disabled=false;
+      document.getElementById('btn').innerText='Кирүү';
+      document.getElementById('outBtn').style.display='none';
+      let mp=localStorage.getItem('myPin');
+      if(mp) document.getElementById('pin').value=mp;
+    }
+  }
+  refreshUI();
+  window.clearPhone = function(){
+    if(!confirm('Телефон кулпусун тазалайбызбы?')) return;
+    let oldPin=localStorage.getItem('myPin');
+    if(oldPin){ db.ref('osh/pins/'+oldPin).update({deviceId:null,lastSeen:null}); }
+    localStorage.removeItem('myPin');
+    localStorage.removeItem('myWorkerId');
+    localStorage.removeItem('myName');
+    alert('✅ Тазаланды!'); location.reload();
+  }
+  window.login = function(){
+    let pin=document.getElementById('pin').value.trim();
+    if(pin.length!=4){ alert('4 сан жазыңыз'); return; }
+    let oldPin=localStorage.getItem('myPin');
+    if(oldPin && oldPin!=pin){
+      if(!confirm('Бул телефон '+oldPin+' га кулпуланган. '+pin+' менен кирүү үчүн тазалайбызбы?')) return;
+      db.ref('osh/pins/'+oldPin).update({deviceId:null});
+      localStorage.removeItem('myPin'); localStorage.removeItem('myWorkerId'); localStorage.removeItem('myName');
+    }
+    let btn=document.getElementById('btn'); btn.disabled=true; btn.innerText='Текшерүүдө...';
+    db.ref('osh/pins/'+pin).get().then(snap=>{
+      let d=snap.val(); if(!d) throw new Error('ПИН табылбады');
+      if(d.deviceId && d.deviceId!=localStorage.getItem('deviceId')) throw new Error('Бул ПИН башка телефондо: '+d.name);
+      let workerKey = localStorage.getItem('myWorkerId') || db.ref('osh/workers').push().key;
+      return db.ref('osh/workers/'+workerKey).set({name:d.name,bolum:d.bolum,deptId:String(d.deptId||1),lat:lat,lng:lng,inside:true,time:Date.now(),pin:pin,deviceId:localStorage.getItem('deviceId')}).then(()=> db.ref('osh/pins/'+pin).update({deviceId:localStorage.getItem('deviceId'), lastSeen:Date.now()})).then(()=>{localStorage.setItem('myPin',pin);localStorage.setItem('myWorkerId',workerKey);localStorage.setItem('myName',d.name);log('✅ Катталды: '+d.name);refreshUI();});
+    }).catch(e=>{alert(e.message);log('❌ '+e.message);btn.disabled=false;btn.innerText='Кирүү';});
+  }
+  window.leaveWork = function(){
+    let k=localStorage.getItem('myWorkerId'); if(k) db.ref('osh/workers/'+k).remove();
+    localStorage.removeItem('myWorkerId'); log('🚪 Чыгып кеттиңиз'); refreshUI();
+  }
+}catch(e){ log('Ката: '+e.message); }
 </script>
 </body>
 </html>
