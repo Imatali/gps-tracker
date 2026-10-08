@@ -3,76 +3,80 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Катталуу</title>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<style>body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}.box{background:#fff;max-width:400px;margin:30px auto;padding:20px;border-radius:14px;box-shadow:0 2px 10px #0001}input,select,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700;font-size:17px}button:disabled{background:#94a3b8}#log{font-size:12px;background:#f8fafc;padding:8px;border-radius:8px;margin-top:10px}</style>
+<style>body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}.box{background:#fff;max-width:400px;margin:30px auto;padding:20px;border-radius:14px;box-shadow:0 2px 10px #0001}input,select,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700;font-size:17px}#log{font-size:12px;background:#f8fafc;padding:8px;border-radius:8px;margin-top:10px}</style>
 </head>
 <body>
 <div class="box">
 <h3>📍 Катталуу</h3>
-<input id="name" placeholder="Аты-жөнүңүз (мисалы: Имат 2)" value="Имат 2">
+<input id="name" placeholder="Аты-жөнүңүз" value="Имат 2">
 <select id="deptSel"></select>
 <div id="log">Даяр...</div>
 <button id="btn" onclick="register()">Катталуу</button>
 <div id="ok" style="display:none;margin-top:10px;padding:12px;background:#dcfce7;border-radius:10px"></div>
 </div>
-<script>
-firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
-const db=firebase.database();
 
+<script>
+// 1-КАДАМ: Бөлүмдөрдү ДАРОо толтурабыз - Firebase'сиз эле
 const BASE = [
  {id:1,name:"Администрация"},{id:2,name:"Бухгалтерия"},{id:3,name:"КДО"},
  {id:4,name:"Терапия"},{id:5,name:"ГСВ №1"},{id:6,name:"ГСВ №2"},
  {id:7,name:"ГСВ №3"},{id:8,name:"ГСВ №7"},{id:9,name:"ГСВ №9"},{id:10,name:"ГСВ №10"}
 ];
-
-let lat=40.105, lng=71.73;
-let sel=document.getElementById('deptSel');
-function log(t){ document.getElementById('log').innerText=t; }
+const sel = document.getElementById('deptSel');
 function fill(list){
  sel.innerHTML='';
  list.forEach(d=>{
-   let o=document.createElement('option'); o.value=d.id; o.textContent=d.name; o.dataset.name=d.name;
-   sel.appendChild(o);
+   let o=document.createElement('option'); o.value=d.id; o.textContent=d.name;
+   o.dataset.name=d.name; sel.appendChild(o);
  });
- log('Бөлүмдөр: '+list.length+' даяр ✅');
+ document.getElementById('log').innerText='Бөлүмдөр: '+list.length+' даяр ✅';
+}
+fill(BASE);
+</script>
+
+<!-- Firebase кийин жүктөлөт -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+let lat=40.105, lng=71.73;
+let db;
+try{
+  firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
+  db=firebase.database();
+  // Firebase'де жаңы бөлүм болсо жаңылайбыз
+  db.ref('osh/departments').once('value').then(s=>{
+    let v=s.val(); if(!v) return;
+    let arr = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
+    if(arr.length>0) fill(arr);
+  });
+}catch(e){
+  document.getElementById('log').innerText='Оффлайн режим: негизги бөлүмдөр';
 }
 
-fill(BASE); // дароо толтурабыз - Firebase күтпөйбүз
-
-// Анан Firebase'ден жаңыласа жаңылайбыз
-db.ref('osh/departments').once('value').then(s=>{
- let v=s.val(); if(!v) return;
- let arr = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
- if(arr.length>0) fill(arr);
-}).catch(e=>{ log('Оффлайн режим, негизги бөлүмдөр колдонулууда'); });
-
-navigator.geolocation.watchPosition(p=>{
- lat=p.coords.latitude; lng=p.coords.longitude;
-},{e=>{}, {enableHighAccuracy:true}});
+navigator.geolocation.watchPosition(p=>{ lat=p.coords.latitude; lng=p.coords.longitude; },()=>{}, {enableHighAccuracy:true});
 
 function register(){
  let name=document.getElementById('name').value.trim();
- if(!name){ alert('Атыңызды жазыңыз'); return; }
+ if(!name){ alert('Аты жаз'); return; }
  let depId=sel.value;
  let depName=sel.options[sel.selectedIndex].dataset.name;
  let btn=document.getElementById('btn');
  btn.innerText='Жазылууда...'; btn.disabled=true;
- log('Жазылууда: '+name+' -> '+depName);
+ document.getElementById('log').innerText='Жазылууда: '+name+' -> '+depName;
+
+ if(!db){ alert('Интернет жок! Firebase байланыш жок'); btn.disabled=false; btn.innerText='Катталуу'; return; }
 
  db.ref('osh/workers').push({
    name:name, bolum:depName, deptId:String(depId),
    lat:lat, lng:lng, inside:true, time:Date.now()
- }).then(ref=>{
-   log('✅ Катталды: '+name);
+ }).then(()=>{
+   document.getElementById('log').innerText='✅ Катталды: '+name;
    document.getElementById('ok').style.display='block';
-   document.getElementById('ok').innerHTML='✅ <b>'+name+'</b><br>'+depName+' га катталды!<br><br>Эми админканы жаңылаңыз';
-   btn.innerText='✅ Катталды';
-   btn.disabled=false;
+   document.getElementById('ok').innerHTML='✅ <b>'+name+'</b><br>'+depName+' га катталды!';
+   btn.innerText='✅ Катталды'; btn.disabled=false;
  }).catch(e=>{
-   log('❌ Ката: '+e.message);
-   alert(e.message);
-   btn.innerText='Катталуу'; btn.disabled=false;
+   document.getElementById('log').innerText='❌ Ката: '+e.message;
+   alert(e.message); btn.innerText='Катталуу'; btn.disabled=false;
  });
 }
 </script>
