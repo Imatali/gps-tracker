@@ -5,61 +5,59 @@
 <title>Катталуу</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<style>body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}.box{background:#fff;max-width:400px;margin:20px auto;padding:20px;border-radius:12px;box-shadow:0 2px 8px #0001}input,select,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700;font-size:17px}button:disabled{background:#94a3b8}#status{font-size:13px;margin-top:10px;padding:8px;background:#f8fafc;border-radius:8px}</style>
+<style>body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}.box{background:#fff;max-width:400px;margin:30px auto;padding:20px;border-radius:12px;box-shadow:0 2px 8px #0001}input,select,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700}</style>
 </head>
 <body>
 <div class="box">
-<h3>📍 Жумушка катталуу</h3>
-<input id="name" placeholder="Аты-жөнүңүз">
-<select id="deptSel"><option>Бөлүмдөр жүктөлүүдө...</option></select>
-<div id="status">📡 GPS күтүлүүдө...</div>
-<button id="btn" disabled onclick="register()">Катталуу</button>
-<div id="ok" style="display:none;margin-top:12px;padding:10px;background:#dcfce7;border-radius:8px">✅ Катталды!</div>
+<h3>📍 Катталуу v2</h3>
+<input id="name" placeholder="Аты-жөнү">
+<select id="deptSel"><option>Жүктөлүүдө...</option></select>
+<div id="log" style="font-size:12px;background:#f8fafc;padding:8px;border-radius:8px;margin-top:10px;white-space:pre-wrap">Лог...</div>
+<button id="btn" onclick="register()">Катталуу</button>
+<div id="ok" style="display:none;margin-top:10px;padding:10px;background:#dcfce7;border-radius:8px"></div>
 </div>
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-let departments=[], lat=0, lng=0, hasGPS=false, myId=null;
+let departments=[], lat=40.105, lng=71.73;
 let sel=document.getElementById('deptSel');
+let logEl=document.getElementById('log');
+function log(t){ logEl.innerText+= "\n"+t; }
 
 db.ref('osh/departments').on('value',snap=>{
- let v=snap.val(); if(!v) return;
+ let v=snap.val(); if(!v){ log('Бөлүм жок'); return; }
  departments = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
- sel.innerHTML='';
- departments.forEach(d=>{
+ sel.innerHTML=''; departments.forEach(d=>{
   let o=document.createElement('option'); o.value=d.id; o.textContent=d.name; o.dataset.name=d.name; sel.appendChild(o);
  });
+ log('Бөлүмдөр: '+departments.length);
 });
 
 navigator.geolocation.watchPosition(p=>{
- lat=p.coords.latitude; lng=p.coords.longitude; hasGPS=true;
- document.getElementById('status').innerHTML='✅ GPS даяр: '+lat.toFixed(5);
- document.getElementById('btn').disabled=false;
-}, e=>{
- document.getElementById('status').innerHTML='❌ GPS жок. Локацияны күйгүзүңүз';
-},{enableHighAccuracy:true});
+ lat=p.coords.latitude; lng=p.coords.longitude;
+ log('GPS: '+lat.toFixed(4));
+},{e=>{ log('GPS ката: '+e.message+' (бирок катталуу иштейт)'); }},{enableHighAccuracy:true});
 
 function register(){
  let name=document.getElementById('name').value.trim();
- let depId=sel.value;
- let depName=sel.options[sel.selectedIndex]?.dataset.name || sel.options[sel.selectedIndex]?.textContent;
- if(!name){ alert('Атыңызды жазыңыз'); return; }
- if(!hasGPS){ alert('GPS табылбай жатат'); return; }
-
- document.getElementById('btn').innerText='Катталууда...';
- 
- // push() - ар бир адамга өзүнчө ID берет, эч качан жоголбойт
- let newRef = db.ref('osh/workers').push();
- myId = newRef.key;
- newRef.set({
-  name:name, bolum:depName, deptId: String(depId),
-  lat:lat, lng:lng, inside:true, time:Date.now()
- }).then(()=>{
-  document.getElementById('btn').innerText='✅ Катталды';
-  document.getElementById('ok').style.display='block';
-  document.getElementById('ok').innerHTML='✅ '+name+' - '+depName+' га катталды!<br><small>ID: '+myId+'</small>';
-  setInterval(()=>{ if(lat && myId) db.ref('osh/workers/'+myId).update({lat:lat,lng:lng,time:Date.now()}); },15000);
- }).catch(e=>{ alert('Ката: '+e.message); document.getElementById('btn').innerText='Катталуу'; });
+ let depId=sel.value; let depName=sel.options[sel.selectedIndex]?.dataset.name || 'Белгисиз';
+ if(!name){ alert('Аты жаз'); return; }
+ if(!depId){ alert('Бөлүм танда'); return; }
+ let btn=document.getElementById('btn'); btn.innerText='Жазылууда...'; btn.disabled=true;
+ log('Жазылууда: '+name+' -> '+depName);
+ let ref=db.ref('osh/workers').push();
+ ref.set({name:name, bolum:depName, deptId:String(depId), lat:lat, lng:lng, inside:true, time:Date.now()})
+ .then(()=>{ 
+   log('✅ Ийгиликтүү ID:'+ref.key);
+   document.getElementById('ok').style.display='block';
+   document.getElementById('ok').innerText='✅ '+name+' катталды!';
+   btn.innerText='Катталды'; 
+ })
+ .catch(e=>{
+   log('❌ КАТА: '+e.message);
+   alert('Ката: '+e.message);
+   btn.innerText='Кайра аракет'; btn.disabled=false;
+ });
 }
 </script>
 </body>
