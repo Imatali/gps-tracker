@@ -8,12 +8,12 @@
 <body>
 <div class="box">
 <h3 id="title">📍 Жумушка келдим</h3>
-<input id="pin" type="tel" maxlength="4" placeholder="ПИН: 1234" style="display:block">
+<input id="pin" type="tel" maxlength="4" placeholder="ПИН: 1234">
 <button id="btn" onclick="login()">Кирүү</button>
 <div id="log">GPS текшерүүдө...</div>
 <div id="info"></div>
 <button id="outBtn" onclick="leaveWork()" class="out" style="display:none">🚪 Жумуштан кеттим</button>
-<div style="font-size:10px;color:#aaa;margin-top:10px">v999 | <span id="devId"></span></div>
+<div style="font-size:10px;color:#aaa;margin-top:10px">v1000 | <span id="devId"></span></div>
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -22,49 +22,16 @@ firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.fireba
 let lat=40.128,lng=71.726; navigator.geolocation.watchPosition(p=>{lat=p.coords.latitude; lng=p.coords.longitude; document.getElementById('log').innerText='GPS даяр: '+lat.toFixed(4);},{},{enableHighAccuracy:true});
 let deviceId=localStorage.getItem('deviceId'); if(!deviceId){ deviceId='d_'+Math.random().toString(36).slice(2,9); localStorage.setItem('deviceId',deviceId); }
 document.getElementById('devId').innerText=deviceId;
-let myPin=localStorage.getItem('myPin'); let myWorkerKey=localStorage.getItem('myWorkerId'); let myName=localStorage.getItem('myName');
-if(myPin) document.getElementById('pin').value=myPin;
-function refreshUI(){
-  myPin=localStorage.getItem('myPin'); myWorkerKey=localStorage.getItem('myWorkerId'); myName=localStorage.getItem('myName');
-  if(myPin && myWorkerKey){
-    document.getElementById('title').innerText='✅ Жумуштасыз: '+myName;
-    document.getElementById('pin').style.display='none'; document.getElementById('btn').style.display='none';
-    document.getElementById('outBtn').style.display='block';
-    document.getElementById('info').innerHTML='<div style="background:#dcfce7;padding:10px;border-radius:10px;font-size:14px">✅ Катталды. Админ көрүп жатат.<br>Кеткенде астынкы кызыл баскычты басыңыз.</div>';
-  } else {
-    document.getElementById('outBtn').style.display='none';
-  }
-}
+let myPin=localStorage.getItem('myPin'); let myWorkerKey=localStorage.getItem('myWorkerId');
+function refreshUI(){ myPin=localStorage.getItem('myPin'); myWorkerKey=localStorage.getItem('myWorkerId'); let myName=localStorage.getItem('myName'); if(myPin&&myWorkerKey){ document.getElementById('title').innerText='✅ Жумуштасыз: '+myName; document.getElementById('pin').style.display='none'; document.getElementById('btn').style.display='none'; document.getElementById('outBtn').style.display='block'; document.getElementById('info').innerHTML='<div style="background:#dcfce7;padding:10px;border-radius:10px;font-size:14px">✅ Катталды. Кеткенде кызыл баскычты басыңыз.</div>'; } }
 refreshUI();
 function login(){
   let pin=document.getElementById('pin').value.trim(); if(pin.length!=4){ alert('4 сан жаз'); return; }
-  let oldPin=localStorage.getItem('myPin');
-  if(oldPin && oldPin!=pin){ alert('❌ Бул телефон '+localStorage.getItem('myName')+' үчүн кулпуланган. Башка ПИН жазууга болбойт. Админ сброс кылышы керек.'); return; }
+  let oldPin=localStorage.getItem('myPin'); if(oldPin&&oldPin!=pin){ alert('Бул телефон '+localStorage.getItem('myName')+' үчүн кулпуланган. Админ сброс кылышы керек.'); return; }
   let btn=document.getElementById('btn'); btn.disabled=true; btn.innerText='Текшерүүдө...';
-  db.ref('osh/pins/'+pin).get().then(s=>{
-    let d=s.val(); if(!d){ throw new Error('ПИН табылбады: '+pin); }
-    if(d.deviceId && d.deviceId!=deviceId){ throw new Error('Бул ПИН башка телефондо: '+d.name); }
-    let ref=db.ref('osh/workers').child(myWorkerKey || db.ref('osh/workers').push().key);
-    myWorkerKey=ref.key;
-    return ref.set({name:d.name,bolum:d.bolum,deptId:String(d.deptId),lat:lat,lng:lng,inside:true,time:Date.now(),pin:pin,deviceId:deviceId}).then(()=>{
-      return db.ref('osh/pins/'+pin).update({deviceId:deviceId,lastSeen:Date.now()});
-    }).then(()=>{
-      localStorage.setItem('myPin',pin); localStorage.setItem('myWorkerId',myWorkerKey); localStorage.setItem('myName',d.name);
-      btn.innerText='✅ Катталды'; refreshUI();
-    });
-  }).catch(e=>{ alert(e.message); document.getElementById('log').innerText=e.message; btn.disabled=false; btn.innerText='Кирүү'; });
+  db.ref('osh/pins/'+pin).get().then(s=>{ let d=s.val(); if(!d) throw new Error('ПИН табылбады: '+pin); if(d.deviceId&&d.deviceId!=deviceId) throw new Error('Бул ПИН башка телефондо: '+d.name); let ref=db.ref('osh/workers').child(myWorkerKey||db.ref('osh/workers').push().key); myWorkerKey=ref.key; return ref.set({name:d.name,bolum:d.bolum,deptId:String(d.deptId),lat:lat,lng:lng,inside:true,time:Date.now(),pin:pin,deviceId:deviceId}).then(()=>{ return db.ref('osh/pins/'+pin).update({deviceId:deviceId,lastSeen:Date.now()}); }).then(()=>{ localStorage.setItem('myPin',pin); localStorage.setItem('myWorkerId',myWorkerKey); localStorage.setItem('myName',d.name); btn.innerText='✅ Катталды'; refreshUI(); }); }).catch(e=>{ alert(e.message); document.getElementById('log').innerText=e.message; btn.disabled=false; btn.innerText='Кирүү'; });
 }
-function leaveWork(){
-  if(!confirm('Чындап кетесизби?')) return;
-  if(!myWorkerKey) myWorkerKey=localStorage.getItem('myWorkerId');
-  db.ref('osh/workers/'+myWorkerKey).remove().then(()=>{
-    localStorage.removeItem('myWorkerId'); // ПИН калат, телефон кулпу бойдон калат
-    document.getElementById('log').innerText='🚪 Чыгып кеттиңиз';
-    document.getElementById('info').innerHTML='<div style="background:#fef3c7;padding:10px;border-radius:10px">Чыктыңыз. Эртең ушул эле ПИН менен киресиз.</div>';
-    document.getElementById('pin').style.display='block'; document.getElementById('btn').style.display='block'; document.getElementById('btn').innerText='🔄 Кайра кирүү';
-    document.getElementById('outBtn').style.display='none'; document.getElementById('title').innerText='📍 Жумушка келдим';
-  });
-}
+function leaveWork(){ if(!confirm('Чындап кетесизби?')) return; if(!myWorkerKey) myWorkerKey=localStorage.getItem('myWorkerId'); db.ref('osh/workers/'+myWorkerKey).remove().then(()=>{ localStorage.removeItem('myWorkerId'); document.getElementById('log').innerText='🚪 Чыгып кеттиңиз'; document.getElementById('pin').style.display='block'; document.getElementById('btn').style.display='block'; document.getElementById('btn').innerText='🔄 Кайра кирүү'; document.getElementById('outBtn').style.display='none'; document.getElementById('title').innerText='📍 Жумушка келдим'; }); }
 </script>
 </body>
 </html>
