@@ -5,46 +5,57 @@
 <title>Катталуу</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<style>body{font-family:system-ui;background:#f1f5f9;margin:0;padding:16px}.box{background:#fff;max-width:400px;margin:20px auto;padding:20px;border-radius:12px;box-shadow:0 2px 8px #0001}input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700}</style>
+<style>body{font-family:system-ui;background:#f1f5f9;padding:16px}.box{background:#fff;max-width:400px;margin:20px auto;padding:20px;border-radius:12px}input,select,button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700}</style>
 </head>
 <body>
 <div class="box">
 <h3>📍 Жумушка катталуу</h3>
 <input id="name" placeholder="Аты-жөнүңүз">
 <select id="deptSel"><option>Жүктөлүүдө...</option></select>
-<div id="status" style="font-size:13px;margin-top:8px;color:#64748b">GPS күтүлүүдө...</div>
+<div id="status" style="font-size:13px;margin-top:8px">GPS күтүлүүдө...</div>
 <button onclick="register()">Катталуу</button>
 </div>
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-let departments=[],lat=0,lng=0,sel=document.getElementById('deptSel');
+let departments=[], lat=0, lng=0;
+let sel=document.getElementById('deptSel');
 
 db.ref('osh/departments').on('value',snap=>{
- if(snap.exists()){
-  departments=snap.val();
-  sel.innerHTML='';
-  departments.forEach(d=>{
-   let o=document.createElement('option'); o.value=d.name; o.text=d.name; sel.appendChild(o);
-  });
-  let urlDept=new URLSearchParams(location.search).get('dept');
-  if(urlDept) sel.value=urlDept;
+ let v=snap.val(); if(!v)return;
+ departments = Array.isArray(v) ? v : Object.values(v);
+ sel.innerHTML='';
+ departments.forEach(d=>{
+  let o=document.createElement('option');
+  o.value=d.id; // ЭМИ ID менен сактайбыз!
+  o.textContent=d.name;
+  o.dataset.name=d.name;
+  sel.appendChild(o);
+ });
+ let urlDept=new URLSearchParams(location.search).get('dept');
+ if(urlDept){
+  let f=departments.find(d=>d.name===urlDept);
+  if(f) sel.value=f.id;
  }
 });
 
 navigator.geolocation.watchPosition(p=>{
  lat=p.coords.latitude; lng=p.coords.longitude;
- document.getElementById('status').innerText='✅ GPS: '+lat.toFixed(4)+', '+lng.toFixed(4);
-}, e=>{document.getElementById('status').innerText='❌ GPS уруксат бериңиз';},{enableHighAccuracy:true});
+ document.getElementById('status').innerText='✅ GPS: '+lat.toFixed(4);
+},()=>{document.getElementById('status').innerText='❌ GPS уруксат бериңиз';},{enableHighAccuracy:true});
 
 function register(){
  let name=document.getElementById('name').value.trim();
- let bolum=sel.value;
+ let depId=sel.value;
+ let depName=sel.options[sel.selectedIndex]?.dataset.name || sel.options[sel.selectedIndex]?.text;
  if(!name) return alert('Атыңызды жазыңыз');
  if(!lat) return alert('GPS табылбай жатат');
  let id=btoa(name+Date.now()).replace(/=/g,'');
- db.ref('osh/workers/'+id).set({name:name,bolum:bolum,deptId:departments.find(d=>d.name==bolum)?.id||0,lat:lat,lng:lng,inside:true,time:Date.now()}).then(()=>{
-  alert('✅ '+bolum+' бөлүмүнө катталдыңыз!');
+ db.ref('osh/workers/'+id).set({
+  name:name, bolum:depName, deptId: Number(depId),
+  lat:lat, lng:lng, inside:true, time:Date.now()
+ }).then(()=>{
+  alert('✅ '+depName+' бөлүмүнө катталдыңыз!');
   setInterval(()=>{if(lat) db.ref('osh/workers/'+id).update({lat:lat,lng:lng,time:Date.now()});},10000);
  });
 }
