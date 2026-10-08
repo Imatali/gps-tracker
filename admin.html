@@ -2,69 +2,74 @@
 <html lang="ky">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Кадамжай ЖДПБ</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<title>Кадамжай ЖДПБ - Админ</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:#f1f5f9}
-.header{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
-.filters{background:#fff;margin:8px;padding:10px;border-radius:12px;display:flex;gap:6px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:8px}
-.card{background:#fff;border-radius:12px;padding:12px;border-top:4px solid #6366f1;cursor:pointer}
-.add{border:2px dashed #94a3b8;display:grid;place-items:center;color:#1d4ed8;min-height:140px}
-</style>
+<style>body{margin:0;font-family:system-ui;background:#f1f5f9}.header{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;box-shadow:0 1px 3px #0001}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:10px}.card{background:#fff;border-radius:12px;padding:12px;border-top:4px solid #6366f1}.add{border:2px dashed #94a3b8;display:grid;place-items:center;color:#1d4ed8;min-height:120px;cursor:pointer}.filters{background:#fff;margin:8px;padding:10px;border-radius:12px;display:flex;gap:8px}</style>
 </head>
 <body>
-<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">0</span> бөлүм</b><button onclick="restore()">♻️ Калыбына келтирүү</button></div>
-<div class="filters">
-<input id="searchMain" oninput="render()" placeholder="🔍 Издөө..." style="border:1px solid #ddd;border-radius:20px;padding:7px 12px;flex:1">
-<button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer">+ Бөлүм кошуу</button>
-</div>
+<div class="header"><b>📍 Кадамжай - <span id="cntTop">0</span> бөлүм</b><div><button onclick="fixAll()">🔧 Оңдоо</button> <button onclick="restore()">♻️ Калыбына</button></div></div>
+<div class="filters"><input id="searchMain" oninput="render()" placeholder="🔍 Издөө..." style="flex:1;padding:8px;border-radius:20px;border:1px solid #ddd"><button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 14px;border-radius:8px">+ Бөлүм</button></div>
 <div id="grid" class="grid"></div>
+
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-let departments=[];
-let allWorkers={};
+let departments=[], allWorkers={};
 
 db.ref('osh/departments').on('value',snap=>{
- let val=snap.val();
- if(!val){ departments=[]; render(); return; }
- // Firebase объект же массив кайтарса дагы массивге айландырабыз
- departments = Array.isArray(val) ? val : Object.values(val);
+ let v=snap.val(); if(!v){departments=[]; render(); return;}
+ departments = Array.isArray(v) ? v : Object.values(v);
  render();
 });
+db.ref('osh/workers').on('value',snap=>{
+ allWorkers={}; snap.forEach(c=>allWorkers[c.key]=c.val()); render();
+});
 
-db.ref('osh/workers').on('value',snap=>{allWorkers={};snap.forEach(c=>allWorkers[c.key]=c.val());render();});
-
-function getStats(id){let name=departments.find(d=>d.id==id)?.name;let arr=Object.values(allWorkers).filter(w=>String(w.deptId)==String(id)||w.bolum==name);return{total:arr.length,work:arr.filter(w=>w.inside!==false).length,out:arr.filter(w=>w.inside===false).length};}
+function getStats(id){
+ let arr = Object.values(allWorkers).filter(w => String(w.deptId) === String(id));
+ return {total:arr.length, work:arr.filter(w=>w.inside!==false).length, out:arr.filter(w=>w.inside===false).length, arr:arr};
+}
 
 function render(){
  let q=(document.getElementById('searchMain').value||'').toLowerCase();
- let g=document.getElementById('grid');g.innerHTML='';
- if(!departments || !departments.filter){ departments=[]; }
+ let g=document.getElementById('grid'); g.innerHTML='';
  departments.filter(d=>d.name&&d.name.toLowerCase().includes(q)).forEach(d=>{
   let s=getStats(d.id);
-  g.innerHTML+=`<div class="card" style="border-top-color:${d.color}" onclick="location.href='dept.html?id=${d.id}'"><div style="display:flex;justify-content:space-between"><b>${d.name}</b><span onclick="event.stopPropagation();delDept(${d.id})">❌</span></div><div style="font-size:12px;margin-top:8px">ЖУМУШТА ${s.total} | 🟢 ${s.work} 🔴 ${s.out}</div></div>`;
+  g.innerHTML+=`<div class="card" style="border-top-color:${d.color}"><div style="display:flex;justify-content:space-between"><b>${d.name}</b><span onclick="delDept(${d.id})" style="cursor:pointer">❌</span></div><div style="margin-top:8px;font-size:13px">Жалпы: <b>${s.total}</b><br>🟢 Иште ${s.work} | 🔴 Сыртта ${s.out}</div></div>`;
  });
  g.innerHTML+=`<div class="card add" onclick="addDept()">➕ Бөлүм кошуу</div>`;
  document.getElementById('cntTop').innerText=departments.length;
- if(departments.length==0){ g.innerHTML+='<div style="grid-column:1/-1;text-align:center;padding:20px">Бөлүм жок. "Калыбына келтирүү" бас</div>'; }
 }
 
 function addDept(){
  let n=prompt("Жаңы бөлүм аты:");
  if(!n)return;
- departments.push({id:Date.now(),name:n.trim(),color:"#64748b"});
+ departments.push({id:Date.now(), name:n.trim(), color:"#64748b"});
  db.ref('osh/departments').set(departments);
 }
 
-function delDept(id){if(!confirm("Өчүрүлсүнбү?"))return;departments=departments.filter(d=>d.id!=id);db.ref('osh/departments').set(departments);}
+function delDept(id){
+ if(!confirm("Өчүрөбүзбү?"))return;
+ departments=departments.filter(d=>String(d.id)!==String(id));
+ db.ref('osh/departments').set(departments);
+}
+
+// ЭСКИ КАТАЛГАНДАРДЫ ОҢДОО - бир жолу басылат
+function fixAll(){
+ let updates={};
+ Object.entries(allWorkers).forEach(([key,w])=>{
+  if(!w.deptId || w.deptId==0){
+   let dep=departments.find(d=>d.name===w.bolum);
+   if(dep){ updates['osh/workers/'+key+'/deptId']=dep.id; }
+  }
+ });
+ if(Object.keys(updates).length==0) return alert('Баары туура, оңдоонун кереги жок');
+ db.ref().update(updates).then(()=>alert('✅ Оңдолду! Эми ар ким өз бөлүмүндө гана көрүнөт'));
+}
 
 function restore(){
- if(!confirm("8 бөлүм + ГСВ №9 калыбына келтирилсинби?"))return;
+ if(!confirm("9 бөлүм калыбына келтирилсинби?"))return;
  let base=[
   {id:1,name:"Администрация",color:"#6366f1"},
   {id:2,name:"Бухгалтерия",color:"#f59e0b"},
@@ -76,7 +81,7 @@ function restore(){
   {id:8,name:"ГСВ №7",color:"#f97316"},
   {id:9,name:"ГСВ №9",color:"#64748b"}
  ];
- db.ref('osh/departments').set(base).then(()=>alert('Даяр!'));
+ db.ref('osh/departments').set(base);
 }
 </script>
 </body>
