@@ -12,7 +12,6 @@
 .header{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px #0001;position:sticky;top:0;z-index:20}
 .filters{background:#fff;margin:8px;padding:10px 12px;border-radius:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;box-shadow:0 1px 2px #0001}
 .f{border:1px solid #e2e8f0;background:#f8fafc;padding:8px 14px;border-radius:20px;font-weight:600;cursor:pointer;font-size:13px}
-.f.active{background:#1d4ed8;color:#fff;border-color:#1d4ed8}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin:10px}
 .card{background:#fff;border-radius:14px;padding:14px;border-top:5px solid #6366f1;cursor:pointer;box-shadow:0 2px 6px #0001;position:relative}
 .add{border:2px dashed #94a3b8;display:grid;place-items:center;color:#1d4ed8;min-height:150px;cursor:pointer;background:#fff}
@@ -21,21 +20,24 @@
 #map{height:580px;border-radius:10px;margin-top:10px}
 .back{padding:8px 14px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer;margin-bottom:10px}
 .del{position:absolute;top:10px;right:10px;cursor:pointer}
+.debug{background:#fef3c7;padding:8px 12px;border-radius:8px;margin:8px;font-size:12px}
 @media(max-width:800px){.layout{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">0</span> бөлүм</b><div style="display:flex;gap:6px"><button onclick="fixAll()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">🔧 Оңдоо</button><button onclick="restore()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">♻️</button></div></div>
+<div class="header"><b>📍 Кадамжай - <span id="cntTop">0</span> бөлүм | <span id="totalWorkers">0</span> адам</b><div style="display:flex;gap:6px"><button onclick="fixAll()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">🔧 Оңдоо</button><button onclick="restore()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">♻️</button></div></div>
+
+<div id="debug" class="debug">Firebase текшерилүүдө...</div>
 
 <div id="mainPage">
 <div class="filters">
-<button class="f active">🏢 Бөлүмдөр</button>
+<button class="f" style="background:#1d4ed8;color:#fff">🏢 Бөлүмдөр</button>
 <button class="f">📊 Жыйынтык</button>
 <button class="f">🟢 Иште</button>
 <button class="f">🔴 Сыртта</button>
-<div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+<div style="margin-left:auto;display:flex;gap:8px">
 <input id="searchMain" oninput="render()" placeholder="🔍 Издөө..." style="border:1px solid #ddd;border-radius:20px;padding:8px 14px;min-width:200px">
-<button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 16px;border-radius:20px;cursor:pointer;font-weight:700">+ Бөлүм кошуу</button>
+<button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 16px;border-radius:20px;cursor:pointer;font-weight:700">+ Бөлүм</button>
 </div>
 </div>
 <div id="grid" class="grid"></div>
@@ -44,7 +46,7 @@
 <div id="deptPage">
 <button class="back" onclick="showMain()">← Артка</button>
 <div class="layout">
-<div class="panel"><h3 id="deptName" style="margin:0 0 10px 0">Бөлүм</h3><div style="line-height:1.8;font-size:14px"><div>Жалпы: <b id="d_total">0</b></div><div>🟢 Иште: <b id="d_work">0</b></div><div>🔴 Сыртта: <b id="d_out">0</b></div></div><input id="empSearch" oninput="loadDept()" placeholder="🔍 Кызматкер издөө..." style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;margin-top:12px"><div id="empList" style="margin-top:12px"></div></div>
+<div class="panel"><h3 id="deptName" style="margin:0 0 10px 0"></h3><div style="line-height:1.8;font-size:14px"><div>Жалпы: <b id="d_total">0</b></div><div>🟢 Иште: <b id="d_work">0</b></div><div>🔴 Сыртта: <b id="d_out">0</b></div></div><input id="empSearch" oninput="loadDept()" placeholder="🔍 Кызматкер..." style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;margin-top:12px"><div id="empList" style="margin-top:12px"></div></div>
 <div class="panel"><div style="display:flex;gap:10px"><div style="flex:1;background:#dbeafe;padding:14px;border-radius:12px;text-align:center">Жалпы<br><b id="stTotal" style="font-size:22px">0</b></div><div style="flex:1;background:#dcfce7;padding:14px;border-radius:12px;text-align:center">Иште<br><b id="stWork" style="font-size:22px">0</b></div><div style="flex:1;background:#ffedd5;padding:14px;border-radius:12px;text-align:center">Сыртта<br><b id="stAlert" style="font-size:22px">0</b></div></div><div id="map"></div></div>
 </div>
 </div>
@@ -53,20 +55,37 @@
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
 let departments=[], allWorkers={}, selected=null, map=null, markers=[];
+
 db.ref('osh/departments').on('value',snap=>{
- let v=snap.val(); if(!v){departments=[]; render(); return;}
+ let v=snap.val(); 
+ if(!v){departments=[]; render(); return;}
  departments = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
- render(); if(selected){ selected=departments.find(d=>String(d.id)===String(selected.id)); if(selected) loadDept(); }
+ document.getElementById('debug').innerHTML = `✅ Бөлүмдөр: ${departments.length} | ${departments.map(d=>d.name).join(', ')}`;
+ render();
 });
-db.ref('osh/workers').on('value',snap=>{ allWorkers={}; snap.forEach(c=>allWorkers[c.key]=c.val()); render(); if(selected) loadDept(); });
+
+db.ref('osh/workers').on('value',snap=>{
+ allWorkers={}; 
+ snap.forEach(c=>allWorkers[c.key]=c.val());
+ document.getElementById('totalWorkers').innerText = Object.keys(allWorkers).length;
+ let info = Object.values(allWorkers).map(w=>`${w.name}→${w.bolum}(${w.deptId})`).join(' | ');
+ document.getElementById('debug').innerHTML += `<br>👥 Адамдар: ${Object.keys(allWorkers).length} | ${info}`;
+ render();
+ if(selected) loadDept();
+});
 
 function getStats(id){
- let arr = Object.values(allWorkers).filter(w => String(w.deptId) === String(id));
+ let depName = departments.find(d=>String(d.id)===String(id))?.name;
+ let arr = Object.values(allWorkers).filter(w => {
+   // Эки жол менен текшеребиз - ID жана АТ менен
+   return String(w.deptId)===String(id) || w.bolum===depName;
+ });
  return {total:arr.length, work:arr.filter(w=>w.inside!==false).length, out:arr.filter(w=>w.inside===false).length, arr:arr};
 }
+
 function render(){
  let q=(document.getElementById('searchMain')?.value||'').toLowerCase();
- let g=document.getElementById('grid'); g.innerHTML='';
+ let g=document.getElementById('grid'); if(!g) return; g.innerHTML='';
  departments.filter(d=>d && d.name && d.name.toLowerCase().includes(q)).forEach(d=>{
   let s=getStats(d.id);
   g.innerHTML+=`<div class="card" style="border-top-color:${d.color}" onclick="openDept('${d.id}')"><span class="del" onclick="event.stopPropagation();delDept('${d.id}')">❌</span><b>${d.name}</b><div style="font-size:13px;margin-top:12px;line-height:1.7">ЖУМУШТА<br><b style="font-size:20px">${s.total}</b><br>🟢 ИЧТЕ ${s.work}<br>🔴 СЫРТТА ${s.out}</div></div>`;
@@ -88,21 +107,19 @@ function loadDept(){
  let list=document.getElementById('empList'); list.innerHTML='';
  let q=(document.getElementById('empSearch')?.value||'').toLowerCase();
  s.arr.filter(w=>w.name.toLowerCase().includes(q)).forEach(w=>{
-  list.innerHTML+=`<div style="padding:8px;border-bottom:1px solid #f1f5f9"><b>${w.name}</b><br><small>${w.bolum||''}</small></div>`;
+  list.innerHTML+=`<div style="padding:8px;border-bottom:1px solid #f1f5f9"><b>${w.name}</b><br><small>${w.bolum} | ID:${w.deptId}</small></div>`;
   if(map && w.lat){ let m=L.marker([w.lat,w.lng]).addTo(map).bindPopup(w.name); markers.push(m); }
  });
- if(s.arr.length===0) list.innerHTML='<div style="color:#94a3b8">Азырынча эч ким жок</div>';
+ if(s.arr.length===0) list.innerHTML='<div style="color:#94a3b8">Бул бөлүмдө эч ким жок. Телефондон катталганда ушул бөлүм тандалганбы текшериңиз</div>';
 }
 function fixAll(){
  let upd={};
  Object.entries(allWorkers).forEach(([k,w])=>{
-  if(!w.deptId || w.deptId==0){
-   let dep=departments.find(d=>d.name===w.bolum);
-   if(dep) upd['osh/workers/'+k+'/deptId']=String(dep.id);
-  }
+  let dep=departments.find(d=>d.name===w.bolum);
+  if(dep && String(w.deptId)!==String(dep.id)) upd['osh/workers/'+k+'/deptId']=String(dep.id);
  });
  if(Object.keys(upd).length===0) return alert('Баары туура');
- db.ref().update(upd).then(()=>alert('✅ Оңдолду'));
+ db.ref().update(upd).then(()=>alert('✅ Оңдолду - '+Object.keys(upd).length+' адам'));
 }
 function restore(){
  let base=[{id:1,name:"Администрация",color:"#6366f1"},{id:2,name:"Бухгалтерия",color:"#f59e0b"},{id:3,name:"КДО",color:"#0ea5e9"},{id:4,name:"Терапия",color:"#8b5cf6"},{id:5,name:"ГСВ №1",color:"#10b981"},{id:6,name:"ГСВ №2",color:"#06b6d4"},{id:7,name:"ГСВ №3",color:"#ef4444"},{id:8,name:"ГСВ №7",color:"#f97316"},{id:9,name:"ГСВ №9",color:"#64748b"}];
