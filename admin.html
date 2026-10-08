@@ -58,7 +58,10 @@ db.ref('osh/pins').on('value',s=>{
 });
 
 function delPin(pin){ if(!confirm('ПИН '+pin+' өчүрүлсүнбү?')) return; db.ref('osh/pins/'+pin).remove(); }
-function resetDevice(pin){ if(!confirm('Телефон кулпусун ачабызбы?')) return; db.ref('osh/pins/'+pin+'/deviceId').remove(); alert('Кулпу ачылды'); }
+function resetDevice(pin){
+  if(!confirm(pin+' ПИНдин кулпусун ачабызбы?')) return;
+  db.ref('osh/pins/'+pin).update({deviceId:null, lastSeen:null}).then(()=>{ alert('✅ Кулпу ачылды. Эми башка телефон кире алат.'); });
+}
 function clearAll(){ if(!confirm('Баардык ПИНдер жана жумуштагылар өчүрүлсүнбү?')) return; db.ref('osh/pins').remove(); db.ref('osh/workers').remove(); }
 
 db.ref('osh/workers').on('value',s=>{
