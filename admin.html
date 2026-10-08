@@ -5,15 +5,14 @@
 <title>Админ - ПИН</title>
 <style>
 body{font-family:system-ui;background:#f1f5f9;margin:0;padding:12px}
-.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px;max-width:1000px;margin-left:auto;margin-right:auto}
+.card{background:#fff;padding:16px;border-radius:12px;margin-bottom:12px;max-width:1000px;margin-left:auto;margin-right:auto;box-shadow:0 2px 10px #0001}
 input,select,button{padding:10px;border-radius:8px;border:1px solid #ddd;font-size:14px}
-button{border:0;cursor:pointer;font-weight:600}
+button{border:0;cursor:pointer;font-weight:700}
 .btn-blue{background:#2563eb;color:#fff}
 .btn-red{background:#ef4444;color:#fff}
-.btn-orange{background:#f59e0b;color:#fff}
-.btn-gray{background:#e5e7eb}
+.btn-orange{background:#f59e0b;color:#fff;padding:6px 10px;font-size:12px;margin-top:4px}
 table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{border:1px solid #e5e7eb;padding:8px;font-size:13px;text-align:left}
+th,td{border:1px solid #e5e7eb;padding:8px;font-size:13px;text-align:left;vertical-align:top}
 th{background:#f8fafc}
 </style>
 </head>
@@ -21,8 +20,10 @@ th{background:#f8fafc}
 <div class="card">
 <h3>👥 Жумушчу кошуу + ПИН берүү</h3>
 <div style="display:flex;gap:8px;flex-wrap:wrap">
-<input id="nameInput" placeholder="Аты-жөнү" style="flex:1">
-<select id="deptInput"><option value="Администрация">Администрация</option><option value="Бухгалтерия">Бухгалтерия</option><option value="Техотдел">Техотдел</option><option value="Охрана">Охрана</option></select>
+<input id="nameInput" placeholder="Аты-жөнү" style="flex:1;min-width:180px">
+<select id="deptInput">
+<option>Администрация</option><option>Бухгалтерия</option><option>Техотдел</option><option>Охрана</option><option>Клиника</option>
+</select>
 <button class="btn-blue" onclick="addWorker()">+ ПИН менен кошуу</button>
 <button class="btn-red" onclick="clearAll()">🗑 Баарын тазалоо</button>
 </div>
@@ -35,10 +36,10 @@ th{background:#f8fafc}
 
 <div class="card">
 <h3 id="workersTitle">Азыр жумушта ким бар: 0</h3>
-<table id="workersTable"><tr><th>Аты</th><th>Бөлүм</th><th>Убакыт</th></tr></table>
+<table id="workersTable"></table>
 </div>
 
-<div class="card" style="font-size:11px;color:#888">v1004 | gps-tracker-osh</div>
+<div class="card" style="font-size:11px;color:#888">v1005 | gps-tracker-osh | Сброс дайыма бар</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -57,43 +58,50 @@ window.addWorker=function(){
   });
 }
 window.clearAll=function(){
-  if(!confirm('Баардык ПИНдер өчөбү?')) return;
+  if(!confirm('Баардык ПИНдер жана жумуштагылар өчөбү?')) return;
   db.ref('osh/pins').remove();
   db.ref('osh/workers').remove();
 }
 
-// ПИНдерди көрсөтүү
 db.ref('osh/pins').on('value',snap=>{
   let html='<tr><th>Аты</th><th>Бөлүм</th><th>ПИН</th><th>Телефон байланыдыбы?</th><th>Өчүрүү</th></tr>';
   snap.forEach(c=>{
     let p=c.key; let v=c.val();
     let phoneStatus = v.deviceId 
-      ? `✅ Байланган<br><span style="font-size:10px">${v.deviceId}</span><br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>` 
-      : '❌ Байлана элек';
+      ? `✅ Байланган<br><span style="font-size:10px;color:#666">${v.deviceId}</span><br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>` 
+      : `❌ Байлана элек<br><button class="btn-orange" onclick="resetPin('${p}')">🔄 Сброс</button>`;
     html+=`<tr>
-      <td>${v.name}</td>
-      <td>${v.bolum}</td>
-      <td><b>${p}</b></td>
+      <td>${v.name||''}</td>
+      <td>${v.bolum||''}</td>
+      <td><b style="font-size:16px">${p}</b></td>
       <td>${phoneStatus}</td>
       <td><button class="btn-red" onclick="delPin('${p}')">❌</button></td>
     </tr>`;
   });
+  if(!snap.exists()) html+='<tr><td colspan=5>Тизме бош</td></tr>';
   document.getElementById('pinsTable').innerHTML=html;
 });
 
 db.ref('osh/workers').on('value',snap=>{
   let html='<tr><th>Аты</th><th>Бөлүм</th><th>Убакыт</th><th>Чыгаруу</th></tr>';
   let count=0;
-  snap.forEach(c=>{ count++; let v=c.val(); let t=new Date(v.time).toLocaleString(); html+=`<tr><td>${v.name}</td><td>${v.bolum}</td><td>${t}</td><td><button class="btn-red" onclick="delWorker('${c.key}')">Чыгаруу</button></td></tr>`; });
+  snap.forEach(c=>{ 
+    count++; let v=c.val(); 
+    let t=v.time ? new Date(v.time).toLocaleString() : '';
+    html+=`<tr><td>${v.name}</td><td>${v.bolum||''}</td><td>${t}</td><td><button class="btn-red" onclick="delWorker('${c.key}')">Чыгаруу</button></td></tr>`; 
+  });
+  if(count==0) html+='<tr><td colspan=4>Эч ким жок</td></tr>';
   document.getElementById('workersTable').innerHTML=html;
   document.getElementById('workersTitle').innerText='Азыр жумушта ким бар: '+count;
 });
 
 window.delPin=function(pin){ if(confirm(pin+' өчүрөбү?')) db.ref('osh/pins/'+pin).remove(); }
-window.delWorker=function(key){ db.ref('osh/workers/'+key).remove(); }
+window.delWorker=function(key){ if(confirm('Чыгарабызбы?')) db.ref('osh/workers/'+key).remove(); }
 window.resetPin=function(pin){
-  if(!confirm(pin+' ПИНинин телефон кулпусун тазалайбызбы? Жумушчу кайра кире алат')) return;
-  db.ref('osh/pins/'+pin).update({deviceId:null,lastSeen:null}).then(()=>alert('✅ Сброс болду: '+pin));
+  if(!confirm(pin+' ПИНинин телефон кулпусун тазалайбызбы?')) return;
+  db.ref('osh/pins/'+pin).update({deviceId:null,lastSeen:null}).then(()=>{
+    alert('✅ Сброс болду: '+pin+' - эми каалаган телефондон кире алат');
+  });
 }
 </script>
 </body>
