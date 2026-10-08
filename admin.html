@@ -3,73 +3,157 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Кадамжай ЖДПБ - Админ</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<style>body{margin:0;font-family:system-ui;background:#f1f5f9}.header{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;box-shadow:0 1px 3px #0001}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:10px}.card{background:#fff;border-radius:12px;padding:12px;border-top:4px solid #6366f1}.add{border:2px dashed #94a3b8;display:grid;place-items:center;color:#1d4ed8;min-height:120px;cursor:pointer}.filters{background:#fff;margin:8px;padding:10px;border-radius:12px;display:flex;gap:8px}</style>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui;background:#f1f5f9}
+.header{background:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px #0001;position:sticky;top:0;z-index:10}
+.filters{background:#fff;margin:8px;padding:10px;border-radius:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.f{border:1px solid #e2e8f0;background:#fff;padding:7px 11px;border-radius:9px;font-weight:600;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:8px}
+.card{background:#fff;border-radius:12px;padding:12px;border-top:4px solid #6366f1;cursor:pointer;box-shadow:0 1px 3px #0001;position:relative}
+.card b{font-size:15px}
+.add{border:2px dashed #94a3b8;display:grid;place-items:center;color:#1d4ed8;min-height:140px;cursor:pointer;background:#fff}
+#deptPage{display:none;margin:8px}.layout{display:grid;grid-template-columns:320px 1fr;gap:10px}
+.panel{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 3px #0001}
+#map{height:560px;border-radius:10px;margin-top:8px}
+.back{padding:7px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer;margin-bottom:8px}
+.del{position:absolute;top:8px;right:8px;cursor:pointer}
+@media(max-width:700px){.layout{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-<div class="header"><b>📍 Кадамжай - <span id="cntTop">0</span> бөлүм</b><div><button onclick="fixAll()">🔧 Оңдоо</button> <button onclick="restore()">♻️ Калыбына</button></div></div>
-<div class="filters"><input id="searchMain" oninput="render()" placeholder="🔍 Издөө..." style="flex:1;padding:8px;border-radius:20px;border:1px solid #ddd"><button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 14px;border-radius:8px">+ Бөлүм</button></div>
+<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">0</span> бөлүм</b><div><button onclick="fixAll()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">🔧 Оңдоо</button> <button onclick="restore()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#fff">♻️</button> <span>Админ</span></div></div>
+
+<div id="mainPage">
+<div class="filters">
+<button class="f">🏢 Бөлүмдөр</button>
+<button class="f">📊 Жыйынтык</button>
+<input id="searchMain" oninput="render()" placeholder="🔍 Бөлүм издөө..." style="margin-left:auto;border:1px solid #ddd;border-radius:20px;padding:7px 12px;min-width:180px">
+<button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:600">+ Бөлүм кошуу</button>
+</div>
 <div id="grid" class="grid"></div>
+</div>
+
+<div id="deptPage">
+<button class="back" onclick="showMain()">← Артка бөлүмдөргө</button>
+<div class="layout">
+<div class="panel">
+<h3 id="deptName" style="margin:0 0 8px 0">Бөлүм</h3>
+<div style="display:grid;gap:4px;font-size:14px"><div>Жалпы: <b id="d_total">0</b></div><div>🟢 Иште: <b id="d_work">0</b></div><div>🔴 Сыртта: <b id="d_out">0</b></div></div>
+<input id="empSearch" oninput="loadDept()" placeholder="🔍 Кызматкер издөө..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;margin-top:10px">
+<div id="empList" style="margin-top:10px"></div>
+</div>
+<div class="panel">
+<div style="display:flex;gap:8px">
+<div style="flex:1;background:#dbeafe;padding:12px;border-radius:10px;text-align:center">Жалпы<br><b id="stTotal" style="font-size:20px">0</b></div>
+<div style="flex:1;background:#dcfce7;padding:12px;border-radius:10px;text-align:center">Иште<br><b id="stWork" style="font-size:20px">0</b></div>
+<div style="flex:1;background:#ffedd5;padding:12px;border-radius:10px;text-align:center">Сыртта<br><b id="stAlert" style="font-size:20px">0</b></div>
+</div>
+<div id="map"></div>
+</div>
+</div>
+</div>
 
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-let departments=[], allWorkers={};
+let departments=[], allWorkers={}, selected=null, map=null, markers=[];
 
 db.ref('osh/departments').on('value',snap=>{
- let v=snap.val(); if(!v){departments=[]; render(); return;}
- departments = Array.isArray(v) ? v : Object.values(v);
+ let v=snap.val();
+ if(!v){departments=[]; render(); return;}
+ departments = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
  render();
-});
-db.ref('osh/workers').on('value',snap=>{
- allWorkers={}; snap.forEach(c=>allWorkers[c.key]=c.val()); render();
+ if(selected){ selected = departments.find(d=>String(d.id)===String(selected.id)); if(selected) loadDept(); }
 });
 
+db.ref('osh/workers').on('value',snap=>{
+ allWorkers={}; snap.forEach(c=>allWorkers[c.key]=c.val());
+ render();
+ if(selected) loadDept();
+});
+
+// === ЭҢ МААНИЛҮҮ ОҢДОО: ЭМИ ГАНА deptId МЕНЕН ФИЛЬТРЛЕЙТ ===
 function getStats(id){
  let arr = Object.values(allWorkers).filter(w => String(w.deptId) === String(id));
  return {total:arr.length, work:arr.filter(w=>w.inside!==false).length, out:arr.filter(w=>w.inside===false).length, arr:arr};
 }
 
 function render(){
- let q=(document.getElementById('searchMain').value||'').toLowerCase();
- let g=document.getElementById('grid'); g.innerHTML='';
- departments.filter(d=>d.name&&d.name.toLowerCase().includes(q)).forEach(d=>{
+ let q=(document.getElementById('searchMain')?.value||'').toLowerCase();
+ let g=document.getElementById('grid'); if(!g) return;
+ g.innerHTML='';
+ departments.filter(d=>d && d.name && d.name.toLowerCase().includes(q)).forEach(d=>{
   let s=getStats(d.id);
-  g.innerHTML+=`<div class="card" style="border-top-color:${d.color}"><div style="display:flex;justify-content:space-between"><b>${d.name}</b><span onclick="delDept(${d.id})" style="cursor:pointer">❌</span></div><div style="margin-top:8px;font-size:13px">Жалпы: <b>${s.total}</b><br>🟢 Иште ${s.work} | 🔴 Сыртта ${s.out}</div></div>`;
+  g.innerHTML+=`<div class="card" style="border-top-color:${d.color}" onclick="openDept('${d.id}')"><span class="del" onclick="event.stopPropagation();delDept('${d.id}')">❌</span><b>${d.name}</b><div style="font-size:12px;margin-top:10px;line-height:1.6">ЖУМУШТА<br><b style="font-size:18px">${s.total}</b><br>🟢 ИЧТЕ ${s.work}<br>🔴 СЫРТТА ${s.out}</div></div>`;
  });
  g.innerHTML+=`<div class="card add" onclick="addDept()">➕ Бөлүм кошуу</div>`;
  document.getElementById('cntTop').innerText=departments.length;
 }
 
 function addDept(){
- let n=prompt("Жаңы бөлүм аты:");
- if(!n)return;
+ let n=prompt("Жаңы бөлүм аты (мисалы ГСВ №9):");
+ if(!n) return;
  departments.push({id:Date.now(), name:n.trim(), color:"#64748b"});
  db.ref('osh/departments').set(departments);
 }
 
-function delDept(id){
- if(!confirm("Өчүрөбүзбү?"))return;
- departments=departments.filter(d=>String(d.id)!==String(id));
- db.ref('osh/departments').set(departments);
+function delDept(id){ if(!confirm("Бул бөлүм өчүрүлсүнбү?")) return; departments=departments.filter(d=>String(d.id)!==String(id)); db.ref('osh/departments').set(departments); }
+
+function showMain(){ document.getElementById('mainPage').style.display='block'; document.getElementById('deptPage').style.display='none'; selected=null; }
+
+function openDept(id){
+ selected = departments.find(d=>String(d.id)===String(id));
+ if(!selected) return;
+ document.getElementById('mainPage').style.display='none';
+ document.getElementById('deptPage').style.display='block';
+ document.getElementById('deptName').innerText=selected.name;
+ setTimeout(()=>{ initMap(); loadDept(); },200);
 }
 
-// ЭСКИ КАТАЛГАНДАРДЫ ОҢДОО - бир жолу басылат
+function initMap(){ if(map){ map.remove(); map=null; } map=L.map('map').setView([40.105,71.73],13); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map); }
+
+function loadDept(){
+ if(!selected) return;
+ let s=getStats(selected.id);
+ document.getElementById('d_total').innerText=s.total;
+ document.getElementById('d_work').innerText=s.work;
+ document.getElementById('d_out').innerText=s.out;
+ document.getElementById('stTotal').innerText=s.total;
+ document.getElementById('stWork').innerText=s.work;
+ document.getElementById('stAlert').innerText=s.out;
+
+ // маркерлерди тазалоо
+ markers.forEach(m=>{ try{map.removeLayer(m)}catch(e){} }); markers=[];
+ let list=document.getElementById('empList'); list.innerHTML='';
+ let q=(document.getElementById('empSearch')?.value||'').toLowerCase();
+ s.arr.filter(w=>w.name.toLowerCase().includes(q)).forEach(w=>{
+  list.innerHTML+=`<div style="padding:8px;border-bottom:1px solid #f1f5f9"><b>${w.name}</b><br><small>${w.bolum||''} • ${(w.lat||0).toFixed(4)}, ${(w.lng||0).toFixed(4)}</small></div>`;
+  if(map && w.lat && w.lng){ let m=L.marker([w.lat,w.lng]).addTo(map).bindPopup(w.name+'<br>'+ (w.bolum||'')); markers.push(m); }
+ });
+ if(s.arr.length===0) list.innerHTML='<div style="color:#94a3b8;font-size:13px">Бул бөлүмдө азырынча эч ким катталган жок</div>';
+ if(s.arr.length>0 && map){
+  try{ let group=new L.featureGroup(markers); map.fitBounds(group.getBounds().pad(0.2)); }catch(e){}
+ }
+}
+
 function fixAll(){
  let updates={};
  Object.entries(allWorkers).forEach(([key,w])=>{
   if(!w.deptId || w.deptId==0){
    let dep=departments.find(d=>d.name===w.bolum);
-   if(dep){ updates['osh/workers/'+key+'/deptId']=dep.id; }
+   if(dep) updates['osh/workers/'+key+'/deptId']=dep.id;
   }
  });
- if(Object.keys(updates).length==0) return alert('Баары туура, оңдоонун кереги жок');
- db.ref().update(updates).then(()=>alert('✅ Оңдолду! Эми ар ким өз бөлүмүндө гана көрүнөт'));
+ if(Object.keys(updates).length===0) return alert('Эски катталгандар жок же баары туура');
+ db.ref().update(updates).then(()=>alert('✅ Оңдолду! Эми ар ким өз бөлүмүндө гана'));
 }
 
 function restore(){
- if(!confirm("9 бөлүм калыбына келтирилсинби?"))return;
+ if(!confirm("Бардык бөлүмдөр калыбына келтирилсинби?"))return;
  let base=[
   {id:1,name:"Администрация",color:"#6366f1"},
   {id:2,name:"Бухгалтерия",color:"#f59e0b"},
