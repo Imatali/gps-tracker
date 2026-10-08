@@ -22,10 +22,10 @@
 </style>
 </head>
 <body>
-<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">8</span> бөлүм</b><button onclick="localStorage.clear();location.reload()" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd">♻️ Тазалоо</button></div>
+<div class="header"><b>📍 Кадамжай ЖДПБ - <span id="cntTop">0</span> бөлүм</b><div>Админ</div></div>
 <div id="mainPage">
 <div class="filters">
-<button class="f">🏢 Бөлүм 8</button>
+<button class="f">🏢 Бөлүмдөр</button>
 <input id="searchMain" oninput="render()" placeholder="🔍 Издөө..." style="margin-left:auto;border:1px solid #ddd;border-radius:20px;padding:7px 12px">
 <button onclick="addDept()" style="background:#1d4ed8;color:#fff;border:0;padding:7px 12px;border-radius:8px;cursor:pointer">+ Бөлүм кошуу</button>
 </div>
@@ -41,49 +41,53 @@
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-
-let departments = JSON.parse(localStorage.getItem('departments')||'null');
-if(!departments || departments.some(d=>!d.name)){
-departments=[
-{id:1,name:"Администрация",color:"#6366f1"},
-{id:2,name:"Бухгалтерия",color:"#f59e0b"},
-{id:3,name:"КДО",color:"#0ea5e9"},
-{id:4,name:"Терапия",color:"#8b5cf6"},
-{id:5,name:"ГСВ №1",color:"#10b981"},
-{id:6,name:"ГСВ №2",color:"#06b6d4"},
-{id:7,name:"ГСВ №3",color:"#ef4444"},
-{id:8,name:"ГСВ №7",color:"#f97316"},
-];
-}
-localStorage.setItem('departments',JSON.stringify(departments));
-
+let departments=[];
 let allWorkers={},selected=null,map=null;
+
+// БӨЛҮМДӨРДҮ FIREBASE'ДЕН ОКУЙТ - БАРДЫК ТЕЛЕФОНГО БИРДЕЙ
+db.ref('osh/departments').on('value',snap=>{
+ if(snap.exists()){
+  departments=snap.val();
+ } else {
+  departments=[
+   {id:1,name:"Администрация",color:"#6366f1"},
+   {id:2,name:"Бухгалтерия",color:"#f59e0b"},
+   {id:3,name:"КДО",color:"#0ea5e9"},
+   {id:4,name:"Терапия",color:"#8b5cf6"},
+   {id:5,name:"ГСВ №1",color:"#10b981"},
+   {id:6,name:"ГСВ №2",color:"#06b6d4"},
+   {id:7,name:"ГСВ №3",color:"#ef4444"},
+   {id:8,name:"ГСВ №7",color:"#f97316"},
+  ];
+  db.ref('osh/departments').set(departments);
+ }
+ render();
+});
+
 db.ref('osh/workers').on('value',snap=>{allWorkers={};snap.forEach(c=>allWorkers[c.key]=c.val());render();if(selected)loadDept();});
 function getStats(id){let name=departments.find(d=>d.id==id)?.name;let arr=Object.values(allWorkers).filter(w=>String(w.deptId)==String(id)||w.bolum==name);return{total:arr.length,work:arr.filter(w=>w.inside!==false).length,out:arr.filter(w=>w.inside===false).length,arr};}
 function render(){
-let q=document.getElementById('searchMain').value.toLowerCase();
-let g=document.getElementById('grid');g.innerHTML='';
-departments.filter(d=>d.name.toLowerCase().includes(q)).forEach(d=>{
-let s=getStats(d.id);
-g.innerHTML+=`<div class="card" style="border-top-color:${d.color}" onclick="openDept(${d.id})"><div style="display:flex;justify-content:space-between"><b>${d.name}</b><span onclick="event.stopPropagation();delDept(${d.id})">❌</span></div><div style="font-size:12px;margin-top:8px">ЖУМУШТА<br><b>${s.total}</b><br>🟢 ИЧТЕ ${s.work}<br>🔴 СЫРТТА ${s.out}</div></div>`;
-});
-g.innerHTML+=`<div class="card add" onclick="addDept()">➕ Бөлүм кошуу</div>`;
-document.getElementById('cntTop').innerText=departments.length;
+ let q=document.getElementById('searchMain')?.value.toLowerCase()||'';
+ let g=document.getElementById('grid');if(!g)return;g.innerHTML='';
+ departments.filter(d=>d.name.toLowerCase().includes(q)).forEach(d=>{
+  let s=getStats(d.id);
+  g.innerHTML+=`<div class="card" style="border-top-color:${d.color}" onclick="openDept(${d.id})"><div style="display:flex;justify-content:space-between"><b>${d.name}</b><span onclick="event.stopPropagation();delDept(${d.id})">❌</span></div><div style="font-size:12px;margin-top:8px">ЖУМУШТА<br><b>${s.total}</b><br>🟢 ИЧТЕ ${s.work}<br>🔴 СЫРТТА ${s.out}</div></div>`;
+ });
+ g.innerHTML+=`<div class="card add" onclick="addDept()">➕ Бөлүм кошуу</div>`;
+ document.getElementById('cntTop').innerText=departments.length;
 }
 function addDept(){
-let n=prompt("Жаңы бөлүм аты (мисалы ГСВ №4):");
-if(!n)return;
-departments.push({id:Date.now(),name:n.trim(),color:"#64748b"});
-localStorage.setItem('departments',JSON.stringify(departments));
-render();
-alert(n+" кошулду!");
+ let n=prompt("Жаңы бөлүм аты (мисалы ГСВ №9):");
+ if(!n)return;
+ departments.push({id:Date.now(),name:n.trim(),color:"#64748b"});
+ db.ref('osh/departments').set(departments);
+ alert(n+" кошулду! Эми бардык телефондо чыгат");
 }
-function delDept(id){if(!confirm("Өчүрүлсүнбү?"))return;departments=departments.filter(d=>d.id!=id);localStorage.setItem('departments',JSON.stringify(departments));render();}
+function delDept(id){if(!confirm("Өчүрүлсүнбү?"))return;departments=departments.filter(d=>d.id!=id);db.ref('osh/departments').set(departments);}
 function showMain(){document.getElementById('mainPage').style.display='block';document.getElementById('deptPage').style.display='none';}
 function openDept(id){selected=departments.find(d=>d.id==id);document.getElementById('mainPage').style.display='none';document.getElementById('deptPage').style.display='block';document.getElementById('deptName').innerText=selected.name;setTimeout(initMap,200);loadDept();}
 function initMap(){if(map){map.remove();map=null;}map=L.map('map').setView([40.105,71.73],12);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);}
-function loadDept(){if(!selected)return;let s=getStats(selected.id);document.getElementById('d_total').innerText=s.total;document.getElementById('d_work').innerText=s.work;document.getElementById('d_out').innerText=s.out;document.getElementById('stTotal').innerText=s.total;document.getElementById('stWork').innerText=s.work;document.getElementById('stAlert').innerText=s.out;let list=document.getElementById('empList');list.innerHTML='';s.arr.forEach(w=>{list.innerHTML+=`<div style="padding:6px;border-bottom:1px solid #eee"><b>${w.name}</b><br><small>${(w.lat||0).toFixed(4)}, ${(w.lng||0).toFixed(4)}</small></div>`;if(map&&w.lat)L.marker([w.lat,w.lng]).addTo(map).bindPopup(w.name);});if(s.total==0)list.innerHTML='<small>Азырынча кызматкер жок</small>';}
-render();
+function loadDept(){if(!selected)return;let s=getStats(selected.id);document.getElementById('d_total').innerText=s.total;document.getElementById('d_work').innerText=s.work;document.getElementById('d_out').innerText=s.out;document.getElementById('stTotal').innerText=s.total;document.getElementById('stWork').innerText=s.work;document.getElementById('stAlert').innerText=s.out;let list=document.getElementById('empList');list.innerHTML='';s.arr.forEach(w=>{list.innerHTML+=`<div style="padding:6px;border-bottom:1px solid #eee"><b>${w.name}</b><br><small>${(w.lat||0).toFixed(4)}</small></div>`;if(map&&w.lat)L.marker([w.lat,w.lng]).addTo(map).bindPopup(w.name);});if(s.total==0)list.innerHTML='<small>Азырынча кызматкер жок</small>';}
 </script>
 </body>
 </html>
