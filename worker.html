@@ -10,15 +10,16 @@
 <body>
 <div class="box">
 <h3>📍 Жумушка катталуу</h3>
-<input id="name" placeholder="Аты-жөнүңүз (мисалы Асанов А.)">
+<input id="name" placeholder="Аты-жөнүңүз">
 <select id="deptSel"><option>Бөлүмдөр жүктөлүүдө...</option></select>
-<div id="status">📡 GPS күтүлүүдө... Уруксат бериңиз</div>
-<button id="btn" onclick="register()">Катталуу</button>
+<div id="status">📡 GPS күтүлүүдө...</div>
+<button id="btn" disabled onclick="register()">Катталуу</button>
+<div id="ok" style="display:none;margin-top:12px;padding:10px;background:#dcfce7;border-radius:8px">✅ Катталды!</div>
 </div>
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-let departments=[], lat=0, lng=0, hasGPS=false;
+let departments=[], lat=0, lng=0, hasGPS=false, myId=null;
 let sel=document.getElementById('deptSel');
 
 db.ref('osh/departments').on('value',snap=>{
@@ -26,39 +27,38 @@ db.ref('osh/departments').on('value',snap=>{
  departments = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
  sel.innerHTML='';
  departments.forEach(d=>{
-  let o=document.createElement('option');
-  o.value=d.id;
-  o.textContent=d.name;
-  o.dataset.name=d.name;
-  sel.appendChild(o);
+  let o=document.createElement('option'); o.value=d.id; o.textContent=d.name; o.dataset.name=d.name; sel.appendChild(o);
  });
 });
 
 navigator.geolocation.watchPosition(p=>{
  lat=p.coords.latitude; lng=p.coords.longitude; hasGPS=true;
- document.getElementById('status').innerHTML='✅ GPS табылды: '+lat.toFixed(5);
+ document.getElementById('status').innerHTML='✅ GPS даяр: '+lat.toFixed(5);
  document.getElementById('btn').disabled=false;
 }, e=>{
- document.getElementById('status').innerHTML='❌ GPS жок. Телефондон Локацияны күйгүзүп, браузерге уруксат бериңиз';
-},{enableHighAccuracy:true, timeout:10000});
+ document.getElementById('status').innerHTML='❌ GPS жок. Локацияны күйгүзүңүз';
+},{enableHighAccuracy:true});
 
 function register(){
  let name=document.getElementById('name').value.trim();
  let depId=sel.value;
  let depName=sel.options[sel.selectedIndex]?.dataset.name || sel.options[sel.selectedIndex]?.textContent;
  if(!name){ alert('Атыңызды жазыңыз'); return; }
- if(!hasGPS){ alert('GPS табылбай жатат, 5 секунд күтө туруңуз'); return; }
- if(!depId){ alert('Бөлүм тандалган жок'); return; }
- 
- let id = 'w_'+Date.now()+'_'+Math.floor(Math.random()*1000);
+ if(!hasGPS){ alert('GPS табылбай жатат'); return; }
+
  document.getElementById('btn').innerText='Катталууда...';
- db.ref('osh/workers/'+id).set({
+ 
+ // push() - ар бир адамга өзүнчө ID берет, эч качан жоголбойт
+ let newRef = db.ref('osh/workers').push();
+ myId = newRef.key;
+ newRef.set({
   name:name, bolum:depName, deptId: String(depId),
   lat:lat, lng:lng, inside:true, time:Date.now()
  }).then(()=>{
-  alert('✅ '+depName+' бөлүмүнө ийгиликтүү катталдыңыз!');
   document.getElementById('btn').innerText='✅ Катталды';
-  setInterval(()=>{ if(lat) db.ref('osh/workers/'+id).update({lat:lat,lng:lng,time:Date.now()}); },15000);
+  document.getElementById('ok').style.display='block';
+  document.getElementById('ok').innerHTML='✅ '+name+' - '+depName+' га катталды!<br><small>ID: '+myId+'</small>';
+  setInterval(()=>{ if(lat && myId) db.ref('osh/workers/'+myId).update({lat:lat,lng:lng,time:Date.now()}); },15000);
  }).catch(e=>{ alert('Ката: '+e.message); document.getElementById('btn').innerText='Катталуу'; });
 }
 </script>
