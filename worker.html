@@ -1,83 +1,81 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Катталуу</title>
-<style>body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}.box{background:#fff;max-width:400px;margin:30px auto;padding:20px;border-radius:14px;box-shadow:0 2px 10px #0001}input,select,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700;font-size:17px}#log{font-size:12px;background:#f8fafc;padding:8px;border-radius:8px;margin-top:10px}</style>
+<style>body{font-family:system-ui;background:#f1f5f9;padding:16px;margin:0}.box{background:#fff;max-width:400px;margin:30px auto;padding:20px;border-radius:14px;box-shadow:0 2px 10px #0001}input,select,button{width:100%;padding:14px;margin-top:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}button{background:#1d4ed8;color:#fff;border:0;font-weight:700;font-size:17px}button:disabled{background:#94a3b8}#log{font-size:12px;background:#f8fafc;padding:8px;border-radius:8px;margin-top:10px}</style>
 </head>
 <body>
 <div class="box">
 <h3>📍 Катталуу</h3>
-<input id="name" placeholder="Аты-жөнүңүз" value="Имат 2">
+<input id="name" placeholder="Аты-жөнүңүз">
 <select id="deptSel"></select>
 <div id="log">Даяр...</div>
 <button id="btn" onclick="register()">Катталуу</button>
 <div id="ok" style="display:none;margin-top:10px;padding:12px;background:#dcfce7;border-radius:10px"></div>
+<div id="blocked" style="display:none;margin-top:10px;padding:12px;background:#fee2e2;border-radius:10px"></div>
 </div>
 
 <script>
-// 1-КАДАМ: Бөлүмдөрдү ДАРОо толтурабыз - Firebase'сиз эле
-const BASE = [
- {id:1,name:"Администрация"},{id:2,name:"Бухгалтерия"},{id:3,name:"КДО"},
- {id:4,name:"Терапия"},{id:5,name:"ГСВ №1"},{id:6,name:"ГСВ №2"},
- {id:7,name:"ГСВ №3"},{id:8,name:"ГСВ №7"},{id:9,name:"ГСВ №9"},{id:10,name:"ГСВ №10"}
-];
-const sel = document.getElementById('deptSel');
-function fill(list){
- sel.innerHTML='';
- list.forEach(d=>{
-   let o=document.createElement('option'); o.value=d.id; o.textContent=d.name;
-   o.dataset.name=d.name; sel.appendChild(o);
- });
- document.getElementById('log').innerText='Бөлүмдөр: '+list.length+' даяр ✅';
-}
+const BASE=[{id:1,name:"Администрация"},{id:2,name:"Бухгалтерия"},{id:3,name:"КДО"},{id:4,name:"Терапия"},{id:5,name:"ГСВ №1"},{id:6,name:"ГСВ №2"},{id:7,name:"ГСВ №3"},{id:8,name:"ГСВ №7"},{id:9,name:"ГСВ №9"},{id:10,name:"ГСВ №10"}];
+const sel=document.getElementById('deptSel');
+function fill(list){ sel.innerHTML=''; list.forEach(d=>{ let o=document.createElement('option'); o.value=d.id; o.textContent=d.name; o.dataset.name=d.name; sel.appendChild(o); }); }
 fill(BASE);
+
+// Эгер буга чейин катталган болсо - бөгөттөө
+let saved = localStorage.getItem('myWorkerId');
+if(saved){
+  document.getElementById('blocked').style.display='block';
+  document.getElementById('blocked').innerHTML=`⚠️ Сиз буга чейин катталгансыз!<br><br>Атыңыз: <b>${localStorage.getItem('myWorkerName')||''}</b><br>Бөлүм: ${localStorage.getItem('myDept')||''}<br><br>Башка адамды бул телефондон каттай албайсыз.`;
+  document.getElementById('btn').disabled=true;
+  document.getElementById('btn').innerText='Буга чейин катталгансыз';
+  document.getElementById('log').innerText='Бөгөттөлдү: 1 телефон = 1 адам';
+}
 </script>
 
-<!-- Firebase кийин жүктөлөт -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script>
-let lat=40.105, lng=71.73;
-let db;
+let lat=40.105,lng=71.73,db;
 try{
   firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
   db=firebase.database();
-  // Firebase'де жаңы бөлүм болсо жаңылайбыз
-  db.ref('osh/departments').once('value').then(s=>{
-    let v=s.val(); if(!v) return;
-    let arr = Array.isArray(v) ? v.filter(Boolean) : Object.values(v);
-    if(arr.length>0) fill(arr);
-  });
-}catch(e){
-  document.getElementById('log').innerText='Оффлайн режим: негизги бөлүмдөр';
-}
+  db.ref('osh/departments').once('value').then(s=>{ let v=s.val(); if(!v) return; let arr=Array.isArray(v)?v.filter(Boolean):Object.values(v); if(arr.length>0) fill(arr); });
+}catch(e){}
 
 navigator.geolocation.watchPosition(p=>{ lat=p.coords.latitude; lng=p.coords.longitude; },()=>{}, {enableHighAccuracy:true});
 
 function register(){
- let name=document.getElementById('name').value.trim();
- if(!name){ alert('Аты жаз'); return; }
- let depId=sel.value;
- let depName=sel.options[sel.selectedIndex].dataset.name;
- let btn=document.getElementById('btn');
- btn.innerText='Жазылууда...'; btn.disabled=true;
- document.getElementById('log').innerText='Жазылууда: '+name+' -> '+depName;
+  if(localStorage.getItem('myWorkerId')){
+    alert('Сиз буга чейин катталгансыз! 1 телефондон 1 гана адам каттала алат.');
+    return;
+  }
+  let name=document.getElementById('name').value.trim();
+  if(!name){ alert('Атыңызды жазыңыз'); return; }
+  let depId=sel.value;
+  let depName=sel.options[sel.selectedIndex].dataset.name;
+  let btn=document.getElementById('btn');
+  btn.innerText='Жазылууда...'; btn.disabled=true;
+  document.getElementById('log').innerText='Жазылууда: '+name;
 
- if(!db){ alert('Интернет жок! Firebase байланыш жок'); btn.disabled=false; btn.innerText='Катталуу'; return; }
-
- db.ref('osh/workers').push({
-   name:name, bolum:depName, deptId:String(depId),
-   lat:lat, lng:lng, inside:true, time:Date.now()
- }).then(()=>{
-   document.getElementById('log').innerText='✅ Катталды: '+name;
-   document.getElementById('ok').style.display='block';
-   document.getElementById('ok').innerHTML='✅ <b>'+name+'</b><br>'+depName+' га катталды!';
-   btn.innerText='✅ Катталды'; btn.disabled=false;
- }).catch(e=>{
-   document.getElementById('log').innerText='❌ Ката: '+e.message;
-   alert(e.message); btn.innerText='Катталуу'; btn.disabled=false;
- });
+  // push эмес, телефондун ID'си менен сактайбыз - ошондо 1 телефон 1 гана жазуу
+  let deviceId = 'dev_'+Math.random().toString(36).slice(2)+Date.now();
+  // Телефондун уникалдуу ID'син сактайбыз
+  let ref = db.ref('osh/workers').push();
+  ref.set({
+    name:name, bolum:depName, deptId:String(depId),
+    lat:lat, lng:lng, inside:true, time:Date.now(),
+    deviceId: deviceId
+  }).then(()=>{
+    localStorage.setItem('myWorkerId', ref.key);
+    localStorage.setItem('myWorkerName', name);
+    localStorage.setItem('myDept', depName);
+    localStorage.setItem('myDeviceId', deviceId);
+    document.getElementById('log').innerText='✅ Катталды';
+    document.getElementById('ok').style.display='block';
+    document.getElementById('ok').innerHTML='✅ <b>'+name+'</b> катталды!<br>Эми бул телефондон башка адам каттала албайт.';
+    btn.innerText='✅ Катталды';
+  }).catch(e=>{ alert(e.message); btn.disabled=false; btn.innerText='Катталуу'; });
 }
 </script>
 </body>
