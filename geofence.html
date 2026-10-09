@@ -1,11 +1,33 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Аймак чийүү</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script><script src="https://cdn.tailwindcss.com"></script></head><body class="p-2 bg-[#f8fafc] font-sans"><div class="bg-white p-3 rounded-xl shadow mb-2 flex justify-between items-center"><div><a id="back" href="admin.html" class="text-blue-600 text-sm">← Артка</a><h1 id="title" class="font-bold text-[16px]">📐 Аймак чийүү</h1><p class="text-[11px] text-gray-500">Бул бөлүм үчүн өзүнчө аймак чийилет</p></div><button onclick="save()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold">💾 Сактоо</button></div><div id="map" style="height:80vh" class="rounded-xl border bg-white"></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Аймак чийүү - Көп аймак</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script><script src="https://cdn.tailwindcss.com"></script></head><body class="p-2 bg-[#f8fafc] font-sans"><div class="bg-white p-3 rounded-xl shadow mb-2"><div class="flex justify-between items-start"><div><a id="back" href="#" class="text-blue-600 text-sm">← Артка бөлүмгө</a><h1 id="title" class="font-bold text-[16px]">📐 Аймактар</h1><p class="text-[11px] text-gray-500">Бир нече аймак чийсең болот. Чийген сайын кошула берет.<br>Өчүрүү үчүн аймакты басып 🗑️ бас</p></div><div class="flex flex-col gap-2"><button onclick="save()" class="bg-green-600 text-white px-5 py-2 rounded-lg font-bold">💾 Сактоо (<span id="cnt">0</span>)</button><button onclick="clearAll()" class="bg-red-50 text-red-600 px-5 py-1.5 rounded-lg text-[11px]">Баарын өчүрүү</button></div></div></div><div id="map" style="height:80vh" class="rounded-xl border bg-white"></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});const db=firebase.database();
-const dept=new URLSearchParams(location.search).get('d')||new URLSearchParams(location.search).get('dept')||'Администрация';
-document.getElementById('title').innerText='📐 '+dept+' аймагы';document.getElementById('back').href='dept.html?d='+encodeURIComponent(dept)+'&v=1011';
+const dept=new URLSearchParams(location.search).get('d')||'Администрация';
+document.getElementById('title').innerText='📐 '+dept+' - '+ 'аймактары';
+document.getElementById('back').href='dept.html?d='+encodeURIComponent(dept)+'&v=1012';
 let map=L.map('map').setView([40.128,71.726],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-let drawn=new L.FeatureGroup();map.addLayer(drawn);let ctrl=new L.Control.Draw({edit:{featureGroup:drawn},draw:{polygon:true,circle:true,rectangle:true,marker:false,polyline:false,circlemarker:false}});map.addControl(ctrl);
-map.on(L.Draw.Event.CREATED,e=>{drawn.clearLayers();drawn.addLayer(e.layer)});
-// ушул бөлүмдүн мурунку аймагын жүктөө
-db.ref('osh/settings/geofences/'+dept).once('value',s=>{let v=s.val();if(!v)return;if(v.polygon)L.polygon(v.polygon,{color:'green'}).addTo(drawn);else if(v.center)L.circle([v.center.lat,v.center.lng],{radius:v.radius}).addTo(drawn)});
-function save(){let l=null;drawn.eachLayer(x=>l=x);if(!l)return alert('Адегенде чий!');let data={};if(l instanceof L.Polygon||l instanceof L.Rectangle)data.polygon=l.getLatLngs()[0].map(p=>[p.lat,p.lng]);else if(l instanceof L.Circle){data.center={lat:l.getLatLng().lat,lng:l.getLatLng().lng};data.radius=l.getRadius()}db.ref('osh/settings/geofences/'+dept).set(data).then(()=>{alert(dept+' үчүн сакталды!');location.href='dept.html?d='+encodeURIComponent(dept)+'&v=1011'})}
+let drawn=new L.FeatureGroup();map.addLayer(drawn);
+let ctrl=new L.Control.Draw({edit:{featureGroup:drawn},draw:{polygon:true,circle:true,rectangle:true,marker:false,polyline:false,circlemarker:false}});map.addControl(ctrl);
+map.on(L.Draw.Event.CREATED,e=>{drawn.addLayer(e.layer);updateCnt()});
+map.on(L.Draw.Event.DELETED,updateCnt);
+function updateCnt(){document.getElementById('cnt').innerText=drawn.getLayers().length}
+// Эски форматты да колдойт
+db.ref('osh/settings/geofences/'+dept).once('value',s=>{
+  let v=s.val(); if(!v) return;
+  let areas=Array.isArray(v)?v:(v.polygon||v.center?[v]:[]);
+  areas.forEach(a=>{
+    if(a.polygon) L.polygon(a.polygon,{color:'green'}).addTo(drawn);
+    else if(a.center) L.circle([a.center.lat,a.center.lng],{radius:a.radius||500,color:'green'}).addTo(drawn);
+  });
+  updateCnt();
+  if(drawn.getLayers().length) map.fitBounds(drawn.getBounds());
+});
+function clearAll(){if(confirm('Баардык аймактарды өчүрөбүзбү?')){drawn.clearLayers();updateCnt()}}
+function save(){
+  let arr=[];
+  drawn.eachLayer(l=>{
+    if(l instanceof L.Polygon||l instanceof L.Rectangle) arr.push({polygon:l.getLatLngs()[0].map(p=>[p.lat,p.lng])});
+    else if(l instanceof L.Circle) arr.push({center:{lat:l.getLatLng().lat,lng:l.getLatLng().lng},radius:l.getRadius()});
+  });
+  if(!arr.length) return alert('Эч нерсе чийилген жок!');
+  db.ref('osh/settings/geofences/'+dept).set(arr).then(()=>{alert(dept+' үчүн '+arr.length+' аймак сакталды!');location.href='dept.html?d='+encodeURIComponent(dept)+'&v=1012'});
+}
 </script></body></html>
