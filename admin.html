@@ -103,7 +103,7 @@ window.addWorker=function(){let n=document.getElementById('nameInput').value.tri
 window.delPin=function(p){if(confirm(p+' өчүрөбү?'))db.ref('osh/pins/'+p).remove();}
 window.resetPin=function(p){if(!confirm(p+' Сброс?'))return;db.ref('osh/pins/'+p).update({deviceId:null}).then(()=>alert('✅ Сброс болду'));}
 window.clearAll=function(){if(!confirm('Баарын тазалайбызбы?'))return;db.ref('osh/pins').remove();db.ref('osh/workers').remove();}
-window.filterDept=function(d){document.getElementById('deptInput').value=d;document.getElementById('nameInput').focus();}
+window.filterDept=function(d){location.href='dept.html?d='+encodeURIComponent(d)+'&v=1008';}
 window.addDept=function(){let d=prompt('Жаңы бөлүм:');if(d){depts.push(d);render();}}
 </script>
 </body>
