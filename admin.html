@@ -1,110 +1,42 @@
-<!DOCTYPE html>
-<html lang="ky">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Кадамжай ЖДПБ Админ v1008</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>.card-shadow{box-shadow:0 2px 12px #0000000d}</style>
-</head>
-<body class="bg-[#f8fafc] p-3 font-sans">
-<div class="max-w-[1400px] mx-auto">
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Админка</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-[#f8fafc] p-3 font-sans"><div class="max-w-[1200px] mx-auto"><div class="bg-white p-4 rounded-xl shadow mb-3 flex justify-between items-center"><div><h1 class="font-bold text-[18px]">👑 Админка</h1><div class="flex gap-2 mt-2"><a href="index.html?v=1013" class="bg-gray-100 px-3 py-1.5 rounded-lg text-[11px]">🗺️ Карта</a><a href="reports.html?v=1013" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold">📊 Отчеттор</a></div></div><div id="total" class="text-[12px] text-gray-500">Жүктөлүүдө...</div></div><div class="bg-white rounded-xl shadow overflow-hidden"><div class="p-3 font-bold text-[14px] border-b">Жумушчулар</div><div class="overflow-x-auto"><table class="w-full text-[12px]"><thead class="bg-gray-50 text-[11px] text-gray-500"><tr><th class="p-2 text-left">PIN</th><th class="p-2 text-left">Аты</th><th class="p-2 text-left">Бөлүм</th><th class="p-2 text-left">График</th><th class="p-2">Амал</th></tr></thead><tbody id="tbody"></tbody></table></div></div></div>
 
-<!-- HEADER -->
-<div class="bg-white p-3 rounded-xl card-shadow flex flex-wrap justify-between items-center gap-2 mb-3">
-<div>
-<h1 class="font-bold text-[14px]">● Кадамжай ЖДЛП 8/8</h1>
-<div class="flex gap-2 mt-2 text-[11px] flex-wrap">
-<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded">Бөлүм 8</span>
-<span id="lateCount" class="bg-orange-100 text-orange-700 px-2 py-1 rounded">Кечигүүндөр 0</span>
-<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded">Эрте кеткендер 0</span>
-<span class="bg-red-50 text-red-600 px-2 py-1 rounded">Көйгөйлөндөр 0</span>
-</div>
-</div>
-<div class="flex gap-2 flex-wrap items-center">
-<a href="worker.html?v=1006" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px] font-bold">👷 Жумушчу баракча v1006</a>
-<a href="index.html" class="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-[13px]">🏠 Башкы бет</a>
-<input id="search" placeholder="Издөө..." class="border rounded-lg px-3 py-2 text-sm">
-<button onclick="addDept()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ Бөлүм</button>
+<!-- График Модалка -->
+<div id="schedModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+<div class="bg-white rounded-xl p-4 w-[340px]">
+<h3 id="schedTitle" class="font-bold mb-3">⏰ График</h3>
+<label class="text-[11px] text-gray-500">Жумуш башталышы</label><input id="sc_start" type="time" value="08:00" class="w-full border p-2 rounded mb-2">
+<label class="text-[11px] text-gray-500">Обет башталышы</label><input id="sc_lunchS" type="time" value="12:00" class="w-full border p-2 rounded mb-2">
+<label class="text-[11px] text-gray-500">Обет бүтүшү</label><input id="sc_lunchE" type="time" value="13:00" class="w-full border p-2 rounded mb-2">
+<label class="text-[11px] text-gray-500">Жумуш бүтүшү</label><input id="sc_end" type="time" value="17:00" class="w-full border p-2 rounded mb-4">
+<div class="flex gap-2"><button onclick="saveSchedule()" class="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold text-[13px]">💾 Сактоо</button><button onclick="document.getElementById('schedModal').classList.add('hidden')" class="flex-1 bg-gray-100 py-2 rounded-lg text-[13px]">Жабуу</button></div>
 </div>
 </div>
 
-<!-- GRID 8 БӨЛҮМ -->
-<div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
-
-<!-- WORKER ШИЛТЕМЕСИ КАРТОЧКАСЫ -->
-<div class="mt-3 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 p-3 rounded-xl flex justify-between items-center flex-wrap gap-2">
-<div class="text-[13px]">
-<b>👷 Жумушчулар үчүн шилтеме:</b><br>
-<span class="text-[11px] text-gray-600">https://imatali.github.io/gps-tracker/worker.html?v=1006</span>
-</div>
-<button onclick="navigator.clipboard.writeText('https://imatali.github.io/gps-tracker/worker.html?v=1006');alert('Көчүрүлдү!')" class="bg-white border px-3 py-1.5 rounded-lg text-sm">📋 Көчүрүү</button>
-</div>
-
-<!-- ПИН БЕРҮҮ -->
-<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
-<h3 class="font-bold mb-2">👥 ПИН берүү + Кулпу башкаруу</h3>
-<div class="flex gap-2 flex-wrap">
-<input id="nameInput" placeholder="Аты-жөнү" class="border p-2.5 rounded-lg flex-1 min-w-[150px]">
-<select id="deptInput" class="border p-2.5 rounded-lg">
-<option>Администрация</option><option>Бухгалтерия</option><option>КДО</option><option>Терапия</option><option>ГСВ №1</option><option>ГСВ №2</option><option>ГСВ №3</option><option>ГСВ №7</option>
-</select>
-<button onclick="addWorker()" class="bg-blue-600 text-white px-5 rounded-lg font-bold">+ ПИН</button>
-<button onclick="clearAll()" class="bg-red-50 text-red-600 px-3 rounded-lg text-sm">🗑 Тазалоо</button>
-</div>
-<table class="w-full text-[13px] mt-3" id="pinsTable"></table>
-</div>
-
-<div class="text-[10px] text-gray-400 text-center mt-3">v1008 | админ + worker v1006 байланышты | <span id="devInfo"></span></div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-<script>
-firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
-const db=firebase.database();
-const depts=["Администрация","Бухгалтерия","КДО","Терапия","ГСВ №1","ГСВ №2","ГСВ №3","ГСВ №7"];
-const colors=["border-t-blue-500","border-t-amber-400","border-t-sky-400","border-t-purple-500","border-t-emerald-500","border-t-cyan-500","border-t-red-400","border-t-orange-400"];
-
-let allPins={}, allWorkers={};
-db.ref('osh/pins').on('value',s=>{ allPins=s.val()||{}; render(); });
-db.ref('osh/workers').on('value',s=>{ allWorkers=s.val()||{}; render(); });
-
-function render(){
-  // Grid
-  let html="";
-  depts.forEach((d,i)=>{
-    let all = Object.values(allPins).filter(x=>x.bolum==d).length;
-    let inside = Object.values(allWorkers).filter(x=>x.bolum==d).length;
-    html+=`<div class="bg-white rounded-xl p-3 card-shadow border-t-4 ${colors[i%colors.length]}">
-      <div class="font-bold text-[12px]">${d.toUpperCase()}</div>
-      <div class="mt-2 text-[10px] text-gray-500 leading-3">ЖУМУШТА<br><b class="text-[16px] text-black">${inside}</b></div>
-      <div class="flex gap-4 mt-1">
-        <div class="text-[10px] text-gray-500">● СЫРТТА<br><b class="text-black">${Math.max(0,all-inside)}</b></div>
-        <div class="text-[10px] text-gray-500">👥 БАРДЫГЫ<br><b class="text-black">${all}</b></div>
-      </div>
-      <button onclick="filterDept('${d}')" class="mt-2 text-[10px] bg-green-50 text-green-700 px-2.5 py-1 rounded-full border border-green-100">✓ Тартип</button>
-    </div>`;
-  });
-  html+=`<div class="border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-blue-600 text-sm cursor-pointer bg-white" onclick="addDept()"><span class="text-2xl">+</span>Бөлүм кошуу</div>`;
-  document.getElementById('grid').innerHTML=html;
-
-  // Pins table
-  let h='<tr class="bg-gray-50 text-[11px]"><th class="p-2 text-left">Аты</th><th class="p-2 text-left">Бөлүм</th><th class="p-2 text-left">ПИН</th><th class="p-2 text-left">Телефон</th><th class="p-2"></th></tr>';
-  for(let p in allPins){
-    let v=allPins[p];
-    let phone = v.deviceId? `✅ ${v.deviceId.substring(0,6)}<br><button onclick="resetPin('${p}')" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[11px] mt-1">🔄 Сброс</button>` : `❌ Байлана элек`;
-    h+=`<tr class="border-t"><td class="p-2">${v.name}</td><td class="p-2">${v.bolum}</td><td class="p-2"><b>${p}</b></td><td class="p-2 text-[11px]">${phone}</td><td class="p-2"><button onclick="delPin('${p}')" class="text-red-500">❌</button></td></tr>`;
-  }
-  if(Object.keys(allPins).length==0) h+='<tr><td colspan=5 class="p-2 text-center text-gray-400">Тизме бош</td></tr>';
-  document.getElementById('pinsTable').innerHTML=h;
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
+firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});const db=firebase.database();
+let curPin=null;
+db.ref('osh/pins').on('value',s=>{
+ let v=s.val()||{}; let tbody=document.getElementById('tbody'); tbody.innerHTML='';
+ let count=Object.keys(v).length; document.getElementById('total').innerText='Баары: '+count+' жумушчу';
+ Object.entries(v).forEach(([pin,info])=>{
+  let sch=info.schedule?`${info.schedule.start}-${info.schedule.end}`:'08:00-17:00';
+  tbody.innerHTML+=`<tr class="border-b"><td class="p-2 font-bold">#${pin}</td><td class="p-2">${info.name||''}</td><td class="p-2"><span class="bg-gray-100 px-2 py-1 rounded text-[10px]">${info.bolum||''}</span></td><td class="p-2 text-[11px]">${sch}<br><span class="text-[10px] text-gray-400">${info.schedule?info.schedule.lunchS+'-'+info.schedule.lunchE:'12:00-13:00'}</span></td><td class="p-2 flex gap-1"><a href="dept.html?d=${encodeURIComponent(info.bolum||'')}&v=1012" class="bg-gray-100 px-2 py-1 rounded text-[10px]">Карта</a><button onclick="editSchedule('${pin}')" class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">⏰ График</button><a href="geofence.html?d=${encodeURIComponent(info.bolum||'')}&v=1012" class="bg-green-50 text-green-700 px-2 py-1 rounded text-[10px]">📐 Аймак</a></td></tr>`;
+ })
+});
+function editSchedule(pin){
+ curPin=pin;
+ db.ref('osh/pins/'+pin+'/schedule').once('value',s=>{
+  let v=s.val()||{start:'08:00',lunchS:'12:00',lunchE:'13:00',end:'17:00'};
+  document.getElementById('sc_start').value=v.start;
+  document.getElementById('sc_lunchS').value=v.lunchS;
+  document.getElementById('sc_lunchE').value=v.lunchE;
+  document.getElementById('sc_end').value=v.end;
+  document.getElementById('schedTitle').innerText='⏰ #'+pin+' графиги';
+  document.getElementById('schedModal').classList.remove('hidden');
+ })
 }
-
-window.addWorker=function(){let n=document.getElementById('nameInput').value.trim();let b=document.getElementById('deptInput').value;if(!n){alert('Аты жаз');return;}let pin=Math.floor(1000+Math.random()*9000).toString();db.ref('osh/pins/'+pin).set({name:n,bolum:b,deptId:1,deviceId:null,created:Date.now()}).then(()=>{document.getElementById('nameInput').value='';alert('✅ Кошулду ПИН: '+pin);});}
-window.delPin=function(p){if(confirm(p+' өчүрөбү?'))db.ref('osh/pins/'+p).remove();}
-window.resetPin=function(p){if(!confirm(p+' Сброс?'))return;db.ref('osh/pins/'+p).update({deviceId:null}).then(()=>alert('✅ Сброс болду'));}
-window.clearAll=function(){if(!confirm('Баарын тазалайбызбы?'))return;db.ref('osh/pins').remove();db.ref('osh/workers').remove();}
-window.filterDept=function(d){location.href='dept.html?d='+encodeURIComponent(d)+'&v=1008';}
-window.addDept=function(){let d=prompt('Жаңы бөлүм:');if(d){depts.push(d);render();}}
-</script>
-</body>
-</html>
+function saveSchedule(){
+ let data={start:document.getElementById('sc_start').value,lunchS:document.getElementById('sc_lunchS').value,lunchE:document.getElementById('sc_lunchE').value,end:document.getElementById('sc_end').value};
+ db.ref('osh/pins/'+curPin+'/schedule').set(data).then(()=>{alert('Сакталды!');document.getElementById('schedModal').classList.add('hidden')});
+}
+</script></body></html>
