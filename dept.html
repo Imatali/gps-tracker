@@ -1,56 +1,70 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бөлүм</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><style>body{margin:0;background:#f6f7fb;font-family:Inter,sans-serif}header{background:#fff;padding:10px 14px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center}#map{height:50vh;border-radius:12px;border:1px solid #e2e8f0}.card{background:#fff;border-radius:12px;padding:12px;border:1px solid #eef2f7;margin-top:10px}.btn{border:0;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer;font-size:11px}.btn-dark{background:#0f172a;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-red{background:#fee2e2;color:#dc2626}.btn-ghost{background:#f1f5f9}.assign{display:flex;justify-content:space-between;align-items:center;padding:9px;background:#f8fafc;border-radius:10px;margin-bottom:6px;border:1px solid #f1f5f9}.assign.assigned{background:#dcfce7;border-color:#bbf7d0}.time{border:1px solid #e2e8f0;border-radius:7px;padding:5px;width:78px;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th{color:#64748b;text-align:left;padding:6px;border-bottom:1px solid #eef2f7}td{padding:6px;border-bottom:1px solid #f8fafc}</style></head><body><header><button class="btn btn-ghost" onclick="location.href='admin.html'">← Башкы</button><div style="text-align:center"><b id="dName"></b><br><small id="dInfo"></small></div><div style="display:flex;gap:5px"><button class="btn btn-green" onclick="startDraw()">✏️ Аймак</button><button class="btn btn-dark" id="saveBtn" onclick="saveZone()" style="display:none">💾 Сактоо</button><button class="btn btn-red" id="cancelBtn" onclick="cancelDraw()" style="display:none">✕</button></div></header><div style="padding:10px"><div id="map"></div><div class="card"><b>🗺️ Аймактар</b><div id="zoneList"></div></div><div class="card"><b>👥 Жумушчуну бекитүү</b><br><small style="color:#64748b">+ Бекитүү бассаң - башка бөлүмдө болсо да автомат ушул жакка которулат. Бир жумушчу 1 гана бөлүмдө болот.</small><div id="assignList" style="margin-top:8px"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="card" style="border-left:4px solid #16a34a"><b>🟢 Жумушта (<span id="inC">0</span>)</b><div id="inL"></div></div><div class="card" style="border-left:4px solid #ef4444"><b>🔴 Сыртта (<span id="outC">0</span>)</b><div id="outL"></div></div></div><div class="card"><b>📋 Келди / Кетти</b><table><thead><tr><th>Аты</th><th>График</th><th>Келди</th><th>Кетти</th><th>Баа</th></tr></thead><tbody id="histBody"></tbody></table></div></div><script>
-const cfg={apiKey:"AIzaSyBQWMBefKxYWiPQnJVhCANZLqkz2Vnt2VME",authDomain:"gps-tracker-osh.firebaseapp.com",databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",projectId:"gps-tracker-osh"};
-firebase.initializeApp(cfg);const db=firebase.database();
-let map=L.map('map').setView([40.13,71.75],13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-const deptId=new URLSearchParams(location.search).get('dept')||'kdo';
-let DEPTS=JSON.parse(localStorage.getItem('kadamjai_depts_final')||'[]');
-let dept=DEPTS.find(d=>d.id==deptId)||{id:deptId,name:deptId,color:'#0064e0'};
-document.getElementById('dName').innerText=dept.name;
-let allZones=JSON.parse(localStorage.getItem('kadamjai_zones_v3')||'[]');
-let zones=allZones.filter(z=>z.deptId==dept.id);
-let workers={},prevState={},zoneLayers=[],drawPoints=[],drawPoly=null,drawing=false;
-function getAssign(){return JSON.parse(localStorage.getItem('kadamjai_assign_v3')||'{}');}
-function saveAssign(a){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(a));db.ref('osh/assign_v3').set(a);}
-function saveZones(){localStorage.setItem('kadamjai_zones_v3',JSON.stringify(allZones));}
-function toMin(t){if(!t)return 0;let [h,m]=t.split(':').map(Number);return h*60+m;}
-window.startDraw=function(){drawing=true;drawPoints=[];if(drawPoly)map.removeLayer(drawPoly);document.getElementById('saveBtn').style.display='inline-block';document.getElementById('cancelBtn').style.display='inline-block';}
-window.cancelDraw=function(){drawing=false;drawPoints=[];if(drawPoly)map.removeLayer(drawPoly);drawPoly=null;document.getElementById('saveBtn').style.display='none';document.getElementById('cancelBtn').style.display='none';}
-window.saveZone=function(){if(drawPoints.length<3){alert('3 чекит');return;}allZones.push({id:'z'+Date.now(),deptId:dept.id,points:drawPoints,color:dept.color});zones=allZones.filter(z=>z.deptId==dept.id);saveZones();cancelDraw();render();}
-window.delZone=function(id){allZones=allZones.filter(z=>z.id!=id);zones=allZones.filter(z=>z.deptId==dept.id);saveZones();render();}
-map.on('click',e=>{if(!drawing)return;drawPoints.push([e.latlng.lat,e.latlng.lng]);if(drawPoly)map.removeLayer(drawPoly);drawPoly=L.polygon(drawPoints,{color:dept.color,weight:2,dashArray:'5,5',fillOpacity:.2}).addTo(map);});
-function renderZones(){zoneLayers.forEach(l=>map.removeLayer(l));zoneLayers=[];zones.forEach(z=>{zoneLayers.push(L.polygon(z.points,{color:dept.color,weight:3,fillColor:dept.color,fillOpacity:.25}).addTo(map));});document.getElementById('zoneList').innerHTML=zones.map((z,i)=>`<div style="display:flex;justify-content:space-between;padding:6px;background:#f8fafc;border-radius:8px;margin-bottom:4px"><span>📍 Аймак ${i+1}</span><button class="btn btn-red" onclick="delZone('${z.id}')">Өчүрүү</button></div>`).join('')||'<small>Жок</small>';document.getElementById('dInfo').innerText=`${zones.length} зона • ${Object.keys(getAssign()).filter(k=>getAssign()[k].deptId==dept.id).length} бекитилген`;}
-function getHist(){return JSON.parse(localStorage.getItem('kadamjai_history_'+dept.id)||'[]');}
-function addHist(n,t){let h=getHist();let now=new Date();h.unshift({name:n,type:t,date:now.toLocaleDateString('ky-KG'),time:now.toLocaleTimeString('ky-KG',{hour:'2-digit',minute:'2-digit'})});localStorage.setItem('kadamjai_history_'+dept.id,JSON.stringify(h.slice(0,500)));renderHist();}
-function renderHist(){let assign=getAssign();let byName={};getHist().filter(l=>l.date==new Date().toLocaleDateString('ky-KG')).forEach(l=>{if(!byName[l.name])byName[l.name]={in:null,out:null};if(l.type=='in'&&!byName[l.name].in)byName[l.name].in=l.time;if(l.type=='out')byName[l.name].out=l.time;});let rows='';Object.keys(assign).filter(k=>assign[k].deptId==dept.id).forEach(wId=>{let w=workers[wId];let name=w?w.name:wId;let sch=assign[wId];let b=byName[name]||{};let st='-';if(b.in){let diff=toMin(b.in.slice(0,5))-toMin(sch.start);st=diff<=10?'<span style="color:#16a34a">✅ Убагында</span>':`<span style="color:#dc2626;font-weight:700">⚠️ Кечикти ${diff}м</span>`;}rows+=`<tr><td><b>${name}</b></td><td>${sch.start}-${sch.end}</td><td>${b.in||'-'}</td><td>${b.out||'-'}</td><td>${st}</td></tr>`;});document.getElementById('histBody').innerHTML=rows||'<tr><td colspan=5 style="text-align:center;color:#94a3b8">Бүгүн эч ким келе элек</td></tr>';}
-function render(){
-let assign=getAssign();
-let assignedIds=Object.keys(assign).filter(k=>assign[k].deptId==dept.id);
-let inH='',outH='',assignH='';
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Бөлүм</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f8fafc] p-3 font-sans">
+<div class="max-w-[900px] mx-auto">
+<div class="bg-white p-3 rounded-xl shadow-sm flex justify-between items-center mb-3">
+<div>
+<a href="admin.html?v=1008" class="text-blue-600 text-sm">← Артка</a>
+<h1 id="deptTitle" class="font-bold text-[18px] mt-1">Бөлүм</h1>
+<div id="stats" class="flex gap-2 mt-2 text-[11px]"></div>
+</div>
+<button onclick="location.reload()" class="bg-gray-100 px-3 py-1.5 rounded-lg text-sm">🔄</button>
+</div>
 
-// === МЫНА НЕГИЗГИ ОҢДОО ===
-Object.keys(workers).forEach(wId=>{
-let w=workers[wId];let cur=assign[wId];
-if(cur && cur.deptId==dept.id){
-// Ушул бөлүмдө
-assignH+=`<div class="assign assigned"><div><b>${w.name}</b><br><small>✅ Ушул бөлүмдө</small></div><div style="display:flex;gap:4px"><input class="time" type="time" value="${cur.start}" onchange="updTime('${wId}','start',this.value)"><input class="time" type="time" value="${cur.end}" onchange="updTime('${wId}','end',this.value)"><button class="btn btn-red" onclick="unassign('${wId}')">✕</button></div></div>`;
-}else{
-// Бош - башка бөлүмдө болсо дагы ушундай чыгат, бирок басканда которулат. Кайда экени жазылбайт.
-assignH+=`<div class="assign"><div><b>${w.name}</b><br><small style="color:#64748b">Бош</small></div><div style="display:flex;gap:4px"><input class="time" id="ns-${wId}" type="time" value="08:00"><input class="time" id="ne-${wId}" type="time" value="17:00"><button class="btn btn-dark" onclick="doAssign('${wId}')">+ Бекитүү</button></div></div>`;
-}
+<div id="list" class="space-y-2"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
+const db=firebase.database();
+const params = new URLSearchParams(location.search);
+const deptName = params.get('d') || params.get('dept') || 'Администрация';
+document.getElementById('deptTitle').innerText = deptName;
+
+db.ref('osh/pins').on('value', snapPins=>{
+  db.ref('osh/workers').on('value', snapWorkers=>{
+    let pins = snapPins.val()||{};
+    let workers = snapWorkers.val()||{};
+    let allInDept = Object.entries(pins).filter(([k,v])=>v.bolum==deptName);
+    let workersInDept = Object.values(workers).filter(w=>w.bolum==deptName);
+
+    document.getElementById('stats').innerHTML = `
+      <span class="bg-green-100 text-green-700 px-2 py-1 rounded">Жумушта ${workersInDept.length}</span>
+      <span class="bg-gray-100 px-2 py-1 rounded">Бардыгы ${allInDept.length}</span>
+      <span class="bg-red-50 text-red-600 px-2 py-1 rounded">Сыртта ${allInDept.length - workersInDept.length}</span>
+    `;
+
+    let html="";
+    allInDept.forEach(([pin, p])=>{
+      let w = workersInDept.find(x=>x.pin==pin);
+      let isInside =!!w;
+      html+=`<div class="bg-white p-3 rounded-xl shadow-sm border-l-4 ${isInside?'border-l-green-500':'border-l-gray-300'} flex justify-between items-center">
+        <div>
+          <div class="font-bold text-[14px]">${p.name} <span class="text-[11px] text-gray-500">#${pin}</span></div>
+          <div class="text-[11px] ${isInside?'text-green-600':'text-gray-500'}">${isInside?'🟢 Жумушта - '+new Date(w.time).toLocaleTimeString():'⚪ Сыртта'}</div>
+          ${w?`<div class="text-[10px] text-gray-400">📍 ${w.lat?.toFixed(4)}, ${w.lng?.toFixed(4)}</div>`:''}
+        </div>
+        <div class="text-right">
+          ${isInside?`<button onclick="kick('${w.pin}','${Object.keys(workers).find(k=>workers[k].pin==pin)}')" class="text-[11px] bg-red-50 text-red-600 px-2 py-1 rounded">Чыгаруу</button>`:`<span class="text-[10px] text-gray-400">Жок</span>`}
+        </div>
+      </div>`;
+    });
+    if(allInDept.length==0) html=`<div class="bg-white p-6 rounded-xl text-center text-gray-400">Бул бөлүмдө кызматкер жок</div>`;
+    document.getElementById('list').innerHTML=html;
+  });
 });
-assignedIds.forEach(wId=>{let w=workers[wId];if(!w)return;let sch=assign[wId];if(w._inside)inH+=`<div class="assign assigned"><b>${w.name}</b><small>${sch.start}-${sch.end}</small></div>`;else outH+=`<div class="assign"><b>${w.name}</b><small>${sch.start}-${sch.end}</small></div>`;});
-document.getElementById('assignList').innerHTML=assignH||'Жок';
-document.getElementById('inL').innerHTML=inH||'<small>Жок</small>';
-document.getElementById('outL').innerHTML=outH||'<small>Баары ордунда</small>';
-document.getElementById('inC').innerText=assignedIds.filter(id=>workers[id]?._inside).length;
-document.getElementById('outC').innerText=assignedIds.filter(id=>!workers[id]?._inside).length;
-renderHist();renderZones();
+
+window.kick=function(pin, workerKey){
+  if(!confirm('Чыгарабызбы?')) return;
+  db.ref('osh/workers/'+workerKey).remove();
 }
-window.doAssign=function(wId){let s=document.getElementById('ns-'+wId).value||'08:00';let e=document.getElementById('ne-'+wId).value||'17:00';let a=getAssign();a[wId]={deptId:dept.id,start:s,end:e};saveAssign(a);render();};
-window.updTime=function(wId,f,v){let a=getAssign();if(!a[wId])return;a[wId][f]=v;saveAssign(a);renderHist();};
-window.unassign=function(wId){let a=getAssign();delete a[wId];saveAssign(a);render();};
-db.ref('osh/assign_v3').on('value',s=>{if(s.val()){localStorage.setItem('kadamjai_assign_v3',JSON.stringify(s.val()));render();}});
-function checkInside(lat,lng){for(let z of zones){let p=z.points;let ok=false;for(let i=0,j=p.length-1;i<p.length;j=i++){let xi=p[i][0],yi=p[i][1],xj=p[j][0],yj=p[j][1];let inter=((yi>lng)!=(yj>lng))&&(lat<(xj-xi)*(lng-yi)/(yj-yi)+xi);if(inter)ok=!ok;}if(ok)return true;}return false;}
-db.ref('osh/workers').on('value',snap=>{let nw={};snap.forEach(ch=>{let v=ch.val();let ins=checkInside(v.lat,v.lng);v._inside=ins;nw[ch.key]=v;let was=prevState[ch.key];if(was!==undefined && was!==ins && getAssign()[ch.key]?.deptId==dept.id){addHist(v.name,ins?'in':'out');}prevState[ch.key]=ins;});workers=nw;render();});
-render();
-</script></body></html>
+</script>
+</body>
+</html>
