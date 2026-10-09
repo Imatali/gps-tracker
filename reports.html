@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Отчеттор</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-[#f8fafc] p-3 font-sans"><div class="max-w-[1200px] mx-auto"><div class="bg-white p-4 rounded-xl shadow mb-3"><div class="flex justify-between items-center"><div><a href="admin.html?v=1008" class="text-blue-600 text-sm">← Админка</a><h1 class="font-bold text-[20px]">📊 Отчеттор</h1></div><input id="date" type="date" class="border p-2 rounded-lg text-sm"></div><div class="flex gap-2 mt-3"><button onclick="setR('day')" id="r_day" class="bg-black text-white px-3 py-1.5 rounded-full text-[12px]">Күндүк</button><button onclick="setR('week')" id="r_week" class="bg-gray-100 px-3 py-1.5 rounded-full text-[12px]">Жумалык</button><button onclick="setR('month')" id="r_month" class="bg-gray-100 px-3 py-1.5 rounded-full text-[12px]">Айлык</button><select id="deptFilter" onchange="load()" class="ml-auto border rounded-lg px-2 text-[12px]"><option value="all">Баардык бөлүм</option></select></div></div><div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3"></div><div id="report" class="space-y-2"></div></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
+firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});const db=firebase.database();
+let mode='day';document.getElementById('date').valueAsDate=new Date();
+function setR(m){mode=m;document.querySelectorAll('[id^=r_]').forEach(b=>b.className='bg-gray-100 px-3 py-1.5 rounded-full text-[12px]');document.getElementById('r_'+m).className='bg-black text-white px-3 py-1.5 rounded-full text-[12px]';load()}
+function hmToMin(hm){let [h,m]=hm.split(':').map(Number);return h*60+m}
+function minToHM(min){let h=Math.floor(min/60),m=min%60;return (h<10?'0':'')+h+':'+(m<10?'0':'')+m}
+db.ref('osh/pins').once('value',s=>{let v=s.val()||{};let depts=new Set(Object.values(v).map(x=>x.bolum));let sel=document.getElementById('deptFilter');depts.forEach(d=>{let o=document.createElement('option');o.value=d;o.innerText=d;sel.appendChild(o)})})
+async function load(){
+ let date=document.getElementById('date').value; if(!date) return;
+ let dept=document.getElementById('deptFilter').value;
+ let pinsSnap=await db.ref('osh/pins').once('value'); let pins=pinsSnap.val()||{};
+ let all=Object.entries(pins).filter(([k,v])=>dept=='all'||v.bolum==dept);
+ let html=""; let late=0, earlyLunch=0, lateLunch=0, earlyLeave=0;
+ for(let [pin, info] of all){
+  let sched=info.schedule||{start:'08:00',lunchS:'12:00',lunchE:'13:00',end:'17:00'};
+  let logsSnap=await db.ref(`osh/logs/${date}/${pin}`).once('value'); let logs=Object.values(logsSnap.val()||{}).sort((a,b)=>a.t-b.t);
+  if(!logs.length){html+=`<div class="bg-white p-3 rounded-xl border-l-4 border-l-gray-300"><div class="font-bold text-[13px]">${info.name} #${pin} <span class="text-[10px] text-gray-400">${info.bolum}</span></div><div class="text-[11px] text-gray-400">Маалымат жок (бүгүн жумушка келе элек)</div></div>`;continue;}
+  let firstIn=logs.find(l=>l.inside); let lastOut=[...logs].reverse().find(l=>!l.inside);
+  let lunchOut=logs.find(l=>!l.inside && new Date(l.t).getHours()>=11 && new Date(l.t).getHours()<=13);
+  let lunchIn=logs.find(l=>l.inside && lunchOut && l.t>lunchOut.t);
+  let status=[]; let cls='border-l-green-500';
+  if(firstIn){
+   let ft=new Date(firstIn.t); let mins=ft.getHours()*60+ft.getMinutes();
+   let diff=mins-hmToMin(sched.start);
+   if(diff>5){status.push(`🔴 Кечикти: ${diff} мүн (${minToHM(mins)} / ${sched.start})`); cls='border-l-red-500'; late++}
+   else status.push(`🟢 Келди: ${minToHM(mins)}`)
+  }
+  if(lunchOut){
+   let ft=new Date(lunchOut.t); let mins=ft.getHours()*60+ft.getMinutes();
+   if(mins < hmToMin(sched.lunchS)-5){status.push(`🟡 Обетке эрте чыкты: ${minToHM(mins)} / ${sched.lunchS}`); earlyLunch++}
+  }
+  if(lunchIn){
+   let ft=new Date(lunchIn.t); let mins=ft.getHours()*60+ft.getMinutes();
+   if(mins > hmToMin(sched.lunchE)+5){status.push(`🟠 Обеттен кеч келди: ${minToHM(mins)} / ${sched.lunchE}`); lateLunch++}
+  }
+  if(lastOut){
+   let ft=new Date(lastOut.t); let mins=ft.getHours()*60+ft.getMinutes();
+   if(mins < hmToMin(sched.end)-5){status.push(`🔴 Эрте кетти: ${minToHM(mins)} / ${sched.end}`); cls='border-l-orange-500'; earlyLeave++}
+   else status.push(`🏁 Кетти: ${minToHM(mins)}`)
+  }
+  html+=`<div class="bg-white p-3 rounded-xl shadow-sm border-l-4 ${cls}"><div class="flex justify-between"><div class="font-bold text-[13px]">${info.name} <span class="text-[10px] text-gray-500">#${pin} • ${info.bolum}</span></div><div class="text-[10px] text-gray-400">${sched.start} - ${sched.end} | ${sched.lunchS}-${sched.lunchE}</div></div><div class="mt-1 space-y-1 text-[11px]">${status.map(s=>`<div>${s}</div>`).join('')}</div></div>`
+ }
+ document.getElementById('summary').innerHTML=`<div class="bg-red-50 p-3 rounded-xl"><div class="text-[11px] text-red-500">Кечиккен</div><div class="font-bold text-[18px] text-red-600">${late}</div></div><div class="bg-yellow-50 p-3 rounded-xl"><div class="text-[11px] text-yellow-600">Обетке эрте</div><div class="font-bold text-[18px]">${earlyLunch}</div></div><div class="bg-orange-50 p-3 rounded-xl"><div class="text-[11px] text-orange-600">Обеттен кеч</div><div class="font-bold text-[18px]">${lateLunch}</div></div><div class="bg-gray-100 p-3 rounded-xl"><div class="text-[11px]">Эрте кеткен</div><div class="font-bold text-[18px]">${earlyLeave}</div></div>`;
+ document.getElementById('report').innerHTML=html||'<div class="bg-white p-6 rounded-xl text-center text-gray-400">Маалымат жок</div>';
+}
+load();
+</script></body></html>
