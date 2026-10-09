@@ -2,58 +2,72 @@
 <html lang="ky">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Кадамжай Админ v1008-FINAL-3</title>
+<title>Кадамжай Админ v1008-FINAL-4</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>.card-shadow{box-shadow:0 2px 12px #0000000d}</style>
 </head>
 <body class="bg-[#f8fafc] p-3 font-sans">
 <div class="max-w-[1450px] mx-auto">
 
-<!-- HEADER + ФИЛЬТРЛЕР ОҢДОЛГОН -->
 <div class="bg-white p-4 rounded-xl card-shadow mb-3">
-<div class="flex flex-wrap justify-between items-center gap-2">
-<div><h1 class="font-bold text-[15px]">● Кадамжай ЖДПБ - Көзөмөл</h1><p class="text-[11px] text-gray-500 mt-1">Бөлүм <span id="deptCount">8</span> | Бүгүн <span id="today"></span></p></div>
-<div class="flex gap-2 flex-wrap items-center">
-<a href="reports.html?v=1020" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[13px] font-bold">📊 Админка / Табель</a>
-<a href="worker.html?v=1006" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px] font-bold">👷 Жумушчу</a>
-<button onclick="addDept()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ Бөлүм</button>
+<div class="flex justify-between items-center gap-2 flex-wrap">
+<div><h1 class="font-bold text-[15px]">● Кадамжай ЖДПБ - Көзөмөл</h1><p class="text-[11px] text-gray-500">Бөлүм <span id="deptCount">8</span> | <span id="today"></span></p></div>
+<div class="flex gap-2"><a href="reports.html?v=1020" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[13px] font-bold">📊 Админка</a><a href="worker.html?v=1006" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px] font-bold">👷 Жумушчу</a><button onclick="addDept()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ Бөлүм</button></div>
+</div>
+
+<!-- ФИЛЬТРЛЕР - ЦИФРА 2 ЭСЕ ЧОҢ -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 mt-3">
+<div class="bg-orange-50 border border-orange-200 px-3 py-2 rounded-xl text-center">
+<div class="text-[11px] font-bold text-orange-800 leading-tight">🕘 Эрте менен кечиккендер</div>
+<div id="f_late" class="text-[28px] font-black text-orange-700 leading-none mt-1">0</div>
+</div>
+<div class="bg-yellow-50 border border-yellow-200 px-3 py-2 rounded-xl text-center">
+<div class="text-[11px] font-bold text-yellow-800 leading-tight">🍽️ Обетке эрте кеткендер</div>
+<div id="f_lunchOut" class="text-[28px] font-black text-yellow-700 leading-none mt-1">0</div>
+</div>
+<div class="bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl text-center">
+<div class="text-[11px] font-bold text-amber-900 leading-tight">⏰ Обеттен кеч келгендер</div>
+<div id="f_lunchIn" class="text-[28px] font-black text-amber-800 leading-none mt-1">0</div>
+</div>
+<div class="bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl text-center">
+<div class="text-[11px] font-bold text-blue-800 leading-tight">🏃 Жумуштан эрте кеткендер</div>
+<div id="f_early" class="text-[28px] font-black text-blue-700 leading-none mt-1">0</div>
+</div>
+<div class="bg-red-50 border border-red-200 px-3 py-2 rounded-xl text-center">
+<div class="text-[11px] font-bold text-red-800 leading-tight">❌ Жумушка келбегендер</div>
+<div id="f_absent" class="text-[28px] font-black text-red-700 leading-none mt-1">0</div>
 </div>
 </div>
 
-<!-- ЖАЗУУЛАР ТУУРА + ЧОҢ -->
-<div class="flex gap-2 mt-3 flex-wrap">
-<span id="f_late" class="bg-orange-100 text-orange-800 px-3.5 py-2 rounded-xl text-[13px] font-bold border border-orange-200">🕘 Эрте менен кечиккендер 0</span>
-<span id="f_lunchOut" class="bg-yellow-100 text-yellow-800 px-3.5 py-2 rounded-xl text-[13px] font-bold border border-yellow-200">🍽️ Обетке эрте кеткендер 0</span>
-<span id="f_lunchIn" class="bg-amber-100 text-amber-900 px-3.5 py-2 rounded-xl text-[13px] font-bold border border-amber-200">⏰ Обеттен кеч келгендер 0</span>
-<span id="f_early" class="bg-blue-100 text-blue-800 px-3.5 py-2 rounded-xl text-[13px] font-bold border border-blue-200">🏃 Жумуштан эрте кеткендер 0</span>
-<span id="f_absent" class="bg-red-100 text-red-800 px-3.5 py-2 rounded-xl text-[13px] font-bold border border-red-200">❌ Жумушка келбегендер 0</span>
-<input id="search" oninput="render()" placeholder="🔍 Издөө..." class="border rounded-xl px-3 py-2 text-[13px] ml-auto w-[140px]">
-</div>
+<div class="flex justify-end mt-2"><input id="search" oninput="render()" placeholder="🔍 Бөлүм издөө..." class="border rounded-xl px-3 py-2 text-[13px] w-[160px]"></div>
 </div>
 
-<!-- GRID -->
 <div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
 
-<div class="mt-3 bg-white border p-3 rounded-xl flex justify-between items-center flex-wrap gap-2 text-[12px]">
-<span><b>👷 Жумушчу:</b> worker.html | <b class="text-purple-700">Админка:</b> reports.html</span>
-<button onclick="location.reload()" class="bg-gray-100 px-3 py-1.5 rounded-lg">🔄 Жаңыртуу</button>
+<!-- ПИН БЕРҮҮ + ФИЛЬТР КОШУЛДУ -->
+<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
+<div class="flex justify-between items-center flex-wrap gap-2 mb-2">
+<h3 class="font-bold">👥 ПИН берүү + График</h3>
+<div class="flex gap-2">
+<input id="pinSearch" oninput="render()" placeholder="🔍 Аты / ПИН / Бөлүм боюнча издөө..." class="border rounded-lg px-3 py-2 text-[13px] w-[260px] bg-yellow-50">
+<button onclick="document.getElementById('pinSearch').value='';render()" class="bg-gray-100 px-3 py-2 rounded-lg text-[12px]">✕</button>
+</div>
 </div>
 
-<!-- PIN -->
-<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
-<h3 class="font-bold mb-2">👥 ПИН берүү + График</h3>
-<div class="flex gap-2 flex-wrap items-end">
-<input id="nameInput" placeholder="Аты-жөнү" class="border p-2.5 rounded-lg flex-1 min-w-[150px]">
-<select id="deptInput" class="border p-2.5 rounded-lg"></select>
-<div class="flex gap-1 bg-gray-50 p-1 rounded-lg border">
-<input id="s1" value="08:00" title="Кирүү" class="border w-[60px] p-1.5 rounded text-[12px]"><input id="s2" value="12:00" title="Обет кетүү" class="border w-[60px] p-1.5 rounded text-[12px]"><input id="s3" value="13:00" title="Обет келүү" class="border w-[60px] p-1.5 rounded text-[12px]"><input id="s4" value="17:00" title="Чыгуу" class="border w-[60px] p-1.5 rounded text-[12px]">
+<div class="flex gap-2 flex-wrap items-end bg-gray-50 p-2 rounded-lg border">
+<input id="nameInput" placeholder="Аты-жөнү" class="border p-2.5 rounded-lg flex-1 min-w-[150px] bg-white">
+<select id="deptInput" class="border p-2.5 rounded-lg bg-white"></select>
+<div class="flex gap-1">
+<input id="s1" value="08:00" class="border w-[60px] p-1.5 rounded text-[12px]"><input id="s2" value="12:00" class="border w-[60px] p-1.5 rounded text-[12px]"><input id="s3" value="13:00" class="border w-[60px] p-1.5 rounded text-[12px]"><input id="s4" value="17:00" class="border w-[60px] p-1.5 rounded text-[12px]">
 </div>
 <button onclick="addWorker()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold">+ ПИН</button>
 </div>
-<table class="w-full text-[13px] mt-3" id="pinsTable"></table>
+
+<div class="mt-2 text-[11px] text-gray-500">Табылды: <b id="pinFound">0</b></div>
+<table class="w-full text-[13px] mt-1" id="pinsTable"></table>
 </div>
 
-<div class="text-[11px] text-gray-400 text-center mt-3">v1008-FINAL-3 | Жазуулар оңдолду + чоңойтулду</div>
+<div class="text-[11px] text-gray-400 text-center mt-3">v1008-FINAL-4 | Цифра чоң + ПИН издөө</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -76,49 +90,50 @@ function render(){
   let sel=document.getElementById('deptInput'); let cur=sel.value;
   sel.innerHTML=depts.map(d=>`<option>${d}</option>`).join(''); if(cur) sel.value=cur;
 
-  // ФИЛЬТР ЭСЕБІ
   let late=0, lunchOut=0, lunchIn=0, early=0, absent=0;
   Object.keys(allPins).forEach(pin=>{
-    let log=allLogs[pin];
     let worker=Object.values(allWorkers).find(w=>w.pin==pin);
     if(!worker){ absent++; return; }
-    if(log){
-      if(log.late) late++;
-      if(log.lunchEarly) lunchOut++;
-      if(log.lunchLate) lunchIn++;
-      if(log.earlyLeave) early++;
-    }
+    let log=allLogs[pin];
+    if(log){ if(log.late) late++; if(log.lunchEarly) lunchOut++; if(log.lunchLate) lunchIn++; if(log.earlyLeave) early++; }
   });
-  document.getElementById('f_late').innerText='🕘 Эрте менен кечиккендер '+late;
-  document.getElementById('f_lunchOut').innerText='🍽️ Обетке эрте кеткендер '+lunchOut;
-  document.getElementById('f_lunchIn').innerText='⏰ Обеттен кеч келгендер '+lunchIn;
-  document.getElementById('f_early').innerText='🏃 Жумуштан эрте кеткендер '+early;
-  document.getElementById('f_absent').innerText='❌ Жумушка келбегендер '+absent;
+  document.getElementById('f_late').innerText=late;
+  document.getElementById('f_lunchOut').innerText=lunchOut;
+  document.getElementById('f_lunchIn').innerText=lunchIn;
+  document.getElementById('f_early').innerText=early;
+  document.getElementById('f_absent').innerText=absent;
 
   let q=(document.getElementById('search').value||'').toLowerCase();
   let html="";
   depts.filter(d=>d.toLowerCase().includes(q)).forEach((d,i)=>{
     let all = Object.values(allPins).filter(x=>x.bolum==d).length;
     let inside = Object.values(allWorkers).filter(x=>x.bolum==d).length;
-    html+=`<div class="bg-white rounded-xl p-3 card-shadow border-t-4 ${colors[i%colors.length]} relative">
-      <div class="flex justify-between items-start"><div class="font-bold text-[12px]">${d.toUpperCase()}</div><button onclick="event.stopPropagation(); delDept('${d}')" class="bg-red-50 text-red-600 w-6 h-6 rounded-full text-[11px]">✕</button></div>
-      <div onclick="filterDept('${d}')" class="cursor-pointer"><div class="mt-2 text-[10px] text-gray-500">ЖУМУШТА<br><b class="text-[16px] text-black">${inside}</b></div><div class="flex gap-4 mt-1"><div class="text-[10px] text-gray-500">СЫРТТА<br><b class="text-black">${Math.max(0,all-inside)}</b></div><div class="text-[10px] text-gray-500">БАРДЫГЫ<br><b class="text-black">${all}</b></div></div><div class="mt-2 text-[10px] bg-green-50 text-green-700 px-2.5 py-1 rounded-full border inline-block">📍 Карта</div></div>
-    </div>`;
+    html+=`<div class="bg-white rounded-xl p-3 card-shadow border-t-4 ${colors[i%colors.length]}"><div class="flex justify-between"><div class="font-bold text-[12px]">${d.toUpperCase()}</div><button onclick="delDept('${d}')" class="bg-red-50 text-red-600 w-6 h-6 rounded-full text-[11px]">✕</button></div><div onclick="filterDept('${d}')" class="cursor-pointer"><div class="mt-2 text-[10px] text-gray-500">ЖУМУШТА<br><b class="text-[16px]">${inside}</b></div><div class="flex gap-4 mt-1"><div class="text-[10px]">СЫРТТА<br><b>${Math.max(0,all-inside)}</b></div><div class="text-[10px]">БАРДЫГЫ<br><b>${all}</b></div></div></div></div>`;
   });
-  html+=`<div class="border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-blue-600 text-sm cursor-pointer bg-white" onclick="addDept()"><span class="text-2xl">+</span>Бөлүм кошуу</div>`;
+  html+=`<div class="border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-blue-600 bg-white cursor-pointer" onclick="addDept()"><span class="text-2xl">+</span>Бөлүм</div>`;
   document.getElementById('grid').innerHTML=html;
 
-  let h='<tr class="bg-gray-50 text-[11px]"><th class="p-2 text-left">Аты</th><th class="p-2">Бөлүм</th><th class="p-2">ПИН</th><th class="p-2">Тел</th><th class="p-2"></th></tr>';
+  // ПИН ИЗДӨӨ ФИЛЬТР
+  let pq=(document.getElementById('pinSearch')?.value||'').toLowerCase();
+  let h='<tr class="bg-gray-50 text-[11px]"><th class="p-2 text-left">Аты</th><th class="p-2">Бөлүм</th><th class="p-2">ПИН / График</th><th class="p-2">Тел</th><th class="p-2"></th></tr>';
+  let cnt=0;
   for(let p in allPins){
-    let v=allPins[p]; let phone=v.deviceId?`✅ ${v.deviceId.slice(0,6)}<br><button onclick="resetPin('${p}')" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[11px]">🔄 Сброс</button>`:`❌ Жок`;
-    h+=`<tr class="border-t"><td class="p-2">${v.name}</td><td class="p-2">${v.bolum}</td><td class="p-2"><b>${p}</b></td><td class="p-2 text-[11px]">${phone}</td><td class="p-2"><button onclick="delPin('${p}')" class="text-red-500">❌</button></td></tr>`;
+    let v=allPins[p];
+    let searchStr=(v.name+' '+v.bolum+' '+p).toLowerCase();
+    if(pq &&!searchStr.includes(pq)) continue;
+    cnt++;
+    let phone=v.deviceId?`✅ ${v.deviceId.slice(0,6)}<br><button onclick="resetPin('${p}')" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded text-[11px]">🔄 Сброс</button>`:`❌ Жок`;
+    let sched=v.schedule?`${v.schedule.start}-${v.schedule.end}`:'08:00-17:00';
+    h+=`<tr class="border-t"><td class="p-2 font-medium">${v.name}</td><td class="p-2">${v.bolum}</td><td class="p-2"><b>${p}</b><br><span class="text-[10px] text-gray-500">${sched}</span></td><td class="p-2 text-[11px]">${phone}</td><td class="p-2"><button onclick="delPin('${p}')" class="text-red-500">❌</button></td></tr>`;
   }
+  if(cnt==0) h+='<tr><td colspan=5 class="p-3 text-center text-gray-400">Табылган жок</td></tr>';
   document.getElementById('pinsTable').innerHTML=h;
+  if(document.getElementById('pinFound')) document.getElementById('pinFound').innerText=cnt;
 }
-window.addWorker=function(){let n=document.getElementById('nameInput').value.trim();let b=document.getElementById('deptInput').value;let s1=document.getElementById('s1').value,s2=document.getElementById('s2').value,s3=document.getElementById('s3').value,s4=document.getElementById('s4').value;if(!n){alert('Аты жаз');return;}let pin=Math.floor(1000+Math.random()*9000).toString();db.ref('osh/pins/'+pin).set({name:n,bolum:b,schedule:{start:s1,lunchS:s2,lunchE:s3,end:s4},deviceId:null,created:Date.now()}).then(()=>{document.getElementById('nameInput').value='';alert('✅ ПИН: '+pin);});}
+window.addWorker=function(){let n=document.getElementById('nameInput').value.trim();let b=document.getElementById('deptInput').value;let s1=document.getElementById('s1').value,s2=document.getElementById('s2').value,s3=document.getElementById('s3').value,s4=document.getElementById('s4').value;if(!n){alert('Аты жаз');return;}let pin=Math.floor(1000+Math.random()*9000).toString();db.ref('osh/pins/'+pin).set({name:n,bolum:b,schedule:{start:s1,lunchS:s2,lunchE:s3,end:s4},deviceId:null}).then(()=>{document.getElementById('nameInput').value='';alert('✅ ПИН: '+pin);});}
 window.delPin=function(p){if(confirm(p+' өчүрөбү?'))db.ref('osh/pins/'+p).remove();}
 window.resetPin=function(p){if(confirm(p+' Сброс?'))db.ref('osh/pins/'+p).update({deviceId:null});}
-window.delDept=function(d){if(!confirm(d+' өчүрөбү? PIN дер да өчөт!'))return;depts=depts.filter(x=>x!=d);saveDepts();db.ref('osh/pins').once('value',s=>{let v=s.val()||{};Object.entries(v).forEach(([k,x])=>{if(x.bolum==d)db.ref('osh/pins/'+k).remove();});});db.ref('osh/settings/geofences/'+d).remove();render();}
+window.delDept=function(d){if(!confirm(d+' өчүрөбү?'))return;depts=depts.filter(x=>x!=d);saveDepts();db.ref('osh/pins').once('value',s=>{let v=s.val()||{};Object.entries(v).forEach(([k,x])=>{if(x.bolum==d)db.ref('osh/pins/'+k).remove();});});render();}
 window.filterDept=function(d){location.href='dept.html?d='+encodeURIComponent(d)+'&v=1012';}
 window.addDept=function(){let d=prompt('Жаңы бөлүм:');if(!d)return;if(depts.includes(d)){alert('Бар!');return;}depts.push(d);saveDepts();render();}
 render();
