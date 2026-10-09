@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Отчеттор v1016</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-[#f8fafc] p-3 font-sans"><div class="max-w-[1200px] mx-auto"><div class="bg-white p-4 rounded-xl shadow mb-3"><div class="flex justify-between items-center flex-wrap gap-2"><div><a href="admin.html?v=1016" class="text-blue-600 text-sm">← Админка</a><h1 class="font-bold text-[20px]">📊 Отчеттор</h1></div><div class="flex gap-2 items-center"><input id="date" type="date" class="border p-2 rounded-lg text-sm"><button onclick="exportExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-[12px] font-bold shadow">📥 Excel</button></div></div><div class="flex gap-2 mt-3 flex-wrap"><button onclick="setR('day')" id="r_day" class="bg-black text-white px-3 py-1.5 rounded-full text-[12px]">Күндүк</button><button onclick="setR('week')" id="r_week" class="bg-gray-100 px-3 py-1.5 rounded-full text-[12px]">Жумалык</button><button onclick="setR('month')" id="r_month" class="bg-gray-100 px-3 py-1.5 rounded-full text-[12px]">Айлык</button><select id="deptFilter" onchange="load()" class="border rounded-lg px-2 py-1 text-[12px]"><option value="all">Баардык бөлүм</option></select></div></div><div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3"></div><div id="report" class="space-y-2"></div></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
+<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Отчеттор v1017</title><script src="https://cdn.tailwindcss.com"></script></head><body class="bg-[#f8fafc] p-3 font-sans"><div class="max-w-[1200px] mx-auto"><div class="bg-white p-4 rounded-xl shadow mb-3"><div class="flex justify-between items-center flex-wrap gap-2"><div><a href="admin.html?v=1017" class="text-blue-600 text-sm">← Админка</a><h1 class="font-bold text-[20px]">📊 Отчеттор</h1></div><div class="flex gap-2 items-center"><input id="date" type="date" class="border p-2 rounded-lg text-sm"><button onclick="exportExcel()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-[12px] font-bold shadow">📥 Excel</button></div></div><div class="flex gap-2 mt-3 flex-wrap"><button onclick="setR('day')" id="r_day" class="bg-black text-white px-3 py-1.5 rounded-full text-[12px]">Күндүк</button><button onclick="setR('week')" id="r_week" class="bg-gray-100 px-3 py-1.5 rounded-full text-[12px]">Жумалык</button><button onclick="setR('month')" id="r_month" class="bg-gray-100 px-3 py-1.5 rounded-full text-[12px]">Айлык</button><select id="deptFilter" onchange="load()" class="border rounded-lg px-2 py-1 text-[12px]"><option value="all">Баардык бөлүм</option></select></div></div><div id="summary" class="grid grid-cols-4 gap-2 mb-3"></div><div id="report" class="space-y-2"></div></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});const db=firebase.database();
 let mode='day', lastData=[];
 document.getElementById('date').valueAsDate=new Date();
@@ -8,21 +8,62 @@ function minToHM(min){let h=Math.floor(min/60),m=min%60;return (h<10?'0':'')+h+'
 function formatDate(d){return d.toISOString().split('T')[0]}
 function getDates(){let base=new Date(document.getElementById('date').value);let dates=[];if(mode=='day')dates=[formatDate(base)];else if(mode=='week'){for(let i=0;i<7;i++){let d=new Date(base);d.setDate(base.getDate()-base.getDay()+i);dates.push(formatDate(d))}}else if(mode=='month'){let y=base.getFullYear(),m=base.getMonth();let days=new Date(y,m+1,0).getDate();for(let i=1;i<=days;i++){let d=new Date(y,m,i);dates.push(formatDate(d))}}return dates;}
 db.ref('osh/pins').once('value',s=>{let v=s.val()||{};let depts=new Set(Object.values(v).map(x=>x.bolum));let sel=document.getElementById('deptFilter');depts.forEach(d=>{let o=document.createElement('option');o.value=d;o.innerText=d;sel.appendChild(o)})})
-async function load(){let dept=document.getElementById('deptFilter').value;let pinsSnap=await db.ref('osh/pins').once('value');let pins=pinsSnap.val()||{};let all=Object.entries(pins).filter(([k,v])=>dept=='all'||v.bolum==dept);let dates=getDates();let html="";let late=0,earlyLunch=0,lateLunch=0,earlyLeave=0;lastData=[];for(let [pin,info] of all){let sched=info.schedule||{start:'08:00',lunchS:'12:00',lunchE:'13:00',end:'17:00'};let allLogs=[];for(let d of dates){let ls=await db.ref(`osh/logs/${d}/${pin}`).once('value');let lv=Object.values(ls.val()||{});lv.forEach(l=>allLogs.push({...l,date:d}));}allLogs.sort((a,b)=>a.t-b.t);if(!allLogs.length){html+=`<div class="bg-white p-3 rounded-xl border-l-4 border-l-gray-300"><div class="font-bold text-[13px]">${info.name} #${pin} <span class="text-[10px] text-gray-400">${info.bolum}</span></div><div class="text-[11px] text-gray-400">Маалымат жок</div></div>`;lastData.push({pin,name:info.name,bolum:info.bolum,keldi:'',kechikti:'',ketti:'',erteKetti:'',full:'Маалымат жок'});continue;}let status=[],cls='border-l-green-500',excelRow={pin,name:info.name,bolum:info.bolum};let firstIn=allLogs.find(l=>l.inside);let lastOut=[...allLogs].reverse().find(l=>!l.inside);if(firstIn){let ft=new Date(firstIn.t);let mins=ft.getHours()*60+ft.getMinutes();let diff=mins-hmToMin(sched.start);excelRow.keldi=minToHM(mins);if(diff>5){status.push(`🔴 Кечикти: ${diff} мүн`);excelRow.kechikti=diff;cls='border-l-red-500';late++;}else{status.push(`🟢 Келди: ${minToHM(mins)}`);excelRow.kechikti=0}}if(lastOut){let ft=new Date(lastOut.t);let mins=ft.getHours()*60+ft.getMinutes();excelRow.ketti=minToHM(mins);if(mins < hmToMin(sched.end)-5){status.push(`🔴 Эрте кетти`);excelRow.erteKetti='Ооба';earlyLeave++;}else excelRow.erteKetti='Жок'}let lunchOut=allLogs.find(l=>!l.inside && new Date(l.t).getHours()>=11 && new Date(l.t).getHours()<=14);if(lunchOut){let ft=new Date(lunchOut.t);let mins=ft.getHours()*60+ft.getMinutes();if(mins < hmToMin(sched.lunchS)-5){status.push(`🟡 Обетке эрте`);earlyLunch++;}}let lunchIn=lunchOut?allLogs.find(l=>l.inside && l.t>lunchOut.t):null;if(lunchIn){let ft=new Date(lunchIn.t);let mins=ft.getHours()*60+ft.getMinutes();if(mins > hmToMin(sched.lunchE)+5){status.push(`🟠 Обеттен кеч`);lateLunch++;}}lastData.push({pin,name:info.name,bolum:info.bolum,...excelRow,full:status.join(' | ')});html+=`<div class="bg-white p-3 rounded-xl shadow-sm border-l-4 ${cls}"><div class="flex justify-between"><div class="font-bold text-[13px]">${info.name} <span class="text-[10px] text-gray-500">#${pin} • ${info.bolum}</span></div><div class="text-[10px] text-gray-400">${sched.start}-${sched.end}</div></div><div class="mt-1 space-y-1 text-[11px]">${status.map(s=>`<div>${s}</div>`).join('')}</div></div>`;}document.getElementById('summary').innerHTML=`<div class="bg-red-50 p-3 rounded-xl"><div class="text-[11px] text-red-500">Кечиккен</div><div class="font-bold text-[18px]">${late}</div></div><div class="bg-yellow-50 p-3 rounded-xl"><div class="text-[11px] text-yellow-600">Обетке эрте</div><div class="font-bold">${earlyLunch}</div></div><div class="bg-orange-50 p-3 rounded-xl"><div class="text-[11px] text-orange-600">Обеттен кеч</div><div class="font-bold">${lateLunch}</div></div><div class="bg-gray-100 p-3 rounded-xl"><div class="text-[11px]">Эрте кеткен</div><div class="font-bold">${earlyLeave}</div></div>`;document.getElementById('report').innerHTML=html||'<div class="bg-white p-6 rounded-xl text-center text-gray-400">Маалымат жок</div>';}
+async function load(){
+ let dept=document.getElementById('deptFilter').value;
+ let pinsSnap=await db.ref('osh/pins').once('value'); let pins=pinsSnap.val()||{};
+ let all=Object.entries(pins).filter(([k,v])=>dept=='all'||v.bolum==dept);
+ let dates=getDates(); let html=""; lastData=[];
+ let c1=0,c2=0,c3=0,c4=0;
+ for(let [pin,info] of all){
+  let sched=info.schedule||{start:'08:00',lunchS:'12:00',lunchE:'13:00',end:'17:00'};
+  let allLogs=[];
+  for(let d of dates){let ls=await db.ref(`osh/logs/${d}/${pin}`).once('value'); let lv=Object.values(ls.val()||{}); lv.forEach(l=>allLogs.push({...l,date:d}));}
+  allLogs.sort((a,b)=>a.t-b.t);
+  let row={pin,name:info.name,bolum:info.bolum,D:'',E:'',F:'',G:'',H:''};
+  if(!allLogs.length){
+   row.H = dates.join(', ');
+   html+=`<div class="bg-white p-3 rounded-xl border-l-4 border-l-gray-400"><b class="text-[13px]">${info.name} #${pin}</b> <span class="text-[11px] text-red-500">Келген жок: ${row.H}</span></div>`;
+   c4++; lastData.push(row); continue;
+  }
+  let status=[];
+  let firstIn=allLogs.find(l=>l.inside);
+  if(firstIn){
+   let ft=new Date(firstIn.t); let mins=ft.getHours()*60+ft.getMinutes();
+   let diff=mins-hmToMin(sched.start);
+   if(diff>5){ row.D = `${minToHM(mins)} (${diff} мүн кеч)`; status.push(`🔴 Эртең менен кечикти: ${row.D}`); c1++; }
+  }
+  let lunchOut=allLogs.find(l=>!l.inside && new Date(l.t).getHours()>=11 && new Date(l.t).getHours()<=14);
+  if(lunchOut){
+   let ft=new Date(lunchOut.t); let mins=ft.getHours()*60+ft.getMinutes();
+   if(mins < hmToMin(sched.lunchS)-5){ row.E = `${minToHM(mins)} (эрте чыкты)`; status.push(`🟡 Обедке эрте: ${row.E}`); c2++; }
+   let lunchIn=allLogs.find(l=>l.inside && l.t>lunchOut.t);
+   if(lunchIn){
+    let ft2=new Date(lunchIn.t); let mins2=ft2.getHours()*60+ft2.getMinutes();
+    if(mins2 > hmToMin(sched.lunchE)+5){ row.F = `${minToHM(mins2)} (${mins2-hmToMin(sched.lunchE)} мүн кеч)`; status.push(`🟠 Обеттен кеч: ${row.F}`); c3++; }
+   }
+  }
+  let lastOut=[...allLogs].reverse().find(l=>!l.inside);
+  if(lastOut){
+   let ft=new Date(lastOut.t); let mins=ft.getHours()*60+ft.getMinutes();
+   if(mins < hmToMin(sched.end)-15){ row.G = `${minToHM(mins)} (эрте кетти)`; status.push(`🔴 Жумуштан эрте: ${row.G}`); }
+  }
+  let cls=row.D||row.G||row.H?'border-l-red-500':'border-l-green-500';
+  html+=`<div class="bg-white p-3 rounded-xl shadow-sm border-l-4 ${cls}"><div class="font-bold text-[13px]">${info.name} <span class="text-[10px] text-gray-500">#${pin} • ${info.bolum}</span></div><div class="mt-1 text-[11px]">${status.length?status.join('<br>'):'🟢 Норма'}</div></div>`;
+  lastData.push(row);
+ }
+ document.getElementById('summary').innerHTML=`<div class="bg-red-50 p-2 rounded-xl"><div class="text-[10px]">Эртең менен кеч</div><b>${c1}</b></div><div class="bg-yellow-50 p-2 rounded-xl"><div class="text-[10px]">Обедке эрте</div><b>${c2}</b></div><div class="bg-orange-50 p-2 rounded-xl"><div class="text-[10px]">Обеттен кеч</div><b>${c3}</b></div><div class="bg-gray-100 p-2 rounded-xl"><div class="text-[10px]">Келбеген</div><b>${c4}</b></div>`;
+ document.getElementById('report').innerHTML=html;
+}
 function exportExcel(){
  if(!lastData.length) return alert('Отчет бош');
- let table='<table border="1"><tr><th>PIN</th><th>Аты</th><th>Бөлүм</th><th>Келди</th><th>Кечиккен (мүн)</th><th>Кетти</th><th>Эрте кетти</th><th>Толук статус</th></tr>';
+ let table=`<table border="1"><tr style="font-weight:bold;background:#e2e8f0;"><th>PIN</th><th>Аты</th><th>Бөлүм</th><th>Эрте менен кечикти</th><th>Обедке эрте кетти</th><th>Обеттен кеч келди</th><th>Жумуштан эрте кетти</th><th>Жумушка келген жок</th></tr>`;
  lastData.forEach(d=>{
-  table+=`<tr><td>${d.pin}</td><td>${d.name}</td><td>${d.bolum}</td><td>${d.keldi||''}</td><td>${d.kechikti||''}</td><td>${d.ketti||''}</td><td>${d.erteKetti||''}</td><td>${d.full||''}</td></tr>`;
+  table+=`<tr><td>${d.pin}</td><td>${d.name}</td><td>${d.bolum}</td><td>${d.D||''}</td><td>${d.E||''}</td><td>${d.F||''}</td><td>${d.G||''}</td><td style="color:red;">${d.H||''}</td></tr>`;
  });
  table+='</table>';
  let blob=new Blob(['\uFEFF<html><head><meta charset="utf-8"></head><body>'+table+'</body></html>'],{type:'application/vnd.ms-excel'});
  let url=URL.createObjectURL(blob);
- let a=document.createElement('a');
- a.href=url;
- a.download=`otchet_${document.getElementById('date').value}_${mode}.xls`;
- a.click();
- setTimeout(()=>URL.revokeObjectURL(url),1000);
+ let a=document.createElement('a'); a.href=url; a.download=`otchet_${document.getElementById('date').value}_${mode}.xls`; a.click();
 }
 load();
 </script></body></html>
