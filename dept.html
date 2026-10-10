@@ -8,12 +8,15 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <style>
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f1f5f9;color:#172033}.head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:12px;background:#fff;box-shadow:0 2px 6px #0001}.btn{border:0;border-radius:8px;padding:9px 12px;font-weight:bold;cursor:pointer}.orange{background:#f97316;color:#fff}.green{background:#16a34a;color:#fff}.red{background:#dc2626;color:#fff}.dark{background:#1f2937;color:#fff}.main{display:grid;grid-template-columns:320px minmax(0,1fr);gap:10px;padding:10px}.card{background:#fff;border-radius:12px;padding:12px;min-width:0}.worker{padding:10px;border:1px solid #e2e8f0;border-radius:9px;margin-top:8px;background:#f8fafc}.muted{font-size:12px;color:#64748b}#map{height:75vh;border-radius:10px}#msg{font-size:12px;margin-top:8px;padding:8px;background:#dbeafe;border-radius:8px}#status{font-size:12px;color:#64748b;margin-top:8px}@media(max-width:700px){.main{grid-template-columns:1fr}#map{height:50vh}}
+#authGate{position:fixed;inset:0;z-index:10000;background:#f1f5f9;display:flex;align-items:center;justify-content:center;padding:16px}#authBox{width:min(430px,100%);background:white;border-radius:16px;padding:24px;box-shadow:0 8px 24px #0002}#authBox input{width:100%;padding:13px;margin:7px 0;border:1px solid #cbd5e1;border-radius:8px;font-size:16px}#authBox button{width:100%;padding:12px;margin-top:8px}#authError{font-size:13px;color:#b91c1c;min-height:22px;overflow-wrap:anywhere}#authUser{font-size:12px;color:#475569;margin-top:5px}
 </style>
 </head>
 <body>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1105</div></div><div><button class="btn orange" id="drawBtn">📐 Чийүүнү баштоо</button> <button class="btn dark" id="finishBtn" disabled>✅ Чийүүнү бүтүрүү</button> <button class="btn dark" id="undoBtn" disabled>↶ Акыркы чекит</button> <button class="btn green" id="saveBtn">💾 Сактоо</button> <button class="btn red" id="clearBtn">🗑️ Өчүр</button> <button class="btn dark" id="backBtn">← Админ</button></div></div>
+<div id="authGate"><div id="authBox"><h2>🔒 Администратордун кирүүсү</h2><p id="authInfo">Firebase текшерилүүдө...</p><form id="authForm" hidden><input id="authEmail" type="email" autocomplete="username" placeholder="Электрондук почта" required><input id="authPassword" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn green" type="submit">Кирүү</button></form><p id="authError" role="alert"></p><button class="btn dark" id="authReturn" type="button">← Админ барагына кайтуу</button></div></div>
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1106</div></div><div><button class="btn orange" id="drawBtn">📐 Чийүүнү баштоо</button> <button class="btn dark" id="finishBtn" disabled>✅ Чийүүнү бүтүрүү</button> <button class="btn dark" id="undoBtn" disabled>↶ Акыркы чекит</button> <button class="btn green" id="saveBtn">💾 Сактоо</button> <button class="btn red" id="clearBtn">🗑️ Өчүр</button> <button class="btn dark" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">Чыгуу</button></div></div>
 <div class="main"><div class="card"><strong>👥 <span id="dLabel"></span> — <span id="wCnt">0</span> кызматкер</strong><div id="status">Firebase'ден жүктөлүүдө...</div><div id="wList"></div></div><div class="card"><div id="map"></div><div id="msg">Карта жүктөлүүдө...</div></div></div>
 <script>
 'use strict';
@@ -31,7 +34,57 @@ else { title.textContent=deptId; label.textContent=deptId; }
 const storageKey = 'gps_area_' + deptId;
 // Бөлүмдүн аталышы Firebase ачкычына коопсуз айландырылат.
 const areaPath = 'osh/deptAreas/byName/' + encodeURIComponent(deptId || '');
-const db = firebase.apps.length ? firebase.database() : (firebase.initializeApp({databaseURL:'https://gps-tracker-osh-default-rtdb.firebaseio.com'}),firebase.database());
+const ADMIN_UID = '5sQsmvDSAdUXqYsqDrcg8J0Ggcw1';
+const firebaseConfig = {
+  apiKey:'AIzaSyBQWMBefKYWiPQnJVHcANZLqkz2Vnt2VME',
+  authDomain:'gps-tracker-osh.firebaseapp.com',
+  databaseURL:'https://gps-tracker-osh-default-rtdb.firebaseio.com',
+  projectId:'gps-tracker-osh',
+  appId:'1:588347508048:web:1b6fd5417ff8f4e5f29855'
+};
+if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const auth=firebase.auth();
+let adminAuthorized=false;
+let dataListening=false;
+function requireAdmin(){
+  if(!adminAuthorized || !auth.currentUser || auth.currentUser.uid!==ADMIN_UID){
+    throw new Error('Администратордун уруксаты талап кылынат');
+  }
+}
+const authGate=document.getElementById('authGate');
+const authInfo=document.getElementById('authInfo');
+const authForm=document.getElementById('authForm');
+const authError=document.getElementById('authError');
+document.getElementById('authReturn').onclick=()=>location.href='admin.html?v=1108';
+document.getElementById('logoutBtn').onclick=()=>auth.signOut();
+authForm.onsubmit=async e=>{
+  e.preventDefault();
+  authError.textContent='';
+  const submit=authForm.querySelector('button[type=submit]');
+  submit.disabled=true;
+  try{
+    await auth.signInWithEmailAndPassword(document.getElementById('authEmail').value.trim(),document.getElementById('authPassword').value);
+    document.getElementById('authPassword').value='';
+  }catch(err){authError.textContent='Кирүү катасы: '+err.message;}
+  finally{submit.disabled=false;}
+};
+auth.onAuthStateChanged(user=>{
+  adminAuthorized=!!user && user.uid===ADMIN_UID;
+  if(adminAuthorized){
+    authError.textContent='';
+    authGate.style.display='none';
+    if(!dataListening){dataListening=true;startDataListeners();}
+    setTimeout(()=>map.invalidateSize(),100);
+  }else{
+    authGate.style.display='flex';
+    authForm.hidden=false;
+    authInfo.textContent=user?'Бул аккаунтка администратор укугу берилген эмес.':'Администратор аккаунтуңуз менен кириңиз.';
+    if(user && user.uid!==ADMIN_UID) auth.signOut().catch(()=>{});
+    if(dataListening){db.ref('osh/pins').off();db.ref(areaPath).off();dataListening=false;}
+    workerList.replaceChildren();replaceAreas([]);
+  }
+},err=>{authGate.style.display='flex';authForm.hidden=false;authInfo.textContent='Firebase текшерүү катасы';authError.textContent=err.message;});
 let remoteLoaded = false;
 let remoteAreas = null;
 const map = L.map('map',{doubleClickZoom:false}).setView([40.114,71.74],14);
@@ -64,9 +117,10 @@ function showWorkers(data){
   if(!list.length){const empty=document.createElement('div');empty.className='muted';empty.style.marginTop='12px';empty.textContent='Бул бөлүмдө кызматкер табылган жок. Админ панелинен PIN жазуусунун бөлүмүн текшериңиз.';workerList.appendChild(empty);}
   list.forEach(([pin,w])=>addWorker(w.name,pin,w.bolum||w.dept||''));
 }
-try {
-  if(deptId){db.ref('osh/pins').on('value',snap=>showWorkers(snap.val()),error=>{status.textContent='Firebase окуу катасы: '+error.message;});}
-} catch(error){status.textContent='Firebase баштоо катасы: '+error.message;}
+function startDataListeners(){
+  try{requireAdmin();if(deptId){db.ref('osh/pins').on('value',snap=>showWorkers(snap.val()),error=>{status.textContent='Firebase окуу катасы: '+error.message;});loadAreas();}}
+  catch(error){status.textContent='Firebase баштоо катасы: '+error.message;}
+}
 function savedAreas(){
  try{const raw=JSON.parse(localStorage.getItem(storageKey)||'[]');if(!Array.isArray(raw)||!raw.length)return[];return typeof raw[0]?.[0]==='number'?[raw]:raw;}catch{return[];}
 }
@@ -143,6 +197,7 @@ undoBtn.onclick=()=>{
 setTimeout(()=>map.invalidateSize(),250);
 window.addEventListener('resize',()=>map.invalidateSize());
 document.getElementById('saveBtn').onclick=async()=>{
+  try{requireAdmin();}catch(e){alert(e.message);return;}
   if(!deptId){alert('Бөлүм тандалган эмес');return;}
   if(!remoteLoaded){alert('Firebase жүктөлүп бүтө элек');return;}
   if(drawing){alert('Адегенде «Чийүүнү бүтүрүү» баскычын басыңыз');return;}
@@ -155,6 +210,7 @@ document.getElementById('saveBtn').onclick=async()=>{
   }catch(e){alert('Сактоо катасы: '+e.message);}
 };
 document.getElementById('clearBtn').onclick=async()=>{
+  try{requireAdmin();}catch(e){alert(e.message);return;}
   if(!deptId || !remoteLoaded)return;
   if(!confirm(deptId+' бөлүмүнүн Firebase GPS аймактарын өчүрөсүзбү?'))return;
   try{
@@ -164,8 +220,7 @@ document.getElementById('clearBtn').onclick=async()=>{
     replaceAreas([]);msg.textContent="Аймак Firebaseден өчүрүлдү";
   }catch(e){alert('Өчүрүү катасы: '+e.message);}
 };
-document.getElementById('backBtn').onclick=()=>location.href='admin.html?v=1102';
-loadAreas();
+document.getElementById('backBtn').onclick=()=>location.href='admin.html?v=1108';
 </script>
 </body>
 </html>
