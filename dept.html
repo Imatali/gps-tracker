@@ -1,47 +1,55 @@
 <!DOCTYPE html>
 <html lang="ky"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Бөлүм v1100 IDEAL</title>
+<title>Бөлүм v1200 ULTIMATE</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 </head>
-<body class="bg-[#f8fafc] p-2 font-sans">
-<div class="max-w-[1400px] mx-auto">
-<div class="bg-white p-3 rounded-xl shadow flex justify-between items-center flex-wrap gap-2">
-<div class="flex items-center gap-2">
-<a href="admin.html?v=1100" class="bg-gray-100 px-3 py-1.5 rounded-lg text-[13px]">← Артка</a>
-<div><div id="dName" class="font-black uppercase text-[14px]">БӨЛҮМ</div><div class="text-[10px] text-gray-500">v1100 IDEAL • <span id="today"></span></div></div>
-</div>
-<div class="flex gap-2">
-<a href="reports.html?v=1100" class="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-[12px]">📊 Отчет</a>
-<a href="worker.html?v=1100" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[12px]">👷 Жумушчу</a>
+<body class="bg-[#f5f7fb] p-2 font-sans">
+<div class="max-w-[1600px] mx-auto">
+<div class="bg-white p-3 rounded-xl shadow flex justify-between items-center">
+<div class="flex gap-2 items-center"><a href="admin.html?v=1100" class="bg-gray-100 px-3 py-1.5 rounded-lg text-[13px]">← Артка</a><div><div id="dName" class="font-black uppercase">БӨЛҮМ</div><div class="text-[10px] text-gray-500">v1200 ULTIMATE • <span id="today"></span> • Аймак + Сүрөт + FullScreen</div></div></div>
+<div class="flex gap-1.5 flex-wrap">
+<button onclick="startDraw()" class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-bold">📐 Аймак чийүү</button>
+<button onclick="saveArea()" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-[12px] font-bold">💾 Аймакты сактоо</button>
+<button onclick="toggleFull()" class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-[12px]">⛶ Толук экран</button>
 </div>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2">
-<div class="bg-white border p-2 rounded-xl text-center"><div class="text-[10px] font-bold">БАРДЫГЫ</div><div id="c_all" class="text-[22px] font-black">0</div></div>
-<div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold text-emerald-800">ЖУМУШТА</div><div id="c_in" class="text-[22px] font-black text-emerald-700">0</div></div>
-<div class="bg-red-50 border border-red-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold text-red-800">СЫРТТА</div><div id="c_out" class="text-[22px] font-black text-red-700">0</div></div>
-<div class="bg-orange-50 border border-orange-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold text-orange-800">КЕЧИККЕН</div><div id="c_late" class="text-[22px] font-black text-orange-700">0</div></div>
-<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold text-blue-800">ЭРТЕ КЕТКЕН</div><div id="c_early" class="text-[22px] font-black text-blue-700">0</div></div>
+<div class="grid grid-cols-2 md:grid-cols-6 gap-2 mt-2">
+<div onclick="setFilter('all')" class="filterBtn bg-white border-2 p-2 rounded-xl text-center cursor-pointer hover:bg-gray-50" data-f="all"><div class="text-[10px] font-bold">БАРДЫГЫ</div><div id="c_all" class="text-[20px] font-black">0</div></div>
+<div onclick="setFilter('in')" class="filterBtn bg-emerald-50 border border-emerald-200 p-2 rounded-xl text-center cursor-pointer" data-f="in"><div class="text-[10px] font-bold text-emerald-800">ЖУМУШТА</div><div id="c_in" class="text-[20px] font-black text-emerald-700">0</div></div>
+<div onclick="setFilter('out')" class="filterBtn bg-red-50 border border-red-200 p-2 rounded-xl text-center cursor-pointer" data-f="out"><div class="text-[10px] font-bold text-red-800">СЫРТТА</div><div id="c_out" class="text-[20px] font-black text-red-700">0</div></div>
+<div onclick="setFilter('late')" class="filterBtn bg-orange-50 border p-2 rounded-xl text-center cursor-pointer" data-f="late"><div class="text-[10px] font-bold">КЕЧИККЕН</div><div id="c_late" class="text-[20px] font-black text-orange-700">0</div></div>
+<div onclick="setFilter('early')" class="filterBtn bg-blue-50 border p-2 rounded-xl text-center cursor-pointer" data-f="early"><div class="text-[10px] font-bold">ЭРТЕ КЕТКЕН</div><div id="c_early" class="text-[20px] font-black text-blue-700">0</div></div>
+<div onclick="setFilter('absent')" class="filterBtn bg-gray-900 text-white p-2 rounded-xl text-center cursor-pointer" data-f="absent"><div class="text-[10px] font-bold">КЕЛГЕН ЖОК</div><div id="c_absent" class="text-[20px] font-black">0</div></div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-2 mt-2">
-<div class="lg:col-span-2 bg-white rounded-xl shadow p-2">
-<div class="flex justify-between items-center mb-2"><h3 class="font-bold text-[13px]">📍 Карта</h3><button onclick="loadMap()" class="bg-gray-100 px-2 py-1 rounded text-[11px]">🔄 Жаңылоо</button></div>
-<div id="map" style="height:360px; border-radius:10px;"></div>
-</div>
-<div class="bg-white rounded-xl shadow p-2">
-<h3 class="font-bold text-[13px] mb-2">👥 Кызматкерлер</h3>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-2 mt-2">
+<!-- СОЛ ЖАК - ЖУМУШЧУЛАР СҮРӨТ МЕНЕН -->
+<div class="lg:col-span-3 bg-white rounded-xl shadow p-2 h-[480px] overflow-auto">
+<h3 class="font-bold text-[13px] mb-2">👥 Жумушчулар (Сүрөт менен)</h3>
 <input id="search" oninput="render()" placeholder="🔍 Аты / ПИН издөө..." class="w-full border rounded-lg px-3 py-2 text-[13px] bg-yellow-50 mb-2">
-<div class="overflow-auto max-h-[360px]">
-<table class="w-full text-[12px]" id="tbl"></table>
+<div id="workerCards" class="grid grid-cols-1 gap-2"></div>
+</div>
+<!-- ОРТО - КАРТА -->
+<div class="lg:col-span-6 bg-white rounded-xl shadow p-2">
+<div class="flex justify-between items-center mb-1"><h3 class="font-bold text-[13px]">📍 Карта - <span id="areaStatus" class="text-[11px] text-orange-600">Аймак жок</span></h3>
+<div class="flex gap-1"><button onclick="clearArea()" class="bg-red-50 text-red-600 px-2 py-1 rounded text-[11px]">🗑️ Аймак өчүр</button></div>
+</div>
+<div id="map" style="height:440px; border-radius:10px; border:2px solid #e5e7eb;"></div>
+<div class="text-[10px] text-gray-500 mt-1">Бөлүмдү ачканда сакталган аймагы автоматтык ачылат. Ош эмес, Кадамжай.</div>
+</div>
+<!-- ОҢ ЖАК - ТАБЛИЦА -->
+<div class="lg:col-span-3 bg-white rounded-xl shadow p-2 h-[480px] overflow-auto">
+<h3 class="font-bold text-[13px] mb-2">📋 Тизме</h3>
+<table class="w-full text-[11px]" id="tbl"></table>
 </div>
 </div>
-</div>
-
-<div class="text-[10px] text-gray-400 text-center mt-3">dept.html v1100 IDEAL • Карта менен</div>
+<div class="text-[10px] text-center text-gray-400 mt-2">dept.html v1200 ULTIMATE - 5 функция кошулду</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -49,75 +57,83 @@
 <script>
 firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
 const db=firebase.database();
-let deptName="";
-try{
-  let url=new URL(window.location.href);
-  deptName=url.searchParams.get('d')||localStorage.getItem('lastDept')||'Администрация';
-  deptName=decodeURIComponent(deptName);
-}catch(e){deptName=localStorage.getItem('lastDept')||'Администрация';}
-// Тазалоо: &v=1100 кошулуп калса алып салуу
-if(deptName.includes('&v=')) deptName=deptName.split('&v=')[0];
-if(deptName.includes('?v=')) deptName=deptName.split('?v=')[0];
+let deptName=new URL(window.location.href).searchParams.get('d')||localStorage.getItem('lastDept')||'КДО';
+deptName=decodeURIComponent(deptName).split('&')[0].split('?')[0];
 document.getElementById('dName').innerText=deptName;
 document.getElementById('today').innerText=new Date().toLocaleDateString('ky-KG');
 let todayStr=new Date().toISOString().slice(0,10);
-let allPins={}, allWorkers={}, allLogs={};
-let map=L.map('map').setView([40.53,72.8],13);
+let allPins={}, allWorkers={}, allLogs={}, currentFilter='all', savedPolygon=null;
+let map=L.map('map').setView([40.103,71.74],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-let markers=[];
+let drawnItems=new L.FeatureGroup(); map.addLayer(drawnItems);
+let drawControl=new L.Control.Draw({draw:{polygon:true, polyline:false, rectangle:true, circle:false, marker:false, circlemarker:false}, edit:{featureGroup:drawnItems}});
+let areaLayer=null;
+
+function startDraw(){ map.addControl(drawControl); alert('📐 Эми картадан аймакты чийиңиз!'); }
+map.on(L.Draw.Event.CREATED,function(e){ drawnItems.clearLayers(); let layer=e.layer; drawnItems.addLayer(layer); savedPolygon=layer.toGeoJSON(); document.getElementById('areaStatus').innerText='✅ Чийилди, сактаңыз'; document.getElementById('areaStatus').className='text-[11px] text-green-600 font-bold'; });
+
+function saveArea(){ if(!savedPolygon){ alert('Алгач аймак чийиңиз!'); return; } db.ref('osh/deptAreas/'+deptName).set(savedPolygon).then(()=>{ alert('✅ Аймак сакталды: '+deptName); document.getElementById('areaStatus').innerText='💾 Сакталды'; }); }
+function clearArea(){ if(confirm('Аймак өчүрүлсүнбү?')){ db.ref('osh/deptAreas/'+deptName).remove(); drawnItems.clearLayers(); if(areaLayer) map.removeLayer(areaLayer); document.getElementById('areaStatus').innerText='Аймак жок'; location.reload(); } }
+function toggleFull(){ let el=document.getElementById('map'); if(!document.fullscreenElement){ el.requestFullscreen(); }else{ document.exitFullscreen(); } setTimeout(()=>map.invalidateSize(),500); }
+function setFilter(f){ currentFilter=f; document.querySelectorAll('.filterBtn').forEach(b=>b.classList.remove('ring-2','ring-blue-500')); document.querySelector(`[data-f="${f}"]`)?.classList.add('ring-2','ring-blue-500'); render(); }
 
 db.ref('osh/pins').on('value',s=>{allPins=s.val()||{}; render();});
 db.ref('osh/workers').on('value',s=>{allWorkers=s.val()||{}; render();});
 db.ref('osh/logs/'+todayStr).on('value',s=>{allLogs=s.val()||{}; render();});
-
-function loadMap(){
-  markers.forEach(m=>map.removeLayer(m)); markers=[];
-  Object.entries(allWorkers).forEach(([id,w])=>{
-    if(w.bolum!=deptName) return;
-    if(w.lat && w.lng){
-      let m=L.marker([w.lat,w.lng]).addTo(map).bindPopup(`<b>${w.name||id}</b><br>${w.bolum}<br>⏰ ${w.lastTime||''}`);
-      markers.push(m);
-    }
-  });
-}
+db.ref('osh/deptAreas/'+deptName).on('value',s=>{
+  let geo=s.val();
+  if(geo){
+    if(areaLayer) map.removeLayer(areaLayer);
+    areaLayer=L.geoJSON(geo,{style:{color:'#ff6600',weight:3,fillOpacity:0.2}}).addTo(map);
+    map.fitBounds(areaLayer.getBounds(),{padding:[20,20]});
+    document.getElementById('areaStatus').innerText='📍 Сакталган аймак ачылды';
+    document.getElementById('areaStatus').className='text-[11px] text-green-700 font-bold';
+  }else{
+    document.getElementById('areaStatus').innerText='⚠️ Аймак чийиле элек - "Аймак чийүү" басыңыз';
+  }
+});
 
 function render(){
   let q=(document.getElementById('search').value||'').toLowerCase();
-  // Фильтр: ушул бөлүмдүн ПИНдери
-  let pinsOfDept=Object.entries(allPins).filter(([pin,info])=>info.bolum==deptName);
+  let pinsOfDept=Object.entries(allPins).filter(([p,i])=>i.bolum==deptName);
   let workersOfDept=Object.values(allWorkers).filter(w=>w.bolum==deptName);
-
-  let all=pinsOfDept.length;
-  let inside=workersOfDept.length;
-  let out=Math.max(0,all-inside);
-  let late=0, early=0;
-  pinsOfDept.forEach(([pin,info])=>{
-    let log=allLogs[pin];
+  let all=pinsOfDept.length, inside=workersOfDept.length, out=Math.max(0,all-inside);
+  let late=0, early=0, absent=0;
+  pinsOfDept.forEach(([pin])=>{
+    let log=allLogs[pin]; let isInside=Object.values(allWorkers).some(w=>w.pin==pin);
+    if(!isInside &&!log) absent++;
     if(log){ if(log.late) late++; if(log.earlyLeave) early++; }
   });
-  document.getElementById('c_all').innerText=all;
-  document.getElementById('c_in').innerText=inside;
-  document.getElementById('c_out').innerText=out;
-  document.getElementById('c_late').innerText=late;
-  document.getElementById('c_early').innerText=early;
+  document.getElementById('c_all').innerText=all; document.getElementById('c_in').innerText=inside; document.getElementById('c_out').innerText=out; document.getElementById('c_late').innerText=late; document.getElementById('c_early').innerText=early; document.getElementById('c_absent').innerText=absent;
 
-  let html='<tr class="bg-gray-50 text-[10px]"><th class="p-1 text-left">Аты</th><th class="p-1">ПИН</th><th class="p-1">Статус</th><th class="p-1">Кирди</th><th class="p-1">Чыкты</th><th class="p-1">GPS</th></tr>';
-  let filtered=pinsOfDept.filter(([pin,info])=>{
-    if(!q) return true;
-    return (info.name+' '+pin).toLowerCase().includes(q);
+  // СҮРӨТТӨРҮ МЕНЕН КАРТАЛАР - СОЛ ЖАК
+  let cardsHtml='';
+  let tableHtml='<tr class="bg-gray-50 text-[9px]"><th class="p-1 text-left">Аты</th><th>ПИН</th><th>Статус</th><th>GPS</th></tr>';
+  let list=pinsOfDept.filter(([pin,info])=> (info.name+' '+pin).toLowerCase().includes(q) );
+  // Фильтр
+  list=list.filter(([pin,info])=>{
+    let w=Object.values(allWorkers).find(x=>x.pin==pin); let log=allLogs[pin]||{};
+    if(currentFilter=='in') return!!w;
+    if(currentFilter=='out') return!w;
+    if(currentFilter=='late') return log.late;
+    if(currentFilter=='early') return log.earlyLeave;
+    if(currentFilter=='absent') return!w &&!log.timeIn;
+    return true;
   });
-  if(filtered.length==0) html+='<tr><td colspan=6 class="p-4 text-center text-gray-400">Бул бөлүмдө кызматкер жок же ПИН бериле элек</td></tr>';
-  filtered.forEach(([pin,info])=>{
+
+  list.forEach(([pin,info])=>{
     let w=Object.values(allWorkers).find(x=>x.pin==pin);
     let log=allLogs[pin]||{};
-    let status=w?'🟢 Жумушта':'🔴 Сыртта';
-    if(log.late) status+=' 🕘Кеч';
-    if(log.earlyLeave) status+=' 🏃Эрте';
-    let gps=w && w.lat?`<a target="_blank" href="https://maps.google.com/?q=${w.lat},${w.lng}" class="text-blue-600 underline">Карта</a>`:'-';
-    html+=`<tr class="border-t"><td class="p-1 font-medium">${info.name}</td><td class="p-1"><b>${pin}</b></td><td class="p-1 text-[11px]">${status}</td><td class="p-1">${log.timeIn||'-'}</td><td class="p-1">${log.timeOut||'-'}</td><td class="p-1">${gps}</td></tr>`;
+    let status=w?'Жумушта':'Келген жок'; let color=w?'border-green-400 bg-green-50':'border-red-300 bg-red-50';
+    let phone=info.deviceId||info.phone||'—';
+    let avatar=`https://ui-avatars.com/api/?name=${encodeURIComponent(info.name)}&background=random&size=64`;
+    cardsHtml+=`<div class="border ${color} rounded-xl p-2 flex gap-2 items-center"><img src="${avatar}" class="w-12 h-12 rounded-full border-2 border-white shadow"><div class="flex-1"><div class="font-bold text-[12px]">${info.name}</div><div class="text-[11px] text-gray-600">📞 ${phone}</div><div class="text-[10px] ${w?'text-green-700':'text-red-600'}">${w?'🟢': '🔴'} ${status} • ПИН ${pin}</div></div></div>`;
+    let gps=w&&w.lat?`<a target="_blank" href="https://maps.google.com/?q=${w.lat},${w.lng}" class="text-blue-600 underline">Карта</a>`:'-';
+    tableHtml+=`<tr class="border-t"><td class="p-1">${info.name}</td><td class="p-1"><b>${pin}</b></td><td class="p-1">${status}</td><td class="p-1">${gps}</td></tr>`;
   });
-  document.getElementById('tbl').innerHTML=html;
-  loadMap();
+  if(list.length==0){ cardsHtml='<div class="text-center text-gray-400 p-4 text-[12px]">Табылган жок</div>'; tableHtml+='<tr><td colspan=4 class="p-3 text-center text-gray-400">Жок</td></tr>'; }
+  document.getElementById('workerCards').innerHTML=cardsHtml;
+  document.getElementById('tbl').innerHTML=tableHtml;
 }
 render();
 </script>
