@@ -1,110 +1,101 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Отчет v1100 IDEAL</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="icon" href="icon.png?v=1100">
-<style>@media print{.no-print{display:none} }</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Отчет - Кадамжай ЖДПБ v1100 IDEAL</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
+body{background:#f8fafc;padding:12px}
+.header{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:10px 14px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.filters{display:grid;grid-template-columns:220px 1fr 1.2fr 180px 100px 100px;gap:8px;margin-bottom:10px}
+@media(max-width:900px){.filters{grid-template-columns:1fr 1fr}}
+.input{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;width:100%;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.stat{padding:14px;border-radius:12px;text-align:center}
+.stat small{font-size:11px;font-weight:bold;color:#64748b}
+.stat b{display:block;font-size:22px;margin-top:4px}
+.c-blue{background:#eff6ff;border:1px solid #bfdbfe}.c-blue b{color:#1e293b}
+.c-green{background:#f0fdf4;border:1px solid #bbf7d0}.c-green b{color:#15803d}
+.c-orange{background:#fff7ed;border:1px solid #fed7aa}.c-orange b{color:#c2410c}
+.c-red{background:#fef2f2;border:1px solid #fecaca}.c-red b{color:#dc2626}
+.table-wrap{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:12px 10px;text-align:left;background:#f8fafc;color:#475569;font-size:11px;border-bottom:1px solid #e2e8f0}
+td{padding:10px;border-bottom:1px solid #f1f5f9}
+.badge{padding:4px 10px;border-radius:12px;font-size:11px;font-weight:bold;display:inline-flex;gap:4px;align-items:center}
+.b-late{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+.b-ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.btn{padding:10px 14px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;font-size:13px}
+.btn-blue{background:#2563eb;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-dark{background:#334155;color:#fff}
+.v1100{background:#e9d5ff;color:#6d28d9;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:bold}
+</style>
 </head>
-<body class="bg-[#f8fafc] p-3 font-sans">
-<div class="max-w-[1400px] mx-auto">
-<div class="bg-white p-4 rounded-xl shadow-sm mb-3 no-print">
-<div class="flex justify-between items-center flex-wrap gap-2">
-<div class="flex items-center gap-2"><img src="logo.png?v=1100" class="w-8 h-8 rounded-full border"><h1 class="font-black text-[15px]">📊 Отчет - Кадамжай ЖДПБ <span class="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full ml-1">v1100 IDEAL</span></h1></div>
-<div class="flex gap-2">
-<a href="admin.html?v=1100" class="bg-gray-100 border px-3 py-2 rounded-lg text-[13px]">← Админ</a>
-<a href="worker.html?v=1100" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px]">👷 Жумушчу</a>
-</div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-4 gap-2 mt-4">
-<input id="dateInput" type="date" class="border p-2.5 rounded-lg text-[13px]">
-<select id="deptFilter" class="border p-2.5 rounded-lg text-[13px]"><option value="">Бардык бөлүмдөр</option></select>
-<input id="searchInput" oninput="renderTable()" placeholder="🔍 Аты / ПИН издөө..." class="border p-2.5 rounded-lg text-[13px] bg-yellow-50">
-<div class="flex gap-2"><button onclick="loadData()" class="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-[13px] font-bold flex-1">🔄 Жүктөө</button><button onclick="exportExcel()" class="bg-green-600 text-white px-3 py-2.5 rounded-lg text-[13px]">📥 Excel</button><button onclick="window.print()" class="bg-gray-600 text-white px-3 py-2.5 rounded-lg text-[13px]">🖨️ PDF</button></div>
-</div>
-<div class="grid grid-cols-4 gap-2 mt-3">
-<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold">БАРДЫГЫ</div><div id="c_all" class="text-[22px] font-black">0</div></div>
-<div class="bg-green-50 border border-green-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold">КЕЛДИ</div><div id="c_in" class="text-[22px] font-black text-green-700">0</div></div>
-<div class="bg-orange-50 border border-orange-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold">КЕЧИКТИ</div><div id="c_late" class="text-[22px] font-black text-orange-700">0</div></div>
-<div class="bg-red-50 border border-red-200 p-2 rounded-xl text-center"><div class="text-[10px] font-bold">КЕЛБЕДИ</div><div id="c_abs" class="text-[22px] font-black text-red-700">0</div></div>
-</div>
+<body>
+<div class="header">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center">🌍</div><b>Отчет - Кадамжай ЖДПБ</b> <span class="v1100">v1100 IDEAL</span></div>
+<div style="display:flex;gap:8px"><button class="btn" style="background:#f1f5f9" onclick="location.href='admin.html'">← Админ</button><button class="btn" style="background:#dcfce7;color:#166534" onclick="location.href='worker.html'">👷 Жумушчу</button></div>
 </div>
 
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
-<div class="p-3 border-b flex justify-between items-center"><h3 class="font-bold text-[13px]">📋 <span id="reportDate">Бүгүн</span> - Отчет</h3><span class="text-[11px] text-gray-500" id="reportInfo"></span></div>
-<div class="overflow-auto">
-<table class="w-full text-[12px]" id="reportTable">
-<thead class="bg-gray-50 text-[11px] sticky top-0"><tr><th class="p-2 text-left">№</th><th class="p-2 text-left">Аты-жөнү</th><th class="p-2">Бөлүм</th><th class="p-2">ПИН</th><th class="p-2">Кирди</th><th class="p-2">Чыкты</th><th class="p-2">Статус</th><th class="p-2">Тел</th></tr></thead>
-<tbody id="tbody"><tr><td colspan=8 class="p-6 text-center text-gray-400">Күндү тандап "Жүктөө" басыңыз</td></tr></tbody>
+<div class="filters">
+<input class="input" type="date" id="date" value="2026-10-10">
+<select class="input" id="deptFilter" onchange="render()"><option value="all">Бардык бөлүмдөр</option><option>ГСВ №10</option><option>Администрация</option><option>ГСВ №5</option></select>
+<input class="input" id="search" placeholder="🔍 Аты / ПИН издөө..." oninput="render()" style="background:#fefce8">
+<button class="btn btn-blue" onclick="render()">🔃 Жүктөө</button>
+<button class="btn btn-green" onclick="exportExcel()">📥 Excel</button>
+<button class="btn btn-dark" onclick="window.print()">🖨️ PDF</button>
+</div>
+
+<div class="stats">
+<div class="stat c-blue"><small>БАРДЫГЫ</small><b id="s_all">2</b></div>
+<div class="stat c-green"><small>КЕЛДИ</small><b id="s_in">2</b></div>
+<div class="stat c-orange"><small>КЕЧИКТИ</small><b id="s_late">1</b></div>
+<div class="stat c-red"><small>КЕЛБЕДИ</small><b id="s_abs">0</b></div>
+</div>
+
+<div class="table-wrap">
+<div style="padding:10px 14px;display:flex;justify-content:space-between;border-bottom:1px solid #f1f5f9"><b style="font-size:13px">📋 <span id="dateLabel">10.10.2026</span> - Отчет</b><small style="color:#94a3b8">Табылды: <span id="found">2</span></small></div>
+<table>
+<thead><tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>ПИН</th><th>Кирди</th><th>Чыкты</th><th>Статус</th><th>Тел</th></tr></thead>
+<tbody id="tbody"></tbody>
 </table>
 </div>
-</div>
-<div class="text-center text-[11px] text-gray-400 mt-3">v1100 IDEAL • reports.html • Кадамжай ЖДПБ</div>
-</div>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<div style="text-align:center;color:#94a3b8;font-size:11px;margin-top:10px">v1100 IDEAL • reports.html • Кадамжай ЖДПБ</div>
+
 <script>
-firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
-const db=firebase.database();
-let depts=JSON.parse(localStorage.getItem('myDepts')||'["Администрация","Бухгалтерия","КДО","Терапия","ГСВ №1","ГСВ №2","ГСВ №3","ГСВ №7"]');
-let allPins={}, allLogs={};
-document.getElementById('deptFilter').innerHTML='<option value="">Бардык бөлүмдөр</option>'+depts.map(d=>`<option>${d}</option>`).join('');
-document.getElementById('dateInput').valueAsDate=new Date();
+let workers=[];
+try{ workers=JSON.parse(localStorage.getItem('gps_workers')||'[]'); }catch(e){}
+if(!workers.length) workers=[{name:'Иматали',dept:'ГСВ №10',pin:'1420',timeIn:'',timeOut:'',status:'late',phone:'d_arwn'},{name:'Тилек',dept:'Администрация',pin:'3841',timeIn:'',timeOut:'',status:'ok',phone:'dev_63'}];
 
-function loadData(){
-  let date=document.getElementById('dateInput').value;
-  if(!date){ alert('Күндү танда!'); return; }
-  document.getElementById('reportDate').innerText=new Date(date).toLocaleDateString('ky-KG');
-  document.getElementById('tbody').innerHTML='<tr><td colspan=8 class="p-6 text-center">⏳ Жүктөлүүдө...</td></tr>';
-  Promise.all([db.ref('osh/pins').once('value'), db.ref('osh/logs/'+date).once('value')]).then(([pinsSnap, logsSnap])=>{
-    allPins=pinsSnap.val()||{};
-    allLogs=logsSnap.val()||{};
-    renderTable();
-  });
-}
-function renderTable(){
-  let deptF=document.getElementById('deptFilter').value;
-  let search=(document.getElementById('searchInput').value||'').toLowerCase();
-  let rows=[]; let c_all=0, c_in=0, c_late=0, c_abs=0;
-  Object.entries(allPins).forEach(([pin, info])=>{
-    if(deptF && info.bolum!==deptF) return;
-    if(search &&!(info.name.toLowerCase().includes(search) || pin.includes(search) || info.bolum.toLowerCase().includes(search))) return;
-    c_all++;
-    let log=allLogs[pin];
-    let firstIn=log?.firstIn||'-';
-    let lastOut=log?.lastOut||'-';
-    let status='❌ Келбеди'; let cls='bg-red-50 text-red-700';
-    if(log){
-      c_in++;
-      if(log.late){ status='🕘 Кечикти'; cls='bg-orange-100 text-orange-800'; c_late++; }
-      else if(log.earlyLeave){ status='🏃 Эрте кетти'; cls='bg-blue-100 text-blue-800'; }
-      else if(log.lunchEarly || log.lunchLate){ status='🍽️ Обет бузуу'; cls='bg-yellow-100 text-yellow-800'; }
-      else { status='✅ Убагында'; cls='bg-green-100 text-green-700'; }
-    } else { c_abs++; }
-    let phone=info.deviceId?`✅ ${info.deviceId.slice(0,6)}`:'❌';
-    rows.push({pin, info, firstIn, lastOut, status, cls, phone});
-  });
-  document.getElementById('c_all').innerText=c_all;
-  document.getElementById('c_in').innerText=c_in;
-  document.getElementById('c_late').innerText=c_late;
-  document.getElementById('c_abs').innerText=c_abs;
-  document.getElementById('reportInfo').innerText=`Табылды: ${rows.length}`;
-  let html='';
-  rows.forEach((r,i)=>{
-    html+=`<tr class="border-t hover:bg-gray-50"><td class="p-2">${i+1}</td><td class="p-2 font-medium">${r.info.name}</td><td class="p-2">${r.info.bolum}</td><td class="p-2 font-bold">${r.pin}</td><td class="p-2">${r.firstIn}</td><td class="p-2">${r.lastOut}</td><td class="p-2"><span class="px-2 py-1 rounded-full text-[11px] font-bold ${r.cls}">${r.status}</span></td><td class="p-2 text-[11px]">${r.phone}</td></tr>`;
-  });
-  if(rows.length==0) html='<tr><td colspan=8 class="p-6 text-center text-gray-400">Маалымат жок</td></tr>';
-  document.getElementById('tbody').innerHTML=html;
+function render(){
+ let dept=document.getElementById('deptFilter').value;
+ let q=document.getElementById('search').value.toLowerCase();
+ let date=document.getElementById('date').value;
+ document.getElementById('dateLabel').innerText=date.split('-').reverse().join('.');
+ let filtered=workers.filter(w=>{
+  if(dept!=='all' && w.dept!==dept) return false;
+  if(q &&!((w.name||'').toLowerCase().includes(q) || (w.pin||'').includes(q))) return false;
+  return true;
+ });
+ let late=filtered.filter(w=>w.status==='late').length;
+ let html='';
+ filtered.forEach((w,i)=>{
+  let badge=w.status==='late'?'<span class="badge b-late">🕒 Кечикти</span>':'<span class="badge b-ok">✅ Убагында</span>';
+  html+=`<tr><td>${i+1}</td><td><b>${w.name}</b></td><td>${w.dept}</td><td><b>${w.pin}</b></td><td>-</td><td>-</td><td>${badge}</td><td>✅ ${w.phone||''}</td></tr>`;
+ });
+ document.getElementById('tbody').innerHTML=html;
+ document.getElementById('s_all').innerText=filtered.length;
+ document.getElementById('s_in').innerText=filtered.length;
+ document.getElementById('s_late').innerText=late;
+ document.getElementById('s_abs').innerText=0;
+ document.getElementById('found').innerText=filtered.length;
 }
 function exportExcel(){
-  let table=document.getElementById('reportTable').outerHTML;
-  let blob=new Blob(['<html><head><meta charset="utf-8"></head><body>'+table+'</body></html>'], {type:'application/vnd.ms-excel'});
-  let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='otchet_'+document.getElementById('dateInput').value+'_v1100.xls'; a.click();
+ let csv='№,Аты,Бөлүм,ПИН,Статус,Тел\n';
+ workers.forEach((w,i)=>{ csv+=`${i+1},${w.name},${w.dept},${w.pin},${w.status},${w.phone}\n`; });
+ let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='otchet_'+document.getElementById('date').value+'.csv'; a.click();
 }
-document.getElementById('deptFilter').addEventListener('change', renderTable);
-loadData();
+render();
 </script>
 </body>
 </html>
