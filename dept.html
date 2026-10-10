@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ГСВ №10 - v1305 EDITABLE</title>
+<title>ГСВ №10 - v1306 MULTI</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
 body{background:#f1f5f9}
 .header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);flex-wrap:wrap;gap:8px}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:8px}
@@ -23,44 +23,46 @@ body{background:#f1f5f9}
 .btn-gray{background:#1f2937;color:#fff}
 .btn-red{background:#dc2626;color:#fff}
 .btn-blue{background:#2563eb;color:#fff}
+.btn-light{background:#e5e7eb;color:#111}
 #map{height:70vh;width:100%;border:3px solid #111;border-radius:10px}
-.leaflet-editing-icon{background:#ff8c00!important;border:3px solid #fff!important;width:14px!important;height:14px!important;border-radius:50%!important;box-shadow:0 0 4px #000}
 .info{background:#dbeafe;padding:8px 10px;font-size:13px;border-left:4px solid #2563eb;margin-top:6px;border-radius:6px}
+.area-item{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;margin:4px 0;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:12px}
 @media(max-width:900px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
 <div class="header">
-<div><b>ГСВ №10</b> <small style="color:#666">v1305 EDITABLE • 10.10.2026 • Аймак + Сүрөт + Түзөтүү + FullScreen</small></div>
+<div><b id="deptName">ГСВ №10</b> <small style="color:#666">v1306 MULTI • 10.10.2026 • Көп аймак + Түзөтүү</small></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap">
-<button class="btn btn-orange" onclick="startDraw()">📐 Аймак чийүү</button>
-<button class="btn btn-blue" onclick="enableEdit()" id="editBtn">✏️ Аймакты түзөтүү</button>
-<button class="btn btn-green" onclick="saveArea()">💾 Аймакты сактоо</button>
-<button class="btn btn-gray" onclick="toggleFull()">⛶ Толук экран</button>
+<button class="btn btn-orange" onclick="startDraw()">📐 Аймак кошуу</button>
+<button class="btn btn-blue" onclick="enableEdit()" id="editBtn">✏️ Бардыгын түзөтүү</button>
+<button class="btn btn-green" onclick="saveArea()">💾 Баарын сактоо</button>
+<button class="btn btn-light" onclick="clearAll()">🗑️ Баарын өчүр</button>
 <button class="btn btn-gray" onclick="location.href='admin.html'">← Артка</button>
 </div>
 </div>
 
 <div class="stats">
 <div class="stat"><small>БАРДЫГЫ</small><b id="s_all">1</b></div>
-<div class="stat" style="background:#dcfce7"><small>ЖУМУШТА</small><b id="s_in" style="color:#16a34a">2</b></div>
+<div class="stat" style="background:#dcfce7"><small>ЖУМУШТА</small><b id="s_in" style="color:#16a34a">1</b></div>
 <div class="stat" style="background:#fee2e2"><small>СЫРТТА</small><b id="s_out" style="color:#dc2626">0</b></div>
-<div class="stat" style="background:#ffedd5"><small>КЕЧИККЕН</small><b style="color:#ea580c">0</b></div>
-<div class="stat" style="background:#eff6ff"><small>ЭРТЕ КЕТКЕН</small><b style="color:#2563eb">0</b></div>
-<div class="stat" style="background:#111;color:#fff"><small>КЕЛГЕН ЖОК</small><b>0</b></div>
+<div class="stat"><small>АЙМАКТАР</small><b id="s_areas" style="color:#f97316">0</b></div>
+<div class="stat"><small>КЕЧИККЕН</small><b style="color:#ea580c">0</b></div>
+<div class="stat"><small>КЕЛГЕН ЖОК</small><b>0</b></div>
 </div>
 
 <div class="main">
 <div class="panel">
-<b>👥 Жумушчулар (Сүрөт менен)</b>
-<input id="search" placeholder="🔍 Аты / ПИН издөө..." style="width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:8px">
-<div id="workers">Жүктөлүүдө...</div>
+<b>👥 Жумушчулар</b>
+<input id="search" placeholder="🔍 Аты / ПИН..." style="width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:8px">
+<div id="workers"></div>
+<div style="margin-top:10px"><b>📍 Аймактар тизмеси</b><div id="areaList" style="margin-top:6px"><small style="color:#888">Аймак жок</small></div></div>
 </div>
 
 <div class="panel" style="padding:4px">
-<div style="display:flex;justify-content:space-between;padding:6px"><b>📍 Карта - <span id="areaStatus" style="color:#16a34a">Сакталган аймак ачылды</span></b><button class="btn btn-red" style="padding:4px 8px;font-size:11px" onclick="deleteArea()">🗑️ Аймак өчүр</button></div>
+<div style="display:flex;justify-content:space-between;padding:6px"><b>📍 Карта - <span id="areaStatus" style="color:#16a34a">0 аймак</span></b><span style="font-size:11px;color:#666">Бир бөлүмгө бир нече аймак чийсе болот</span></div>
 <div id="map"></div>
-<div class="info" id="info">💡 <b>ЖАҢЫ v1305:</b> Сакталган аймак кызгылт. <b>✏️ Аймакты түзөтүү</b> бас → ак чекиттер чыгат → сүйрөп форманы өзгөрт. Жаңы бурч кошуш үчүн ортодогу чекитти сүйрө. Бүткөндө <b>💾 Сактоо</b> бас. Эми өчүрүп кайра чийбейсиз!</div>
+<div class="info" id="info">💡 <b>v1306 MULTI жаңы:</b><br>1) <b>📐 Аймак кошуу</b> басып биринчи аймакты чийиңиз<br>2) Дагы бир жер керек болсо кайра <b>📐 Аймак кошуу</b> басып экинчи, үчүнчү аймакты чийиңиз - эскиси өчпөйт!<br>3) <b>✏️ Бардыгын түзөтүү</b> бассаңыз баардык аймактардын ак чекиттери чыгат<br>4) <b>💾 Баарын сактоо</b></div>
 </div>
 
 <div class="panel">
@@ -71,81 +73,110 @@ body{background:#f1f5f9}
 
 <script>
 const deptId = new URLSearchParams(location.search).get('d') || 'ГСВ №10';
+document.getElementById('deptName').innerText=deptId;
 const STORAGE_KEY = 'gps_area_'+deptId;
 let map = L.map('map').setView([40.114,71.74],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 let drawnItems = new L.FeatureGroup(); map.addLayer(drawnItems);
-let currentPolygon=null; let editing=false;
+let polygons = [];
+let editing = false;
 
-// ЖУМУШЧУЛАРДЫ ЖҮКТӨӨ (эски v1200 менен шайкеш)
 function loadWorkers(){
-  try{
-    let data = JSON.parse(localStorage.getItem('gps_workers')||'[]');
-    let html=''; let list='';
-    data.filter(w=> (w.dept||'ГСВ №10')===deptId ||!w.dept).forEach(w=>{
-      html+=`<div style="display:flex;gap:8px;padding:8px;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:6px;background:#f0fdf4"><div style="width:40px;height:40px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold">ИМ</div><div><b>${w.name||'Иматали'}</b><br><small>📞 dev_6msvt...<br>🟢 Жумушта • ПИН ${w.pin||'3567'}</small></div></div>`;
-      list+=`<tr><td style="padding:6px">${w.name||'Иматали'}</td><td style="text-align:center">${w.pin||'3567'}</td><td style="text-align:center;color:#16a34a">Жумушта</td><td style="text-align:center"><a href="#" onclick="map.setView([40.11,71.74],15)">Карта</a></td></tr>`;
-    });
-    if(!data.length){ html=`<div style="padding:8px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4"><b>Иматали</b> • ПИН 3567 • Жумушта</div>`; list=`<tr><td>Иматали</td><td style="text-align:center">3567</td><td style="text-align:center;color:#16a34a">Жумушта</td><td style="text-align:center"><a href="#">Карта</a></td></tr>`; }
-    document.getElementById('workers').innerHTML=html;
-    document.getElementById('list').innerHTML=list;
-    document.getElementById('s_all').innerText=data.length||1;
-    document.getElementById('s_in').innerText=data.length||1;
-  }catch(e){}
+ try{
+  let data=JSON.parse(localStorage.getItem('gps_workers')||'[]');
+  let filtered=data.filter(w=>(w.dept||'ГСВ №10')===deptId || deptId==='ГСВ №10');
+  let wh=''; let lh='';
+  filtered.forEach(w=>{
+    wh+=`<div style="display:flex;gap:8px;padding:8px;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:6px;background:#f0fdf4"><div style="width:36px;height:36px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px">ИМ</div><div><b>${w.name||'Иматали'}</b><br><small>🟢 Жумушта • ПИН ${w.pin||'3567'}</small></div></div>`;
+    lh+=`<tr><td style="padding:6px">${w.name||'Иматали'}</td><td style="text-align:center">${w.pin||'3567'}</td><td style="text-align:center;color:#16a34a">Жумушта</td><td style="text-align:center"><a href="#">Карта</a></td></tr>`;
+  });
+  if(!filtered.length){ wh=`<div style="padding:8px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4"><b>Иматали</b> • ПИН 3567 • Жумушта</div>`; lh=`<tr><td>Иматали</td><td style="text-align:center">3567</td><td style="text-align:center;color:#16a34a">Жумушта</td><td style="text-align:center">Карта</td></tr>`; filtered=[{pin:'3567'}]; }
+  document.getElementById('workers').innerHTML=wh;
+  document.getElementById('list').innerHTML=lh;
+  document.getElementById('s_all').innerText=filtered.length;
+  document.getElementById('s_in').innerText=filtered.length;
+ }catch(e){}
 }
 loadWorkers();
 
-// АЙМАКТЫ ЖҮКТӨӨ
-function loadSaved(){
- let keys=[STORAGE_KEY,'dept_area_GSV_10','kadamjay_area','gps_area_ГСВ №10'];
- for(let k of keys){
-   let saved=localStorage.getItem(k); if(!saved) continue;
-   try{ let latlngs=JSON.parse(saved); if(latlngs&&latlngs.length){ currentPolygon=L.polygon(latlngs,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.4,weight:3}).addTo(drawnItems); map.fitBounds(currentPolygon.getBounds()); document.getElementById('areaStatus').innerText='Сакталган аймак ачылды'; document.getElementById('areaStatus').style.color='#16a34a'; return; } }catch(e){}
- }
- document.getElementById('areaStatus').innerText='Аймак жок - чийиңиз';
- document.getElementById('areaStatus').style.color='#dc2626';
+function renderAreaList(){
+ let c=document.getElementById('areaList'); if(polygons.length===0){c.innerHTML='<small style="color:#888">Аймак жок</small>'; return;}
+ c.innerHTML='';
+ polygons.forEach((p,i)=>{
+  let div=document.createElement('div'); div.className='area-item';
+  div.innerHTML=`<span>🟧 Аймак ${i+1}</span><span><button class="btn btn-blue" style="padding:3px 6px;font-size:10px" onclick="focusArea(${i})">👁️</button> <button class="btn btn-red" style="padding:3px 6px;font-size:10px" onclick="deleteOne(${i})">🗑️</button></span>`;
+  c.appendChild(div);
+ });
+ document.getElementById('s_areas').innerText=polygons.length;
+ document.getElementById('areaStatus').innerText=`${polygons.length} аймак сакталган`;
 }
-loadSaved();
+function focusArea(i){ if(polygons[i]) map.fitBounds(polygons[i].getBounds()); }
+function deleteOne(i){ if(!confirm(`Аймак ${i+1} өчүрүлсүнбү?`)) return; drawnItems.removeLayer(polygons[i]); polygons.splice(i,1); renderAreaList(); document.getElementById('info').innerHTML=`🗑️ Аймак ${i+1} өчүрүлдү. Сактоо басыңыз.`; }
+function clearAll(){ if(!confirm(`Баардык ${polygons.length} аймак өчүрүлсүнбү?`)) return; drawnItems.clearLayers(); polygons=[]; renderAreaList(); localStorage.removeItem(STORAGE_KEY); document.getElementById('info').innerHTML='🗑️ Баары өчүрүлдү.'; }
 
 function startDraw(){
- if(currentPolygon &&!confirm('Эски аймак өчүп, жаңы чийилеби?')) return;
- if(currentPolygon) drawnItems.removeLayer(currentPolygon);
  let drawer=new L.Draw.Polygon(map,{allowIntersection:false,showArea:true,shapeOptions:{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.35,weight:3}});
  drawer.enable();
- map.on(L.Draw.Event.CREATED,function(e){ if(currentPolygon) drawnItems.removeLayer(currentPolygon); currentPolygon=e.layer; drawnItems.addLayer(currentPolygon); map.off(L.Draw.Event.CREATED); document.getElementById('info').innerHTML='✅ Чийилди! Эми <b>✏️ Түзөтүү</b> менен чекиттерди сүйрөсөңүз болот, анан <b>💾 Сактоо</b> басыңыз.'; });
+ document.getElementById('info').innerHTML='📐 Чийип жатасыз... Картаны басып аймакты чийиңиз, акыркы чекитте биринчи чекитти басыңыз.';
+ map.once(L.Draw.Event.CREATED,function(e){
+   let poly=e.layer; drawnItems.addLayer(poly); polygons.push(poly);
+   renderAreaList();
+   document.getElementById('info').innerHTML=`✅ Аймак ${polygons.length} кошулду! Дагы кошуу үчүн кайра 📐 Аймак кошуу басыңыз. Бүткөндө 💾 Баарын сактоо`;
+ });
 }
 
 function enableEdit(){
- if(!currentPolygon){ alert('Алгач аймак чийиңиз!'); return; }
+ if(polygons.length===0){ alert('Аймак жок!'); return; }
  if(!editing){
-   currentPolygon.editing.enable();
+   polygons.forEach(p=>p.editing.enable());
    editing=true;
    document.getElementById('editBtn').innerText='✅ Түзөтүүнү бүтүр';
    document.getElementById('editBtn').className='btn btn-green';
-   document.getElementById('info').innerHTML='🔧 <b>Түзөтүү режими ИШТЕП ЖАТАТ:</b><br>• <b>Ак чекитти</b> басып сүйрөңүз → бурч жылыйт<br>• <b>Ортодогу тунук чекитти</b> сүйрөңүз → жаңы бурч кошулат<br>• Бүткөндөн кийин <b>✅ Түзөтүүнү бүтүр → 💾 Сактоо</b>';
+   document.getElementById('info').innerHTML='🔧 ТҮЗӨТҮҮ: Бардык аймактардын ак чекиттери чыкты. Каалаганыңызды сүйрөңүз. Бүткөндө ✅ → 💾';
  }else{
-   currentPolygon.editing.disable();
+   polygons.forEach(p=>p.editing.disable());
    editing=false;
-   document.getElementById('editBtn').innerText='✏️ Аймакты түзөтүү';
+   document.getElementById('editBtn').innerText='✏️ Бардыгын түзөтүү';
    document.getElementById('editBtn').className='btn btn-blue';
-   document.getElementById('info').innerHTML='✅ Түзөтүү бүттү. Эми <b>💾 Аймакты сактоо</b> басыңыз!';
+   document.getElementById('info').innerHTML='✅ Түзөтүү бүттү. 💾 Баарын сактоо басыңыз!';
  }
 }
 
 function saveArea(){
- if(!currentPolygon){ alert('Аймак жок!'); return; }
- if(editing){ currentPolygon.editing.disable(); editing=false; document.getElementById('editBtn').innerText='✏️ Аймакты түзөтүү'; document.getElementById('editBtn').className='btn btn-blue'; }
- let latlngs=currentPolygon.getLatLngs()[0].map(p=>[p.lat,p.lng]);
- localStorage.setItem(STORAGE_KEY,JSON.stringify(latlngs));
- localStorage.setItem('dept_area_GSV_10',JSON.stringify(latlngs));
- localStorage.setItem('kadamjay_area',JSON.stringify(latlngs));
- document.getElementById('info').innerHTML='💾 ✅ Сакталды! v1305 менен ийгиликтүү түзөтүлдү. Жумушчулар эми жаңы аймак менен текшерилет.';
- alert('✅ v1305: Аймак сакталды! Эми өчүрүп кайра чийбейсиз - түздөн түз түзөтө аласыз.');
+ if(polygons.length===0){ alert('Аймак жок!'); return; }
+ if(editing){ polygons.forEach(p=>p.editing.disable()); editing=false; document.getElementById('editBtn').innerText='✏️ Бардыгын түзөтүү'; document.getElementById('editBtn').className='btn btn-blue'; }
+ let allAreas = polygons.map(p=> p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]) );
+ localStorage.setItem(STORAGE_KEY, JSON.stringify(allAreas));
+ localStorage.setItem('dept_area_GSV_10', JSON.stringify(allAreas));
+ localStorage.setItem('kadamjay_area', JSON.stringify(allAreas));
+ // Firebase болсо ошол жерге да сакташ керек - сиздин admin.html сактап жатат
+ document.getElementById('info').innerHTML=`💾 ✅ ${allAreas.length} аймак сакталды! Эми жумушчу ушул ${allAreas.length} аймактын бирине кирсе "жумушта" деп эсептелет.`;
+ alert(`✅ v1306 MULTI: ${allAreas.length} аймак сакталды!`);
 }
 
-function deleteArea(){ if(!confirm('Аймакты толук өчүрүү?')) return; if(currentPolygon) drawnItems.removeLayer(currentPolygon); currentPolygon=null; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem('dept_area_GSV_10'); localStorage.removeItem('kadamjay_area'); document.getElementById('areaStatus').innerText='Өчүрүлдү'; document.getElementById('info').innerHTML='🗑️ Өчүрүлдү. Жаңы аймак чийиңиз.'; }
-
-function toggleFull(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+function loadSaved(){
+ let keys=[STORAGE_KEY,'dept_area_GSV_10','kadamjay_area','gps_area_ГСВ №10'];
+ for(let k of keys){
+   let saved=localStorage.getItem(k); if(!saved) continue;
+   try{
+     let data=JSON.parse(saved); if(!data||!data.length) continue;
+     let areas=[];
+     // Форматты аныктоо: [[lat,lng],...] = 1 аймак, [[[lat,lng]],...] = көп аймак
+     if(Array.isArray(data[0]) && typeof data[0][0]==='number'){ areas=[data]; }
+     else if(Array.isArray(data[0]) && Array.isArray(data[0][0]) && typeof data[0][0][0]==='number'){ areas=data; }
+     else if(Array.isArray(data[0]) && Array.isArray(data[0][0]) && Array.isArray(data[0][0][0])){ areas=data; }
+     else { areas=[data]; }
+     areas.forEach(latlngs=>{
+       if(!latlngs||!latlngs.length) return;
+       let poly=L.polygon(latlngs,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.4,weight:3}).addTo(drawnItems);
+       polygons.push(poly);
+     });
+     if(polygons.length>0){ let g=new L.featureGroup(polygons); map.fitBounds(g.getBounds()); renderAreaList(); return; }
+   }catch(e){ console.log('load err',e); }
+ }
+ renderAreaList();
+}
+loadSaved();
 </script>
 </body>
 </html>
