@@ -1,165 +1,107 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ГСВ №10 - v1307 FIX</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ГСВ v1308 ISOLATED</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
-body{background:#f1f5f9}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}body{background:#f1f5f9}
 .header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);flex-wrap:wrap;gap:8px}
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:8px}
-.stat{background:#fff;border-radius:12px;padding:10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.stat b{display:block;font-size:20px}
-.main{display:grid;grid-template-columns:280px 1fr 260px;gap:8px;padding:8px}
-.panel{background:#fff;border-radius:12px;padding:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);overflow:auto;max-height:82vh}
 .btn{padding:9px 14px;border:none;border-radius:8px;font-weight:bold;cursor:pointer;font-size:13px}
-.btn-orange{background:#f97316;color:#fff}
-.btn-green{background:#16a34a;color:#fff}
-.btn-gray{background:#1f2937;color:#fff}
-.btn-red{background:#dc2626;color:#fff}
-.btn-blue{background:#2563eb;color:#fff}
+.btn-orange{background:#f97316;color:#fff}.btn-green{background:#16a34a;color:#fff}.btn-gray{background:#1f2937;color:#fff}.btn-red{background:#dc2626;color:#fff}.btn-blue{background:#2563eb;color:#fff}
 #map{height:75vh;width:100%;border:3px solid #111;border-radius:10px}
-/* === v1307 FIX - ЧОҢ ЧЕКИТТЕР === */
-.leaflet-editing-icon{width:22px!important;height:22px!important;margin-left:-11px!important;margin-top:-11px!important;background:#fff!important;border:3px solid #ef4444!important;border-radius:50%!important;box-shadow:0 0 0 2px #fff, 0 2px 6px rgba(0,0,0,.4)!important;touch-action:none}
-.leaflet-editing-icon:nth-child(odd){background:#fff!important}
-.leaflet-editing-icon:hover{background:#ffedd5!important;border-color:#f97316!important;transform:scale(1.3)}
+.leaflet-editing-icon{width:22px!important;height:22px!important;margin-left:-11px!important;margin-top:-11px!important;background:#fff!important;border:3px solid #ef4444!important;border-radius:50%!important;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.4)!important}
 .info{background:#dbeafe;padding:8px 10px;font-size:13px;border-left:4px solid #2563eb;margin-top:6px;border-radius:6px}
-@media(max-width:900px){.main{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}#map{height:65vh}}
 </style>
 </head>
 <body>
 <div class="header">
-<div><b id="deptName">ГСВ №10</b> <small style="color:#666">v1307 FIX • 10.10.2026 • Чоң чекит + Көп аймак</small></div>
+<div><b id="deptName">БӨЛҮМ</b> <small style="color:#666">v1308 ISOLATED • Ар бөлүктүн өз аймагы</small> <small id="deptKey" style="color:#f97316"></small></div>
 <div style="display:flex;gap:6px;flex-wrap:wrap">
 <button class="btn btn-orange" onclick="startDraw()">📐 Аймак кошуу</button>
 <button class="btn btn-blue" onclick="enableEdit()" id="editBtn">✏️ Түзөтүү</button>
 <button class="btn btn-green" onclick="saveArea()">💾 Сактоо</button>
-<button class="btn btn-red" onclick="clearAll()">🗑️ Баарын өчүр</button>
+<button class="btn btn-red" onclick="clearAll()">🗑️ Өчүр</button>
 <button class="btn btn-gray" onclick="location.href='admin.html'">← Артка</button>
 </div>
 </div>
-
-<div class="stats">
-<div class="stat"><small>БАРДЫГЫ</small><b id="s_all">1</b></div>
-<div class="stat" style="background:#dcfce7"><small>ЖУМУШТА</small><b id="s_in" style="color:#16a34a">1</b></div>
-<div class="stat" style="background:#fee2e2"><small>СЫРТТА</small><b id="s_out" style="color:#dc2626">0</b></div>
-<div class="stat"><small>АЙМАКТАР</small><b id="s_areas" style="color:#f97316">0</b></div>
-<div class="stat"><small>КЕЧИККЕН</small><b style="color:#ea580c">0</b></div>
-<div class="stat"><small>КЕЛГЕН ЖОК</small><b>0</b></div>
-</div>
-
-<div class="main">
-<div class="panel">
-<b>👥 Жумушчулар</b>
-<input id="search" placeholder="🔍 Аты / ПИН..." style="width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:8px">
-<div id="workers"></div>
-<div style="margin-top:12px;padding:10px;background:#fff7ed;border-radius:8px;border:1px dashed #f97316;font-size:12px">
-<b>💡 v1307 кантип түзөтсө болот:</b><br>1. <b>✏️ Түзөтүү</b> басыңыз<br>2. Ак чекиттер <b>чоңоюп</b> чыгат (22px)<br>3. Чекитти <b>басып кармап сүйрөңүз</b> - карта жылбайт<br>4. Бүткөндө <b>✅ → 💾 Сактоо</b>
-</div>
-</div>
-
-<div class="panel" style="padding:4px">
-<div style="display:flex;justify-content:space-between;padding:6px"><b>📍 Карта - <span id="areaStatus">0 аймак</span></b><span style="font-size:11px;color:#666">Көп аймак болот</span></div>
-<div id="map"></div>
-<div class="info" id="info">💡 Даяр. Аймак кошуу же Түзөтүү басыңыз.</div>
-</div>
-
-<div class="panel">
-<b>📋 Тизме</b>
-<table style="width:100%;font-size:12px;margin-top:8px;border-collapse:collapse"><thead><tr style="background:#f8fafc"><th style="text-align:left;padding:4px">Аты</th><th>ПИН</th><th>Статус</th></tr></thead><tbody id="list"></tbody></table>
-</div>
-</div>
-
+<div style="padding:8px;display:flex;gap:8px"><div style="background:#fff;padding:8px 12px;border-radius:8px">Аймактар: <b id="s_areas" style="color:#f97316">0</b></div><div style="background:#fff;padding:8px 12px;border-radius:8px">Бөлүм: <b id="s_dept">ГСВ №10</b></div><button class="btn btn-gray" style="padding:4px 8px;font-size:11px" onclick="cleanGlobalKeys()">🧹 Эски жалпы ключтарды тазалоо</button></div>
+<div style="padding:0 8px"><div id="map"></div><div class="info" id="info">Жүктөлүүдө...</div></div>
 <script>
-const deptId=new URLSearchParams(location.search).get('d')||'ГСВ №10';
+const urlParams=new URLSearchParams(location.search);
+const deptId=urlParams.get('d')||'ГСВ №10';
 document.getElementById('deptName').innerText=deptId;
-const STORAGE_KEY='gps_area_'+deptId;
-let map=L.map('map',{tap:true}).setView([40.114,71.74],13);
+document.getElementById('s_dept').innerText=deptId;
+const STORAGE_KEY='gps_area_'+deptId; // МИСАЛЫ: gps_area_ГСВ №10, gps_area_ГСВ №5
+document.getElementById('deptKey').innerText='['+STORAGE_KEY+']';
+let map=L.map('map').setView([40.114,71.74],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 let drawnItems=new L.FeatureGroup(); map.addLayer(drawnItems);
 let polygons=[]; let editing=false;
 
-function loadWorkers(){
- let data=[]; try{data=JSON.parse(localStorage.getItem('gps_workers')||'[]');}catch(e){}
- let filtered=data.filter(w=>(w.dept||'ГСВ №10')===deptId); let wh=''; let lh='';
- filtered.forEach(w=>{wh+=`<div style="padding:8px;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:6px;background:#f0fdf4"><b>${w.name||'Иматали'}</b> • ПИН ${w.pin||'3567'} • Жумушта</div>`; lh+=`<tr><td style="padding:6px">${w.name||'Иматали'}</td><td style="text-align:center">${w.pin||'3567'}</td><td style="text-align:center;color:#16a34a">Жумушта</td></tr>`;});
- if(!filtered.length){wh=`<div style="padding:8px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4"><b>Иматали</b> • ПИН 3567 • Жумушта</div>`; lh=`<tr><td>Иматали</td><td style="text-align:center">3567</td><td style="text-align:center;color:#16a34a">Жумушта</td></tr>`;}
- document.getElementById('workers').innerHTML=wh; document.getElementById('list').innerHTML=lh;
- document.getElementById('s_all').innerText=filtered.length||1;
+function cleanGlobalKeys(){
+ if(confirm('Эски жалпы ключтар dept_area_GSV_10, kadamjay_area өчүрүлсүнбү? Бул баардык бөлүктөрдө чыгып калган аймакты тазалап, ар бөлүктү өзүнчө кылат.')){
+   localStorage.removeItem('dept_area_GSV_10'); localStorage.removeItem('kadamjay_area'); localStorage.removeItem('gps_area_ГСВ №10');
+   alert('Тазаланды! Эми ар бөлүктү өз-өзүнчө ачып, кайра чийиңиз.');
+   location.reload();
+ }
 }
-loadWorkers();
 
-function updateCount(){ document.getElementById('s_areas').innerText=polygons.length; document.getElementById('areaStatus').innerText=polygons.length+' аймак сакталган'; }
-function clearAll(){ if(!confirm(`Баардык ${polygons.length} аймак өчүрүлсүнбү?`)) return; drawnItems.clearLayers(); polygons=[]; updateCount(); localStorage.removeItem(STORAGE_KEY); document.getElementById('info').innerHTML='🗑️ Өчүрүлдү'; }
+function updateCount(){ document.getElementById('s_areas').innerText=polygons.length; document.getElementById('info').innerHTML=`📍 <b>${deptId}</b> үчүн ${polygons.length} аймак. Бул аймак тек ушул бөлүккө гана таандык, башка бөлүккө чыкпайт.`; }
+function clearAll(){ if(!confirm(`${deptId} - ${polygons.length} аймак өчүрүлсүнбү? Тек ушул бөлүктүн аймагы өчөт.`)) return; drawnItems.clearLayers(); polygons=[]; localStorage.removeItem(STORAGE_KEY); updateCount(); }
 
 function startDraw(){
  let drawer=new L.Draw.Polygon(map,{allowIntersection:false,showArea:true,shapeOptions:{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.35,weight:4}});
  drawer.enable();
- document.getElementById('info').innerHTML='📐 Чийип жатасыз... Бүткөндө биринчи чекитти басыңыз.';
+ document.getElementById('info').innerHTML='📐 Чийип жатасыз...';
  map.once(L.Draw.Event.CREATED,function(e){
-   let poly=e.layer; drawnItems.addLayer(poly); polygons.push(poly);
-   updateCount();
-   document.getElementById('info').innerHTML=`✅ Аймак ${polygons.length} кошулду! Дагы кошуу үчүн 📐 басыңыз, түзөтүү үчүн ✏️ басыңыз.`;
+   let poly=e.layer; drawnItems.addLayer(poly); polygons.push(poly); updateCount();
+   document.getElementById('info').innerHTML=`✅ Аймак ${polygons.length} кошулду → 💾 Сактоо басыңыз (тек ${deptId} га сакталат)`;
  });
 }
-
 function enableEdit(){
  if(polygons.length===0){ alert('Аймак жок!'); return; }
  if(!editing){
-   polygons.forEach(p=>{
-     p.editing.enable();
-     // FIX: чекитти кармаганда картаны өчүрүү - сүйрөө оңой болот
-     p.on('editable:editing',function(){ map.dragging.disable(); });
-   });
-   editing=true;
-   document.getElementById('editBtn').innerText='✅ Түзөтүүнү бүтүр';
-   document.getElementById('editBtn').className='btn btn-green';
-   document.getElementById('info').innerHTML='🔧 <b>ТҮЗӨТҮҮ ИШТЕП ЖАТАТ - ЧОҢ ЧЕКИТТЕР:</b><br>• Ак чекитти <b>манжа менен басып кармап</b> сүйрөңүз<br>• Карта эми жылбайт, болгону чекит жылат<br>• Бүткөндө <b>✅ Түзөтүүнү бүтүр → 💾 Сактоо</b>';
-   map.dragging.disable(); // Түзөтүүдө карта жылбасын
+   polygons.forEach(p=>p.editing.enable()); editing=true;
+   document.getElementById('editBtn').innerText='✅ Бүтүр'; document.getElementById('editBtn').className='btn btn-green';
+   map.dragging.disable();
+   document.getElementById('info').innerHTML='🔧 Түзөтүү: чоң ак чекиттерди сүйрөңүз. Карта жылбайт.';
  }else{
-   polygons.forEach(p=>{ p.editing.disable(); p.off('editable:editing'); });
-   editing=false;
-   document.getElementById('editBtn').innerText='✏️ Түзөтүү';
-   document.getElementById('editBtn').className='btn btn-blue';
+   polygons.forEach(p=>p.editing.disable()); editing=false;
+   document.getElementById('editBtn').innerText='✏️ Түзөтүү'; document.getElementById('editBtn').className='btn btn-blue';
    map.dragging.enable();
-   document.getElementById('info').innerHTML='✅ Түзөтүү бүттү. 💾 Сактоо басыңыз!';
+   document.getElementById('info').innerHTML='✅ Бүттү → 💾 Сактоо';
  }
 }
-
 function saveArea(){
  if(polygons.length===0){ alert('Аймак жок!'); return; }
- if(editing){ polygons.forEach(p=>p.editing.disable()); editing=false; document.getElementById('editBtn').innerText='✏️ Түзөтүү'; document.getElementById('editBtn').className='btn btn-blue'; map.dragging.enable(); }
+ if(editing){ polygons.forEach(p=>p.editing.disable()); editing=false; map.dragging.enable(); document.getElementById('editBtn').innerText='✏️ Түзөтүү'; document.getElementById('editBtn').className='btn btn-blue'; }
  let allAreas=polygons.map(p=>p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]));
- localStorage.setItem(STORAGE_KEY,JSON.stringify(allAreas));
- localStorage.setItem('dept_area_GSV_10',JSON.stringify(allAreas));
- document.getElementById('info').innerHTML=`💾 ✅ ${allAreas.length} аймак сакталды! v1307`;
- alert(`✅ ${allAreas.length} аймак сакталды!`);
+ // === v1308 FIX: ТЕК ӨЗ БӨЛҮГҮНӨ САКТАЙТ ===
+ localStorage.setItem(STORAGE_KEY, JSON.stringify(allAreas));
+ // ЭСКИ ЖАЛПЫ КЛЮЧТАРДЫ ЖАЗБАЙБЫЗ!
+ document.getElementById('info').innerHTML=`💾 ✅ ${allAreas.length} аймак <b>${deptId}</b> үчүн сакталды! Key: ${STORAGE_KEY}. Башка бөлүккө чыкпайт.`;
+ alert(`✅ ${deptId} үчүн ${allAreas.length} аймак сакталды!\nKey: ${STORAGE_KEY}\nЭми башка бөлүккө чыкпайт.`);
 }
-
 function loadSaved(){
- let keys=[STORAGE_KEY,'dept_area_GSV_10','kadamjay_area','gps_area_ГСВ №10'];
- for(let k of keys){
-   let saved=localStorage.getItem(k); if(!saved) continue;
-   try{
-     let data=JSON.parse(saved); if(!data||!data.length) continue;
-     let areas=(Array.isArray(data[0]) && typeof data[0][0]==='number')?[data]:data;
-     areas.forEach(latlngs=>{ if(!latlngs||latlngs.length<3) return; let poly=L.polygon(latlngs,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.4,weight:3}).addTo(drawnItems); polygons.push(poly); });
-     if(polygons.length>0){ let g=new L.featureGroup(polygons); map.fitBounds(g.getBounds().pad(0.2)); updateCount(); return; }
-   }catch(e){}
+ // === v1308 FIX: ТЕК ӨЗ БӨЛҮГҮНҮН КЛЮЧУН ОКУЙТ ===
+ let saved=localStorage.getItem(STORAGE_KEY);
+ if(!saved){
+   document.getElementById('info').innerHTML=`ℹ️ ${deptId} үчүн аймак жок (Key: ${STORAGE_KEY}). Жаңы чийиңиз. Бул бөлүктүн өз аймагы болот.`;
+   updateCount(); return;
  }
- updateCount();
+ try{
+   let data=JSON.parse(saved); let areas=(Array.isArray(data[0])&&typeof data[0][0]==='number')?[data]:data;
+   areas.forEach(latlngs=>{ let poly=L.polygon(latlngs,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.4,weight:3}).addTo(drawnItems); polygons.push(poly); });
+   if(polygons.length>0){ let g=new L.featureGroup(polygons); map.fitBounds(g.getBounds().pad(0.2)); }
+   updateCount();
+   document.getElementById('info').innerHTML=`✅ ${deptId} үчүн ${polygons.length} аймак жүктөлдү (Key: ${STORAGE_KEY})`;
+ }catch(e){ updateCount(); }
 }
 loadSaved();
-// Чекитке тийгенде карта жылбасын - FIX
-map.on('mousedown',function(e){
-  if(editing && e.originalEvent.target.classList.contains('leaflet-editing-icon')){ map.dragging.disable(); }
-});
-map.on('mouseup',function(){ if(editing) setTimeout(()=>map.dragging.disable(),50); });
 </script>
 </body>
 </html>
