@@ -13,7 +13,7 @@
 </style>
 </head>
 <body>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1101</div></div><div><button class="btn orange" id="drawBtn">📐 Аймак кошуу</button> <button class="btn green" id="saveBtn">💾 Сактоо</button> <button class="btn red" id="clearBtn">🗑️ Өчүр</button> <button class="btn dark" id="backBtn">← Админ</button></div></div>
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1105</div></div><div><button class="btn orange" id="drawBtn">📐 Чийүүнү баштоо</button> <button class="btn dark" id="finishBtn" disabled>✅ Чийүүнү бүтүрүү</button> <button class="btn dark" id="undoBtn" disabled>↶ Акыркы чекит</button> <button class="btn green" id="saveBtn">💾 Сактоо</button> <button class="btn red" id="clearBtn">🗑️ Өчүр</button> <button class="btn dark" id="backBtn">← Админ</button></div></div>
 <div class="main"><div class="card"><strong>👥 <span id="dLabel"></span> — <span id="wCnt">0</span> кызматкер</strong><div id="status">Firebase'ден жүктөлүүдө...</div><div id="wList"></div></div><div class="card"><div id="map"></div><div id="msg">Карта жүктөлүүдө...</div></div></div>
 <script>
 'use strict';
@@ -29,12 +29,20 @@ const normalize = value => String(value == null ? '' : value).normalize('NFC').t
 if (!deptId) { title.textContent='Бөлүм көрсөтүлгөн жок'; status.textContent='admin.html аркылуу бөлүмдү тандаңыз (d параметри жок).'; }
 else { title.textContent=deptId; label.textContent=deptId; }
 const storageKey = 'gps_area_' + deptId;
+// Бөлүмдүн аталышы Firebase ачкычына коопсуз айландырылат.
+const areaPath = 'osh/deptAreas/byName/' + encodeURIComponent(deptId || '');
+const db = firebase.apps.length ? firebase.database() : (firebase.initializeApp({databaseURL:'https://gps-tracker-osh-default-rtdb.firebaseio.com'}),firebase.database());
+let remoteLoaded = false;
+let remoteAreas = null;
 const map = L.map('map',{doubleClickZoom:false}).setView([40.114,71.74],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 let areas=[];
 let tempPoly=null;
 let drawing=false;
 let points=[];
+const finishBtn=document.getElementById('finishBtn');
+const undoBtn=document.getElementById('undoBtn');
+const drawBtn=document.getElementById('drawBtn');
 function safeText(node,value){node.textContent=String(value==null?'':value);}
 function addWorker(name,pin,department){
   const item=document.createElement('div');item.className='worker';
@@ -57,21 +65,106 @@ function showWorkers(data){
   list.forEach(([pin,w])=>addWorker(w.name,pin,w.bolum||w.dept||''));
 }
 try {
-  firebase.initializeApp({databaseURL:'https://gps-tracker-osh-default-rtdb.firebaseio.com'});
-  if(deptId){firebase.database().ref('osh/pins').on('value',snap=>showWorkers(snap.val()),error=>{status.textContent='Firebase окуу катасы: '+error.message;});}
+  if(deptId){db.ref('osh/pins').on('value',snap=>showWorkers(snap.val()),error=>{status.textContent='Firebase окуу катасы: '+error.message;});}
 } catch(error){status.textContent='Firebase баштоо катасы: '+error.message;}
 function savedAreas(){
  try{const raw=JSON.parse(localStorage.getItem(storageKey)||'[]');if(!Array.isArray(raw)||!raw.length)return[];return typeof raw[0]?.[0]==='number'?[raw]:raw;}catch{return[];}
 }
 function addPolygon(coords){if(!Array.isArray(coords)||coords.length<3)return;const p=L.polygon(coords,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:.35,weight:3}).addTo(map);areas.push(p);}
-function loadAreas(){savedAreas().forEach(addPolygon);if(areas.length){map.fitBounds(L.featureGroup(areas).getBounds().pad(.2));msg.textContent=areas.length+' аймак жүктөлдү';}else msg.textContent='Бул браузерде аймак сакталган эмес';}
-function stopDrawing(){map.off('click',addPoint);map.off('dblclick',finishDrawing);drawing=false;}
-function addPoint(e){points.push([e.latlng.lat,e.latlng.lng]);if(tempPoly)map.removeLayer(tempPoly);tempPoly=L.polygon(points,{color:'#ff6a00',dashArray:'6,6',fillOpacity:.2}).addTo(map);msg.textContent=points.length+' чекит тандалды. Бүткөндө картаны эки жолу басыңыз.';}
-function finishDrawing(){stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}if(points.length>=3){addPolygon(points);msg.textContent='Аймак чийилди. Сактоо баскычын басыңыз.';}else msg.textContent='Кеминде 3 чекит керек';}
-document.getElementById('drawBtn').onclick=()=>{if(drawing)stopDrawing();drawing=true;points=[];if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}map.on('click',addPoint);map.on('dblclick',finishDrawing);msg.textContent='Картаны басып кеминде 3 чекит коюңуз, анан эки жолу басыңыз';};
-document.getElementById('saveBtn').onclick=()=>{if(!deptId){alert('Бөлүм тандалган эмес');return;}if(!areas.length){alert('Сактай турган аймак жок');return;}localStorage.setItem(storageKey,JSON.stringify(areas.map(p=>p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]))));msg.textContent='Аймак ушул браузерде сакталды: '+storageKey;};
-document.getElementById('clearBtn').onclick=()=>{if(!confirm('Бул браузердеги '+deptId+' аймактарын өчүрөсүзбү?'))return;stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}areas.forEach(p=>map.removeLayer(p));areas=[];localStorage.removeItem(storageKey);msg.textContent='Аймактар ушул браузерден өчүрүлдү';};
-document.getElementById('backBtn').onclick=()=>location.href='admin.html?v=1101';
+function replaceAreas(data){
+  areas.forEach(p=>map.removeLayer(p));areas=[];
+  (Array.isArray(data)?data:[]).forEach(addPolygon);
+  if(areas.length)map.fitBounds(L.featureGroup(areas).getBounds().pad(.2));
+}
+function loadAreas(){
+  if(!deptId)return;
+  msg.textContent='Firebase GPS аймагы жүктөлүүдө...';
+  db.ref(areaPath).on('value',snap=>{
+    const value=snap.val();
+    remoteLoaded=true;
+    if(value && Array.isArray(value.polygons)){
+      remoteAreas=value.polygons;
+      if(!drawing){replaceAreas(remoteAreas);msg.textContent='✅ Firebase: '+areas.length+' аймак жүктөлдү';}
+    }else{
+      remoteAreas=null;
+      if(!drawing){replaceAreas(savedAreas());msg.textContent='Firebase\'де аймак жок. Бул браузердеги эски аймак көрсөтүлдү. Firebase\'ге көчүрүү үчүн «Сактоо» басыңыз.';}
+    }
+  },err=>{msg.textContent='❌ Firebase аймагын окуу катасы: '+err.message;});
+}
+function updateDrawButtons(){
+  finishBtn.disabled=!drawing||points.length<3;
+  undoBtn.disabled=!drawing||points.length===0;
+  drawBtn.textContent=drawing?'✖ Чийүүнү токтотуу':'📐 Чийүүнү баштоо';
+}
+function previewPoints(){
+  if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
+  if(points.length===1)tempPoly=L.circleMarker(points[0],{radius:7,color:'#f97316'}).addTo(map);
+  else if(points.length===2)tempPoly=L.polyline(points,{color:'#f97316',weight:3,dashArray:'6,6'}).addTo(map);
+  else if(points.length>=3)tempPoly=L.polygon(points,{color:'#f97316',weight:3,dashArray:'6,6',fillOpacity:.2}).addTo(map);
+  updateDrawButtons();
+}
+function stopDrawing(){
+  map.off('click',addPoint);
+  drawing=false;
+  map.doubleClickZoom.enable();
+  updateDrawButtons();
+}
+function addPoint(e){
+  if(!drawing)return;
+  points.push([e.latlng.lat,e.latlng.lng]);
+  previewPoints();
+  msg.textContent=points.length+' чекит коюлду. Кеминде 3 чекиттен кийин «Чийүүнү бүтүрүү» басыңыз.';
+}
+function finishDrawing(){
+  if(points.length<3){msg.textContent='⚠️ Кеминде 3 чекит коюңуз';return;}
+  const completed=points.map(p=>p.slice());
+  stopDrawing();
+  if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
+  points=[];
+  addPolygon(completed);
+  msg.textContent='✅ Аймак чийилди ('+completed.length+' чекит). Эми «Сактоо» басыңыз.';
+}
+drawBtn.onclick=()=>{
+  if(drawing){stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];points=[];msg.textContent='Чийүү токтотулду';return;}
+  drawing=true;points=[];
+  if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
+  map.doubleClickZoom.disable();
+  map.on('click',addPoint);
+  updateDrawButtons();
+  msg.textContent='📍 Картанын үстүнөн чекиттерди бирден басыңыз (телефондо да болот). Анан «Чийүүнү бүтүрүү» басыңыз.';
+  setTimeout(()=>map.invalidateSize(),100);
+};
+finishBtn.onclick=finishDrawing;
+undoBtn.onclick=()=>{
+  if(!drawing||!points.length)return;
+  points.pop();previewPoints();
+  msg.textContent=points.length+' чекит калды. Чийүүнү улантыңыз.';
+};
+setTimeout(()=>map.invalidateSize(),250);
+window.addEventListener('resize',()=>map.invalidateSize());
+document.getElementById('saveBtn').onclick=async()=>{
+  if(!deptId){alert('Бөлүм тандалган эмес');return;}
+  if(!remoteLoaded){alert('Firebase жүктөлүп бүтө элек');return;}
+  if(drawing){alert('Адегенде «Чийүүнү бүтүрүү» баскычын басыңыз');return;}
+  if(!areas.length){alert('Сактай турган аймак жок');return;}
+  const polygons=areas.map(p=>p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]));
+  try{
+    await db.ref(areaPath).set({department:deptId,polygons,updatedAt:firebase.database.ServerValue.TIMESTAMP});
+    localStorage.setItem(storageKey,JSON.stringify(polygons));
+    msg.textContent='✅ '+deptId+" GPS аймагы Firebaseге сакталды";
+  }catch(e){alert('Сактоо катасы: '+e.message);}
+};
+document.getElementById('clearBtn').onclick=async()=>{
+  if(!deptId || !remoteLoaded)return;
+  if(!confirm(deptId+' бөлүмүнүн Firebase GPS аймактарын өчүрөсүзбү?'))return;
+  try{
+    await db.ref(areaPath).remove();
+    localStorage.removeItem(storageKey);
+    stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];
+    replaceAreas([]);msg.textContent="Аймак Firebaseден өчүрүлдү";
+  }catch(e){alert('Өчүрүү катасы: '+e.message);}
+};
+document.getElementById('backBtn').onclick=()=>location.href='admin.html?v=1102';
 loadAreas();
 </script>
 </body>
