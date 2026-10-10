@@ -90,12 +90,13 @@ button.out {
   </a>
 
   <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
-    v1104 GPS аймак текшерүү
+    v1105 GPS + Firebase Anonymous Authentication
   </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <script>
 const logEl = document.getElementById('log');
@@ -108,17 +109,34 @@ const log = text => {
 };
 
 let db;
+let authReady = null;
 let gpsReady = false;
 let gpsLat = null;
 let gpsLng = null;
 let busy = false;
 
 try {
-  firebase.initializeApp({
-    databaseURL: "https://gps-tracker-osh-default-rtdb.firebaseio.com"
-  });
+  // Өзүнчө Firebase app админ панелинин кирүү сессиясын бузбайт.
+  const workerApp = firebase.apps.find(app => app.name === 'worker-v1105') || firebase.initializeApp({
+    apiKey: "AIzaSyBQWMBefKYWiPQnJVHcANZLqkz2Vnt2VME",
+    authDomain: "gps-tracker-osh.firebaseapp.com",
+    databaseURL: "https://gps-tracker-osh-default-rtdb.firebaseio.com",
+    projectId: "gps-tracker-osh",
+    appId: "1:588347508048:web:1b6fd5417ff8f4e5f29855"
+  }, 'worker-v1105');
 
-  db = firebase.database();
+  db = workerApp.database();
+  const workerAuth = workerApp.auth();
+  // Жумушчу сессиясы ушул өтмөктө гана сакталат.
+  authReady = workerAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+    .then(() => workerAuth.currentUser || workerAuth.signInAnonymously())
+    .then(user => {
+      if (!user) throw new Error('Анонимдүү кирүү ишке ашкан жок');
+      return user;
+    });
+  authReady.catch(error => {
+    log('❌ Firebase Authentication: ' + error.message + '. Firebase Console → Authentication → Sign-in method → Anonymous функциясын күйгүзүңүз.');
+  });
 
   let deviceId = localStorage.getItem('deviceId');
 
@@ -305,6 +323,7 @@ try {
     setBusy(true);
 
     try {
+      await authReady;
       // Катталуунун алдында GPS кайра алынат
       log('📡 GPS текшерилүүдө...');
       const position = await getGPS();
@@ -432,6 +451,7 @@ try {
     log('📡 Жумуштан кетүү катталууда...');
 
     try {
+      await authReady;
       const workerRef = db.ref('osh/workers/' + workerId);
       const snap = await workerRef.get();
       const worker = snap.val();
@@ -511,6 +531,7 @@ try {
     setBusy(true);
 
     try {
+      await authReady;
       if (pin) {
         await releaseOldPin(pin);
       }
