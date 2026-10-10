@@ -1,65 +1,15 @@
 <!DOCTYPE html>
-<html lang="ky"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Жумушчу v5.1</title>
-<link rel="icon" href="icon.png"><link rel="apple-touch-icon" href="icon.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}body{background:#f0fdf4;padding:12px}.card{background:#fff;border-radius:18px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.1);margin-bottom:12px;text-align:center}.input{padding:16px;border:3px solid #16a34a;border-radius:14px;font-size:22px;width:100%;text-align:center;font-weight:900;letter-spacing:4px;outline:none}.input:focus{border-color:#15803d}.btn{padding:16px;border:none;border-radius:14px;font-weight:900;cursor:pointer;width:100%;font-size:16px}.btn-green{background:#16a34a;color:#fff}.logo{width:72px;height:72px;border-radius:18px;margin:0 auto 10px;display:block;object-fit:cover;border:2px solid #dcfce7}#map{height:50vh;border-radius:14px;border:3px solid #16a34a;margin-top:12px}.status{padding:12px;border-radius:12px;font-weight:900;text-align:center;margin:10px 0}.ok{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}.wait{background:#fef3c7;color:#92400e}</style>
-</head><body>
-<div class="card" id="loginBox">
-<img src="icon.png" class="logo" onerror="this.style.display='none'">
-<h2>👷 Жумушчу кирүү</h2><p style="color:#64748b;font-size:12px;margin:6px 0">v5.1 • Бир шилтеме - Жеке ПИН телефонуңузга бекитилет<br><span id="srvInfo" style="font-size:10px;color:#94a3b8"></span></p>
-<input id="pinInput" class="input" placeholder="4444" type="number" inputmode="numeric">
-<button class="btn btn-green" style="margin-top:14px" onclick="login()">🔓 Кирүү</button>
-<div id="loginMsg" style="font-size:13px;font-weight:bold;margin-top:12px;min-height:20px;color:#dc2626"></div>
-<a href="#" onclick="resetPrompt();return false" style="font-size:12px;color:#dc2626;display:block;margin-top:10px">ПИН унутулду? Админ сброс кылышы керек</a>
-</div>
-<div class="card" id="workBox" style="display:none"><div style="display:flex;justify-content:space-between;text-align:left"><div><b id="wName">--</b><br><small id="wDept" style="color:#64748b"></small><br><small id="wPinShow" style="color:#16a34a;font-weight:900"></small></div><button onclick="logout()" style="padding:8px 12px;border:none;border-radius:10px;background:#fee2e2;color:#dc2626;font-weight:bold">Чыгуу</button></div><div id="status" class="status wait">📍 GPS күтүлүүдө...</div><div id="map"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><div class="card" style="margin:0;padding:10px"><small>Широта</small><br><b id="lat">--</b></div><div class="card" style="margin:0;padding:10px"><small>Долгота</small><br><b id="lng">--</b></div></div></div>
+<html lang="ky"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Жумушчу ФИНАЛ</title><style>body{font-family:Arial;background:#f0fdf4;padding:12px} .card{background:#fff;padding:16px;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.08);max-width:420px;margin:0 auto} input{padding:14px;border:2px solid #bbf7d0;border-radius:12px;width:100%;font-size:18px;text-align:center;letter-spacing:4px} button{width:100%;padding:14px;border:none;border-radius:12px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px} .b{background:#16a34a;color:#fff} .r{background:#fee2e2;color:#991b1b}</style></head><body>
+<div class="card" id="login"><h2 style="text-align:center">🔐 ПИН киргизиңиз</h2><input id="pin" placeholder="____" maxlength="10"><button class="b" onclick="doLogin()">Кирүү</button><div id="msg" style="color:#dc2626;text-align:center;margin-top:10px;font-size:13px"></div><div style="text-align:center;margin-top:12px;font-size:11px;color:#888">Эскертүү: бекитүү жок, ПИН жазса эле кирет</div></div>
+<div class="card" id="work" style="display:none"><div style="display:flex;justify-content:space-between"><div><b id="wname"></b><br><small id="wdept"></small></div><button class="r" style="width:auto;padding:6px 10px" onclick="logout()">Чыгуу</button></div><div style="background:#f0fdf4;border:2px dashed #16a34a;border-radius:12px;padding:14px;text-align:center;margin-top:14px"><div id="status">📍 Даяр</div><div id="coords" style="font-size:12px;color:#666;margin-top:6px"></div><button class="b" id="btnStart" onclick="start()">▶️ Ишти баштоо</button><button class="r" id="btnStop" onclick="stop()" style="display:none">⏹️ Токтотуу</button></div></div>
 <script>
-function getLocal(){try{return JSON.parse(localStorage.getItem('gps_workers')||'[]')}catch(e){return[]}}
-function saveLocal(a){localStorage.setItem('gps_workers',JSON.stringify(a))}
-function getDevId(){let id=localStorage.getItem('gps_device_id');if(!id){id='dev_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36);localStorage.setItem('gps_device_id',id)}return id}
-function getBind(){try{return JSON.parse(localStorage.getItem('gps_device_binding')||'null')}catch(e){return null}}
-function setBind(pin){localStorage.setItem('gps_device_binding',JSON.stringify({pin:pin,dev:getDevId()}))}
-let worker=null,map=null,marker=null,watchId=null;
-async function fetchRemote(){
- try{
-  let url='./workers.json?ts='+Date.now();
-  document.getElementById('srvInfo').innerText='Сервер текшерилүүдө: '+url;
-  let r=await fetch(url,{cache:'no-store'});
-  if(!r.ok) throw 'HTTP '+r.status;
-  let j=await r.json();
-  if(!Array.isArray(j)) throw 'not array';
-  document.getElementById('srvInfo').innerText='✅ Серверде '+j.length+' ПИН бар';
-  return j;
- }catch(e){
-  document.getElementById('srvInfo').innerText='⚠️ workers.json окулбады: '+e+' - local колдонулууда';
-  return null;
- }
-}
-async function login(){
- let pin=document.getElementById('pinInput').value.trim();
- let msg=document.getElementById('loginMsg');
- if(!pin){msg.innerText='ПИН жазыңыз!';return;}
- msg.style.color='#92400e'; msg.innerText='⏳ Текшерилүүдө...';
- let bind=getBind();
- if(bind && bind.pin!==pin){msg.style.color='#dc2626';msg.innerHTML='🚫 Бул телефон '+bind.pin+' ПИНине бекитилген!<br>Сиздин ПИН: '+bind.pin+'<br>Башка ПИН иштебейт.';return;}
- let local=getLocal();
- let w=local.find(x=>x.pin===pin);
- if(!w){
-   let remote=await fetchRemote();
-   if(remote){ w=remote.find(x=>String(x.pin)===String(pin)); if(w){ local.push({...w,deviceId:getDevId()}); saveLocal(local); } }
- }
- if(!w){msg.style.color='#dc2626';msg.innerHTML='❌ ПИН '+pin+' табылбады! Админден жаңы ПИН сураңыз.<br><span style="font-size:11px">Эгер админ берген болсо, баракты жаңыртыңыз</span>';return;}
- worker=w; if(!bind) setBind(pin);
- localStorage.setItem('gps_current_pin',pin);
- document.getElementById('loginBox').style.display='none';document.getElementById('workBox').style.display='block';
- document.getElementById('wName').innerText=w.name;document.getElementById('wDept').innerText=w.dept;document.getElementById('wPinShow').innerText='ПИН: '+w.pin+' • 📱 Бекитилди';
- initMap(); startTrack();
-}
-function logout(){if(watchId) navigator.geolocation.clearWatch(watchId);localStorage.removeItem('gps_current_pin');location.reload()}
-function initMap(){if(map) return;map=L.map('map').setView([40.11,71.74],14);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map)}
-function startTrack(){if(!navigator.geolocation) return;watchId=navigator.geolocation.watchPosition(p=>{let lat=p.coords.latitude,lng=p.coords.longitude;document.getElementById('lat').innerText=lat.toFixed(6);document.getElementById('lng').innerText=lng.toFixed(6);if(!marker)marker=L.marker([lat,lng]).addTo(map);else marker.setLatLng([lat,lng]);map.setView([lat,lng],16);document.getElementById('status').className='status ok';document.getElementById('status').innerText='✅ Жумушта • '+worker.dept},e=>{document.getElementById('status').className='status bad';document.getElementById('status').innerText='❌ GPS: '+e.message},{enableHighAccuracy:true})}
-function resetPrompt(){let code=prompt('Админ берген RESET кодду жазыңыз (мисалы RESET-4444-AB12):');if(!code)return;if(code.startsWith('RESET-')){localStorage.removeItem('gps_device_binding');localStorage.removeItem('gps_current_pin');alert('✅ Бекитүү алынды! Эми жаңы ПИН менен кириңиз.');location.reload()}else alert('Код туура эмес')}
-let saved=localStorage.getItem('gps_current_pin');let b=getBind();if(saved&&b&&saved===b.pin){document.getElementById('pinInput').value=saved;login()}
+function getWorkers(){return JSON.parse(localStorage.getItem('gps_workers')||'[]')}
+function find(pin){return getWorkers().find(w=>w.pin===pin)}
+function doLogin(){let pin=document.getElementById('pin').value.trim();if(!pin)return;let w=find(pin);if(!w){document.getElementById('msg').innerText='❌ ПИН табылбады. Админкадан кошуңуз: '+pin;return}localStorage.setItem('current_pin',pin);showWork(w)}
+function showWork(w){document.getElementById('login').style.display='none';document.getElementById('work').style.display='block';document.getElementById('wname').innerText=w.name;document.getElementById('wdept').innerText=w.dept+' | ПИН:'+w.pin}
+function logout(){localStorage.removeItem('current_pin');location.reload()}
+let watch=null;
+function start(){if(!navigator.geolocation)return alert('GPS жок');document.getElementById('status').innerText='🟢 Иштеп жатат...';document.getElementById('btnStart').style.display='none';document.getElementById('btnStop').style.display='block';watch=navigator.geolocation.watchPosition(p=>{let c=p.coords.latitude.toFixed(5)+', '+p.coords.longitude.toFixed(5);document.getElementById('coords').innerText=c+' | ±'+Math.round(p.coords.accuracy)+'м';let pos=JSON.parse(localStorage.getItem('gps_pos')||'{}');pos[localStorage.getItem('current_pin')]={lat:p.coords.latitude,lng:p.coords.longitude,time:Date.now()};localStorage.setItem('gps_pos',JSON.stringify(pos))},e=>{document.getElementById('status').innerText='❌ GPS ката: '+e.message},{enableHighAccuracy:true})}
+function stop(){if(watch)navigator.geolocation.clearWatch(watch);document.getElementById('status').innerText='⏸️ Токтоду';document.getElementById('btnStart').style.display='block';document.getElementById('btnStop').style.display='none'}
+let cur=localStorage.getItem('current_pin');if(cur){let w=find(cur);if(w)showWork(w)}
 </script></body></html>
