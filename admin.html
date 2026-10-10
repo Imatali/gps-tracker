@@ -2,8 +2,9 @@
 <html lang="ky">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Кадамжай Админ v1008-FINAL-4</title>
+<title>Кадамжай Админ v1100 IDEAL</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" href="icon.png?v=1100">
 <style>.card-shadow{box-shadow:0 2px 12px #0000000d}</style>
 </head>
 <body class="bg-[#f8fafc] p-3 font-sans">
@@ -12,10 +13,10 @@
 <div class="bg-white p-4 rounded-xl card-shadow mb-3">
 <div class="flex justify-between items-center gap-2 flex-wrap">
 <div><h1 class="font-bold text-[15px] flex items-center gap-2">
-<img src="logo.png?v=1008" class="w-8 h-8 rounded-full bg-white border">
-Кадамжай ЖДПБ - Көзөмөл
-</h1><p class="text-[11px] text-gray-500">Бөлүм <span id="deptCount">8</span> | <span id="today"></span></p></div>
-<div class="flex gap-2"><a href="reports.html?v=1020" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[13px] font-bold">📊 Админка</a><a href="worker.html?v=1006" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px] font-bold">👷 Жумушчу</a><button onclick="addDept()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ Бөлүм</button></div>
+<img src="logo.png?v=1100" class="w-8 h-8 rounded-full bg-white border">
+Кадамжай ЖДПБ - Көзөмөл <span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full">v1100 IDEAL</span>
+</h1><p class="text-[11px] text-gray-500">Бөлүм <span id="deptCount">8</span> | <span id="today"></span> | Баары v1100</p></div>
+<div class="flex gap-2"><a href="reports.html?v=1100" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[13px] font-bold">📊 Админка</a><a href="worker.html?v=1100" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px] font-bold">👷 Жумушчу v1100</a><button onclick="addDept()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm">+ Бөлүм</button></div>
 </div>
 
 <!-- ФИЛЬТРЛЕР - ЦИФРА 2 ЭСЕ ЧОҢ -->
@@ -46,17 +47,17 @@
 </div>
 
 <div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"></div>
-<!-- ЖОГОЛГОН ОКНО - КАЙРА КОШУЛДУ -->
+
 <div class="mt-3 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 p-3 rounded-xl flex justify-between items-center flex-wrap gap-2">
 <div class="text-[13px] flex items-center gap-1">
-<span>👷</span><b>Жумушчу:</b> <span class="text-blue-600">worker.html?v=1006</span> | <b class="text-purple-700">Админка:</b> <span class="text-blue-600">reports.html?v=1020</span>
+<span>👷</span><b>Жумушчу:</b> <span class="text-blue-600">worker.html?v=1100</span> | <b class="text-purple-700">Админка:</b> <span class="text-blue-600">reports.html?v=1100</span>
 </div>
-<button onclick="navigator.clipboard.writeText('https://imatali.github.io/gps-tracker/worker.html?v=1006'); alert('✅ Көчүрүлдү!')" class="bg-white border px-3 py-1.5 rounded-lg text-sm shadow-sm">📋 Көчүрүү</button>
+<button onclick="navigator.clipboard.writeText('https://imatali.github.io/gps-tracker/worker.html?v=1100'); alert('✅ v1100 Көчүрүлдү!')" class="bg-white border px-3 py-1.5 rounded-lg text-sm shadow-sm">📋 Көчүрүү</button>
 </div>
-<!-- ПИН БЕРҮҮ + ФИЛЬТР КОШУЛДУ -->
+
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
 <div class="flex justify-between items-center flex-wrap gap-2 mb-2">
-<h3 class="font-bold">👥 ПИН берүү + График</h3>
+<h3 class="font-bold">👥 ПИН берүү + График v1100</h3>
 <div class="flex gap-2">
 <input id="pinSearch" oninput="render()" placeholder="🔍 Аты / ПИН / Бөлүм боюнча издөө..." class="border rounded-lg px-3 py-2 text-[13px] w-[260px] bg-yellow-50">
 <button onclick="document.getElementById('pinSearch').value='';render()" class="bg-gray-100 px-3 py-2 rounded-lg text-[12px]">✕</button>
@@ -76,7 +77,7 @@
 <table class="w-full text-[13px] mt-1" id="pinsTable"></table>
 </div>
 
-<div class="text-[11px] text-gray-400 text-center mt-3">v1008-FINAL-4 | Цифра чоң + ПИН издөө</div>
+<div class="text-[11px] text-gray-400 text-center mt-3">v1100 IDEAL | Баары бир версияда | Offline + WakeLock колдойт</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -122,7 +123,6 @@ function render(){
   html+=`<div class="border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-blue-600 bg-white cursor-pointer" onclick="addDept()"><span class="text-2xl">+</span>Бөлүм</div>`;
   document.getElementById('grid').innerHTML=html;
 
-  // ПИН ИЗДӨӨ ФИЛЬТР
   let pq=(document.getElementById('pinSearch')?.value||'').toLowerCase();
   let h='<tr class="bg-gray-50 text-[11px]"><th class="p-2 text-left">Аты</th><th class="p-2">Бөлүм</th><th class="p-2">ПИН / График</th><th class="p-2">Тел</th><th class="p-2"></th></tr>';
   let cnt=0;
@@ -139,11 +139,11 @@ function render(){
   document.getElementById('pinsTable').innerHTML=h;
   if(document.getElementById('pinFound')) document.getElementById('pinFound').innerText=cnt;
 }
-window.addWorker=function(){let n=document.getElementById('nameInput').value.trim();let b=document.getElementById('deptInput').value;let s1=document.getElementById('s1').value,s2=document.getElementById('s2').value,s3=document.getElementById('s3').value,s4=document.getElementById('s4').value;if(!n){alert('Аты жаз');return;}let pin=Math.floor(1000+Math.random()*9000).toString();db.ref('osh/pins/'+pin).set({name:n,bolum:b,schedule:{start:s1,lunchS:s2,lunchE:s3,end:s4},deviceId:null}).then(()=>{document.getElementById('nameInput').value='';alert('✅ ПИН: '+pin);});}
+window.addWorker=function(){let n=document.getElementById('nameInput').value.trim();let b=document.getElementById('deptInput').value;let s1=document.getElementById('s1').value,s2=document.getElementById('s2').value,s3=document.getElementById('s3').value,s4=document.getElementById('s4').value;if(!n){alert('Аты жаз');return;}let pin=Math.floor(1000+Math.random()*9000).toString();db.ref('osh/pins/'+pin).set({name:n,bolum:b,schedule:{start:s1,lunchS:s2,lunchE:s3,end:s4},deviceId:null}).then(()=>{document.getElementById('nameInput').value='';alert('✅ ПИН: '+pin+' (v1100)');});}
 window.delPin=function(p){if(confirm(p+' өчүрөбү?'))db.ref('osh/pins/'+p).remove();}
 window.resetPin=function(p){if(confirm(p+' Сброс?'))db.ref('osh/pins/'+p).update({deviceId:null});}
 window.delDept=function(d){if(!confirm(d+' өчүрөбү?'))return;depts=depts.filter(x=>x!=d);saveDepts();db.ref('osh/pins').once('value',s=>{let v=s.val()||{};Object.entries(v).forEach(([k,x])=>{if(x.bolum==d)db.ref('osh/pins/'+k).remove();});});render();}
-window.filterDept=function(d){location.href='dept.html?d='+encodeURIComponent(d)+'&v=1012';}
+window.filterDept=function(d){location.href='dept.html?d='+encodeURIComponent(d)+'&v=1100';}
 window.addDept=function(){let d=prompt('Жаңы бөлүм:');if(!d)return;if(depts.includes(d)){alert('Бар!');return;}depts.push(d);saveDepts();render();}
 render();
 </script>
