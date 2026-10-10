@@ -2,41 +2,38 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Кадамжай ЖДПБ v1100 FIXED v4.1</title>
+<title>Кадамжай ЖДПБ v5 - Бир шилтеме Жеке ПИН</title>
+<link rel="icon" href="icon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial, sans-serif}
 body{background:#f8fafc;padding:10px}
 .header{background:#fff;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:8px;flex-wrap:wrap;gap:8px}
 .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:10px}
-@media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}}@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
 .stat{background:#fff;border-radius:14px;padding:12px 8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid #f1f5f9}
-.stat small{display:block;font-size:10px;color:#475569;font-weight:700;line-height:1.2;min-height:24px}
+.stat small{display:block;font-size:10px;color:#475569;font-weight:700;min-height:24px}
 .stat b{display:block;font-size:24px;margin-top:6px;font-weight:900}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.grid{grid-template-columns:1fr}}
 .card{background:#fff;border-radius:14px;padding:14px 12px;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:4px solid #3b82f6;position:relative}
-.card h4{font-size:16px;font-weight:900;margin-bottom:10px;color:#0f172a}
-.card.row{display:flex;gap:10px;font-size:11px;margin:6px 0;align-items:baseline;flex-wrap:wrap}
-.card.row span{font-size:10px;color:#64748b;font-weight:700}
+.card h4{font-size:16px;font-weight:900;margin-bottom:10px}
+.card.row{display:flex;gap:10px;font-size:11px;margin:6px 0;align-items:baseline}
 .card.row b.num{font-size:20px;font-weight:900}
 .c-green{color:#16a34a}.c-red{color:#dc2626}.c-blue{color:#2563eb}
-.card a{font-size:12px;color:#2563eb;text-decoration:none;font-weight:800}
 .badge{position:absolute;right:8px;top:8px;color:#94a3b8;cursor:pointer;font-weight:bold}
 .pins{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.input{padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;width:100%;background:#fff}
+.input{padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:12px;width:100%}
 .btn{padding:9px 14px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;font-size:12px}
 .btn-blue{background:#2563eb;color:#fff}.btn-purple{background:#7c3aed;color:#fff}.btn-green{background:#16a34a;color:#fff}
 table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th{padding:8px;text-align:left;color:#64748b;font-size:10px;border-bottom:1px solid #e2e8f0}td{padding:7px;border-bottom:1px solid #f1f5f9;vertical-align:top}
 .vfix{background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:bold}
-.worker-link{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:12px}
+.worker-link{background:#f0fdf4;border:2px solid #16a34a;border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 </style>
 </head>
 <body>
 <div class="header">
-<div style="display:flex;gap:10px;align-items:center"><div style="width:36px;height:36px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center">🏥</div><div><b>Кадамжай ЖДПБ - Көзөмөл</b> <span class="vfix">v1100 FIXED v4.1</span><br><small style="color:#64748b">Бөлүм: <span id="deptCnt">0</span> | Жумушчу: <span id="workCnt">0</span> | 10.2026</small></div></div>
-<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" style="background:#f3e8ff;color:#6d28d9" onclick="location.href='reports.html'">📊 Отчет</button><button class="btn btn-purple">👑 Админка</button><button class="btn btn-green" onclick="location.href='worker.html?v=1100'">👷 Жумушчу</button><button class="btn" style="background:#e0f2fe;color:#0369a1" onclick="addDept()">+ Бөлүм</button></div>
+<div style="display:flex;gap:10px;align-items:center"><img src="icon.png" style="width:36px;height:36px;border-radius:8px;object-fit:cover"><div><b>Кадамжай ЖДПБ - Көзөмөл</b> <span class="vfix">v5 • Бир шилтеме</span><br><small style="color:#64748b">Бөлүм: <span id="deptCnt">0</span> | Жумушчу: <span id="workCnt">0</span></small></div></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" style="background:#f3e8ff;color:#6d28d9" onclick="location.href='reports.html'">📊 Отчет</button><button class="btn btn-purple">👑 Админка</button><button class="btn btn-green" onclick="location.href='worker.html?v=5'">👷 Жумушчу</button><button class="btn" style="background:#e0f2fe;color:#0369a1" onclick="addDept()">+ Бөлүм</button></div>
 </div>
 
 <div class="stats">
@@ -48,110 +45,58 @@ table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th{paddi
 <div class="stat" style="background:#eff6ff;border:2px solid #2563eb"><small>Бардык<br>жумушчу</small><b id="st_all" style="color:#2563eb">0</b></div>
 </div>
 
-<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><input id="deptSearch" placeholder="🔍 Бөлүм издөө..." class="input" style="max-width:220px;padding:6px 10px" oninput="renderCards()"></div>
+<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><input id="deptSearch" placeholder="🔍 Бөлүм издөө..." class="input" style="max-width:220px" oninput="renderCards()"></div>
 <div class="grid" id="grid"></div>
 
-<!-- Сиз сураган жашыл шилтеме - КАЙРА КОШУЛДУ -->
 <div class="worker-link">
-<div>👷 Жумушчу: <b>worker.html?v=1100</b> - <small style="color:#16a34a">Иштеп жатат</small></div>
-<div style="display:flex;gap:6px">
-<button class="btn" style="padding:6px 12px;font-size:11px;background:#fff;border:1px solid #bbf7d0" onclick="copyWorkerLink()">📋 Көчүрүү</button>
-<button class="btn btn-green" style="padding:6px 12px;font-size:11px" onclick="location.href='worker.html?v=1100'">Ачуу →</button>
-</div>
+<div><img src="icon.png" style="width:28px;height:28px;border-radius:6px;vertical-align:middle;margin-right:6px"><b>Жумушчулар үчүн бир шилтеме:</b> <span style="font-family:monospace;font-size:11px">worker.html?v=5</span><br><small style="color:#16a34a">Баарына ушул шилтеме + жеке ПИН берилет. ПИН телефонго бекитилет.</small></div>
+<div style="display:flex;gap:6px"><button class="btn" style="background:#fff;border:1px solid #bbf7d0" onclick="copyWorkerLink()">📋 Көчүрүү</button><button class="btn btn-green" onclick="location.href='worker.html?v=5'">Ачуу →</button></div>
 </div>
 
 <div class="pins">
-<b>👥 ПИН берүү v1100 FIXED v4.1 - Телефон + Дарек + GPS</b>
+<b>👥 ПИН берүү v5 - Телефонго бекитүү + Сброс</b>
 <div style="display:grid;grid-template-columns:1.2fr 150px 90px 130px 1fr;gap:6px;margin:10px 0">
-<input id="w_name" placeholder="Аты-жөнү (Эмина)" class="input">
-<select id="w_dept" class="input" style="font-weight:bold"></select>
-<input id="w_pin" placeholder="ПИН 1234" class="input">
-<input id="w_phone" placeholder="Телефон 0702325359" class="input">
-<input id="w_addr" placeholder="Дареги - Кадамжай ш. Больничная 18" class="input">
+<input id="w_name" placeholder="Аты-жөнү" class="input"><select id="w_dept" class="input" style="font-weight:bold"></select><input id="w_pin" placeholder="ПИН 2222" class="input"><input id="w_phone" placeholder="Телефон" class="input"><input id="w_addr" placeholder="Дарек" class="input">
 </div>
 <div style="display:grid;grid-template-columns:150px 150px 70px 70px 70px 70px 1fr;gap:6px;margin-bottom:10px">
-<input id="w_lat" placeholder="Широта 40.1145" class="input" type="number" step="0.000001">
-<input id="w_lng" placeholder="Долгота 71.745" class="input" type="number" step="0.000001">
-<input value="08:00" class="input"><input value="12:00" class="input"><input value="13:00" class="input"><input value="17:00" class="input">
-<button class="btn btn-blue" onclick="saveWorker()">+ ПИН берүү</button>
+<input id="w_lat" placeholder="Широта" class="input" type="number" step="0.000001"><input id="w_lng" placeholder="Долгота" class="input" type="number" step="0.000001"><input value="08:00" class="input"><input value="12:00" class="input"><input value="13:00" class="input"><input value="17:00" class="input"><button class="btn btn-blue" onclick="saveWorker()">+ ПИН берүү</button>
 </div>
-<div style="font-size:11px;color:#16a34a">💡 Телефон, Дарек, Широта/Долгота ушул жерге жазылат. Табылды: <b id="pinCount">0</b></div>
-<div style="display:flex;gap:6px;margin:8px 0"><input id="pinSearch" placeholder="🔍 Аты / ПИН / Бөлүм / Телефон издөө..." class="input" style="background:#fefce8" oninput="renderPinTable()"><button class="btn" style="background:#f1f5f9" onclick="document.getElementById('pinSearch').value='';renderPinTable()">✕</button></div>
-<table><thead><tr><th>Аты</th><th>Бөлүмү</th><th>ПИН</th><th>Телефон</th><th>Дарек / GPS</th><th>Өчүр</th></tr></thead><tbody id="pinTbody"></tbody></table>
-<div style="text-align:center;color:#94a3b8;font-size:10px;margin-top:10px">v1100 FIXED v4.1 | Жашыл шилтеме кайтарылды | Чын эсеп</div>
+<div style="display:flex;gap:6px;margin:8px 0"><input id="pinSearch" placeholder="🔍 Аты / ПИН / Бөлүм издөө..." class="input" style="background:#fefce8" oninput="renderPinTable()"><button class="btn" style="background:#f1f5f9" onclick="document.getElementById('pinSearch').value='';renderPinTable()">✕</button></div>
+<table><thead><tr><th>Аты</th><th>Бөлүмү</th><th>ПИН</th><th>Телефон</th><th>Бекитүү</th><th>Аракет</th></tr></thead><tbody id="pinTbody"></tbody></table>
+<div style="text-align:center;color:#94a3b8;font-size:10px;margin-top:10px">v5 | Бир шилтеме + Жеке ПИН + Телефонго бекитүү + Сброс | icon.png</div>
 </div>
 
 <script>
 let DEPTS_DEFAULT=["Администрация","Бухгалтерия","КДО","ГСВ №1","ГСВ №2","ГСВ №3","ГСВ №7","ГСВ №9","ГСВ №10","ГСВ №11","ГСВ №12","ГСВ №13","ГСВ №14","ГСВ №15","ГСВ №16","ГСВ №17"];
-function getDepts(){ try{let d=JSON.parse(localStorage.getItem('gps_depts')||'null'); return d&&d.length?d:DEPTS_DEFAULT;}catch(e){return DEPTS_DEFAULT} }
-function saveDepts(d){ localStorage.setItem('gps_depts',JSON.stringify(d)); }
-function getWorkers(){ try{return JSON.parse(localStorage.getItem('gps_workers')||'[]')}catch(e){return []} }
-function getAreaCount(dept){ let s=localStorage.getItem('gps_area_'+dept); if(!s) return 0; try{let d=JSON.parse(s); let arr=(Array.isArray(d[0])&&typeof d[0][0]==='number')?[d]:d; return arr.length;}catch(e){return 0} }
-function renderDeptSelect(){ let depts=getDepts(); let sel=document.getElementById('w_dept'); sel.innerHTML=depts.map(d=>`<option value="${d}">${d}</option>`).join(''); }
-function updateStats(){
- let workers=getWorkers(); let total=workers.length;
- let late=0, earlyObet=0, lateObet=0, leftEarly=0, absent=0;
- document.getElementById('st_late').innerText=late;
- document.getElementById('st_early').innerText=earlyObet;
- document.getElementById('st_lateObet').innerText=lateObet;
- document.getElementById('st_left').innerText=leftEarly;
- document.getElementById('st_abs').innerText=absent>total?0:absent;
- document.getElementById('st_all').innerText=total;
- document.getElementById('workCnt').innerText=total;
- document.getElementById('deptCnt').innerText=getDepts().length;
-}
-function renderCards(){
- let q=(document.getElementById('deptSearch').value||'').toLowerCase();
- let workers=getWorkers(); let depts=getDepts();
- let html='';
- depts.filter(d=>d.toLowerCase().includes(q)).forEach(d=>{
-   let list=workers.filter(w=>w.dept===d);
-   let cnt=list.length;
-   html+=`<div class="card"><span class="badge" onclick="deleteDept('${d}')">✕</span><h4>${d}</h4>
-   <div class="row"><span>ЖУМУШТА</span> <b class="num c-green">0</b> <span style="margin-left:6px">СЫРТТА</span> <b class="num c-red">0</b></div>
-   <div class="row"><span>БАРДЫГЫ</span> <b class="num c-blue">${cnt}</b> <span>📍 Аймак: ${getAreaCount(d)}</span></div>
-   <a href="dept.html?d=${encodeURIComponent(d)}&v=1100FIXED4">→ Кирүү</a></div>`;
- });
- html+=`<div class="card" style="border:2px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;min-height:110px;cursor:pointer" onclick="addDept()"><div style="text-align:center;color:#64748b"><div style="font-size:24px">+</div><small>Бөлүм кошуу</small></div></div>`;
- document.getElementById('grid').innerHTML=html;
- updateStats();
-}
-function addDept(){ let name=prompt('Жаңы бөлүм аты (ГСВ №18):'); if(!name) return; name=name.trim(); let depts=getDepts(); if(depts.includes(name)){alert('Бар!');return;} depts.push(name); saveDepts(depts); renderCards(); renderDeptSelect(); }
-function deleteDept(name){ if(!confirm(name+' өчүрүлсүнбү?')) return; let depts=getDepts().filter(d=>d!==name); saveDepts(depts); let ws=getWorkers().filter(w=>w.dept!==name); localStorage.setItem('gps_workers',JSON.stringify(ws)); localStorage.removeItem('gps_area_'+name); renderCards(); renderDeptSelect(); renderPinTable(); }
-function saveWorker(){
- let name=document.getElementById('w_name').value.trim();
- let dept=document.getElementById('w_dept').value;
- let pin=document.getElementById('w_pin').value.trim();
- let phone=document.getElementById('w_phone').value.trim();
- let addr=document.getElementById('w_addr').value.trim();
- let lat=parseFloat(document.getElementById('w_lat').value)||0;
- let lng=parseFloat(document.getElementById('w_lng').value)||0;
- if(!name||!dept||!pin){alert('Аты, Бөлүм, ПИН керек!');return;}
+function getDepts(){try{let d=JSON.parse(localStorage.getItem('gps_depts')||'null');return d&&d.length?d:DEPTS_DEFAULT;}catch(e){return DEPTS_DEFAULT}}
+function saveDepts(d){localStorage.setItem('gps_depts',JSON.stringify(d));}
+function getWorkers(){try{return JSON.parse(localStorage.getItem('gps_workers')||'[]')}catch(e){return []}}
+function getAreaCount(dept){let s=localStorage.getItem('gps_area_'+dept);if(!s)return 0;try{let d=JSON.parse(s);let arr=(Array.isArray(d[0])&&typeof d[0][0]==='number')?[d]:d;return arr.length;}catch(e){return 0}}
+function renderDeptSelect(){let depts=getDepts();document.getElementById('w_dept').innerHTML=depts.map(d=>`<option value="${d}">${d}</option>`).join('');}
+function updateStats(){let workers=getWorkers();let total=workers.length;document.getElementById('st_late').innerText=0;document.getElementById('st_early').innerText=0;document.getElementById('st_lateObet').innerText=0;document.getElementById('st_left').innerText=0;document.getElementById('st_abs').innerText=0;document.getElementById('st_all').innerText=total;document.getElementById('workCnt').innerText=total;document.getElementById('deptCnt').innerText=getDepts().length;}
+function renderCards(){let q=(document.getElementById('deptSearch').value||'').toLowerCase();let workers=getWorkers();let depts=getDepts();let html='';depts.filter(d=>d.toLowerCase().includes(q)).forEach(d=>{let cnt=workers.filter(w=>w.dept===d).length;html+=`<div class="card"><span class="badge" onclick="deleteDept('${d}')">✕</span><h4>${d}</h4><div class="row"><span>ЖУМУШТА</span> <b class="num c-green">0</b> <span style="margin-left:6px">СЫРТТА</span> <b class="num c-red">0</b></div><div class="row"><span>БАРДЫГЫ</span> <b class="num c-blue">${cnt}</b> <span>📍 ${getAreaCount(d)}</span></div><a href="dept.html?d=${encodeURIComponent(d)}&v=5">→ Кирүү</a></div>`;});html+=`<div class="card" style="border:2px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;min-height:110px;cursor:pointer" onclick="addDept()"><div style="text-align:center;color:#64748b"><div style="font-size:24px">+</div><small>Бөлүм кошуу</small></div></div>`;document.getElementById('grid').innerHTML=html;updateStats();}
+function addDept(){let name=prompt('Жаңы бөлүм аты:');if(!name)return;name=name.trim();let depts=getDepts();if(depts.includes(name)){alert('Бар!');return;}depts.push(name);saveDepts(depts);renderCards();renderDeptSelect();}
+function deleteDept(name){if(!confirm(name+' өчүрүлсүнбү?'))return;let depts=getDepts().filter(d=>d!==name);saveDepts(depts);let ws=getWorkers().filter(w=>w.dept!==name);localStorage.setItem('gps_workers',JSON.stringify(ws));localStorage.removeItem('gps_area_'+name);renderCards();renderDeptSelect();renderPinTable();}
+function saveWorker(){let name=document.getElementById('w_name').value.trim();let dept=document.getElementById('w_dept').value;let pin=document.getElementById('w_pin').value.trim();let phone=document.getElementById('w_phone').value.trim();let addr=document.getElementById('w_addr').value.trim();let lat=parseFloat(document.getElementById('w_lat').value)||0;let lng=parseFloat(document.getElementById('w_lng').value)||0;if(!name||!dept||!pin){alert('Аты, Бөлүм, ПИН керек!');return;}let workers=getWorkers();if(workers.find(w=>w.pin===pin)){if(!confirm('ПИН '+pin+' бар, алмаштыруу?'))return;workers=workers.filter(w=>w.pin!==pin);}workers.push({name:name,dept:dept,pin:pin,phone:phone,address:addr,lastLat:lat,lastLng:lng,lastTime:Date.now(),tel:phone||'❌ Жок',deviceId:null});localStorage.setItem('gps_workers',JSON.stringify(workers));document.getElementById('w_name').value='';document.getElementById('w_pin').value='';document.getElementById('w_phone').value='';document.getElementById('w_addr').value='';document.getElementById('w_lat').value='';document.getElementById('w_lng').value='';renderCards();renderPinTable();}
+function renderPinTable(){let q=(document.getElementById('pinSearch').value||'').toLowerCase();let workers=getWorkers();let f=workers.filter(w=> (w.name||'').toLowerCase().includes(q)||(w.pin||'').includes(q)||(w.dept||'').toLowerCase().includes(q));document.getElementById('pinTbody').innerHTML=f.map(w=>{let bind=w.deviceId?`<span style="background:#dcfce7;color:#065f46;padding:3px 7px;border-radius:8px;font-size:10px;font-weight:bold">📱 Бекитилген<br><small>${w.deviceId.substring(0,8)}...</small></span>`:`<span style="background:#fef3c7;color:#92400e;padding:3px 7px;border-radius:8px;font-size:10px;font-weight:bold">⏳ Бекитиле элек</span>`;return `<tr><td><b>${w.name}</b></td><td>${w.dept}</td><td><b>${w.pin}</b></td><td>${w.phone||'❌'}</td><td>${bind}</td><td><span style="color:#2563eb;cursor:pointer;font-weight:bold" onclick="resetWorker('${w.pin}')">🔄 Сброс</span><br><span style="color:#ef4444;cursor:pointer;font-weight:bold;font-size:11px" onclick="deleteWorker('${w.pin}')">✕ Өчүр</span></td></tr>`;}).join('');updateStats();}
+function deleteWorker(pin){if(!confirm('Өчүрүү? '+pin))return;let ws=getWorkers().filter(w=>w.pin!==pin);localStorage.setItem('gps_workers',JSON.stringify(ws));renderCards();renderPinTable();}
+function resetWorker(pin){
+ if(!confirm('ПИН '+pin+' үчүн СБРОС кылуу?\nТелефондогу бекитүү бошойт, жумушчуга жаңы ПИН бере аласыз.')) return;
+ let newPin=prompt('Жаңы ПИН бериңиз (эски '+pin+'):', pin);
+ if(!newPin) return;
+ newPin=newPin.trim();
  let workers=getWorkers();
- if(workers.find(w=>w.pin===pin)){ if(!confirm('ПИН '+pin+' бар, алмаштыруу?')) return; workers=workers.filter(w=>w.pin!==pin); }
- workers.push({name:name,dept:dept,pin:pin,phone:phone,address:addr,lastLat:lat,lastLng:lng,lastTime:Date.now(),tel:phone||'❌ Жок'});
+ let idx=workers.findIndex(w=>w.pin===pin);
+ if(idx<0){ alert('Табылбады!'); return; }
+ workers[idx].pin=newPin;
+ workers[idx].deviceId=null; // бекитүүнү алып салуу - эми башка ПИН иштебейт деген текшерүү бошойт
+ workers[idx].lastTime=Date.now();
  localStorage.setItem('gps_workers',JSON.stringify(workers));
- document.getElementById('w_name').value='';document.getElementById('w_pin').value='';document.getElementById('w_phone').value='';document.getElementById('w_addr').value='';document.getElementById('w_lat').value='';document.getElementById('w_lng').value='';
- renderCards();renderPinTable();
+ let resetCode='RESET-'+newPin+'-'+Math.random().toString(36).substring(2,6).toUpperCase();
+ alert('✅ Сброс болду!\n\nЖаңы ПИН: '+newPin+'\nЖумушчуга бериңиз:\n1) Бир шилтеме: worker.html?v=5\n2) Жаңы ПИН: '+newPin+'\n3) Сброс код: '+resetCode+'\n\nЖумушчу телефондо "ПИН унутулду" басып код жазат.');
+ renderPinTable(); renderCards();
 }
-function renderPinTable(){
- let q=(document.getElementById('pinSearch').value||'').toLowerCase();
- let workers=getWorkers();
- let f=workers.filter(w=> (w.name||'').toLowerCase().includes(q)||(w.pin||'').includes(q)||(w.dept||'').toLowerCase().includes(q)||(w.phone||'').includes(q));
- document.getElementById('pinCount').innerText=f.length;
- let html='';
- f.forEach(w=>{
-   let gps=(w.lastLat&&w.lastLng)?`${w.address||''}<br><small style="color:#64748b">${w.lastLat.toFixed(5)}, ${w.lastLng.toFixed(5)}</small>`: (w.address||'—');
-   html+=`<tr><td><b>${w.name}</b></td><td>${w.dept}</td><td><b>${w.pin}</b></td><td>${w.phone||'❌ Жок'}</td><td style="font-size:11px">${gps}</td><td><span style="color:#ef4444;cursor:pointer;font-weight:bold" onclick="deleteWorker('${w.pin}')">✕ Өчүр</span></td></tr>`;
- });
- document.getElementById('pinTbody').innerHTML=html;
- updateStats();
-}
-function deleteWorker(pin){ if(!confirm('Өчүрүү? '+pin)) return; let ws=getWorkers().filter(w=>w.pin!==pin); localStorage.setItem('gps_workers',JSON.stringify(ws)); renderCards();renderPinTable(); }
-function copyWorkerLink(){
- let url=location.origin+location.pathname.replace('admin.html','worker.html')+'?v=1100';
- navigator.clipboard.writeText(url).then(()=>alert('✅ Көчүрүлдү:\n'+url)).catch(()=>{prompt('Шилтемени көчүрүңүз:',url)});
-}
+function copyWorkerLink(){let url=location.origin+location.pathname.replace('admin.html','worker.html')+'?v=5';navigator.clipboard.writeText(url).then(()=>alert('✅ Бир шилтеме көчүрүлдү:\n'+url+'\n\nБаарына ушул + жеке ПИН бериңиз!')).catch(()=>{prompt('Көчүрүңүз:',url)});}
 renderDeptSelect();renderCards();renderPinTable();
 </script>
 </body>
