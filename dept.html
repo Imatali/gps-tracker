@@ -1,44 +1,98 @@
-<!DOCTYPE html><html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Бөлүм</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><style>#map{height:60vh}.pin{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;justify-content:center;align-items:center;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4)}.g{background:#16a34a}.r{background:#dc2626}.pin span{transform:rotate(45deg);color:white;font-size:12px;font-weight:bold}</style></head><body class="bg-[#f8fafc] p-2 font-sans"><div class="max-w-[1200px] mx-auto"><div class="bg-white p-3 rounded-xl shadow-sm mb-2"><div class="flex justify-between"><div><a href="admin.html?v=1013" class="text-blue-600 text-sm">← Админка</a><h1 id="t" class="font-bold text-[18px]">Бөлүм</h1><div id="stats" class="flex gap-2 mt-1 text-[11px]"></div></div><div class="flex gap-2"><a id="drawBtn" href="#" class="bg-green-600 text-white px-3 py-2 rounded-lg text-[12px] h-fit font-bold">📐 Аймактар</a><a href="reports.html?v=1013" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-[12px] h-fit">📊 Отчет</a></div></div><div class="flex gap-2 mt-3"><button onclick="setF('all')" id="b_all" class="px-3 py-1.5 rounded-full text-[11px] bg-black text-white">Баары</button><button onclick="setF('in')" id="b_in" class="px-3 py-1.5 rounded-full text-[11px] bg-green-50 text-green-700 border">🟢 Ичинде</button><button onclick="setF('out')" id="b_out" class="px-3 py-1.5 rounded-full text-[11px] bg-red-50 text-red-700 border">🔴 Сыртында</button><button onclick="toggleFull()" class="ml-auto bg-gray-100 px-3 py-1.5 rounded-lg text-[11px]">⛶ Толук</button></div></div><div id="mapWrap" class="rounded-xl overflow-hidden shadow border bg-white"><div id="map" class="w-full"></div></div><div id="list" class="space-y-2 mt-3"></div></div><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script><script>
-firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});const db=firebase.database();
-const dept=new URLSearchParams(location.search).get('d')||'Администрация';document.getElementById('t').innerText=dept;document.getElementById('drawBtn').href='geofence.html?d='+encodeURIComponent(dept)+'&v=1012';
-let map=L.map('map').setView([40.128,71.726],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-let gL=L.layerGroup().addTo(map),mL=L.layerGroup().addTo(map);let filter='all',allData=[],areas=[];let lastStatus={};let today=new Date().toISOString().split('T')[0];
-function ic(c){return L.divIcon({className:'',html:`<div class="pin ${c}"><span>${c=='g'?'✔':'✖'}</span></div>`,iconSize:[28,28],iconAnchor:[14,28]})}
-function pointInPoly(lat,lng,poly){let x=lng,y=lat,inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let xi=poly[i][1],yi=poly[i][0],xj=poly[j][1],yj=poly[j][0];let inter=((yi>y)!=(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi);if(inter)inside=!inside}return inside}
-function isInsideAny(lat,lng){if(!areas.length)return true;for(let a of areas){if(a.polygon){if(pointInPoly(lat,lng,a.polygon))return true}else if(a.center){if(map.distance([lat,lng],[a.center.lat,a.center.lng])<= (a.radius||500))return true}}return false}
-function setF(f){filter=f;document.querySelectorAll('[id^=b_]').forEach(b=>b.classList.remove('bg-black','text-white'));document.getElementById('b_'+f).classList.add('bg-black','text-white');render();}
-function toggleFull(){let w=document.getElementById('mapWrap');if(!document.fullscreenElement)w.requestFullscreen();else document.exitFullscreen();setTimeout(()=>map.invalidateSize(),300)}
-db.ref('osh/settings/geofences/'+dept).on('value',s=>{
-  gL.clearLayers();let v=s.val();areas=Array.isArray(v)?v:(v?(v.polygon||v.center?[v]:[]):[]);
-  areas.forEach(a=>{if(a.polygon)L.polygon(a.polygon,{color:'#16a34a',fillOpacity:.15,weight:3}).addTo(gL);else if(a.center)L.circle([a.center.lat,a.center.lng],{radius:a.radius,color:'#16a34a',fillOpacity:.15}).addTo(gL)});
-  if(areas.length)try{map.fitBounds(gL.getBounds(),{padding:[20,20]})}catch(e){}
-  if(allData.length)render();
-});
-db.ref('osh/pins').on('value',ps=>{
-  db.ref('osh/workers').on('value',ws=>{
-    let pins=ps.val()||{},workers=ws.val()||{};
-    allData=Object.entries(pins).filter(([k,v])=>v.bolum==dept).map(([pin,p])=>{
-      let w=Object.values(workers).find(x=>x.pin==pin);
-      let inn=w?isInsideAny(w.lat,w.lng):false;
-      // ЛОГ ЖАЗУУ - АВТОМАТ
-      if(w && lastStatus[pin]!==inn){
-        db.ref(`osh/logs/${today}/${pin}`).push({t:Date.now(), inside:inn, lat:w.lat, lng:w.lng});
-        lastStatus[pin]=inn;
-      }
-      return{pin,name:p.name,w,inn}
-    });
-    render();
-  })
-});
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Бөлүм v1100 IDEAL</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="icon" href="icon.png?v=1100">
+</head>
+<body class="bg-[#f8fafc] p-3 font-sans">
+<div class="max-w-[1200px] mx-auto">
+<div class="bg-white p-4 rounded-xl shadow-sm mb-3">
+<div class="flex justify-between items-center flex-wrap gap-2">
+<div class="flex items-center gap-2">
+<a href="admin.html?v=1100" class="bg-gray-100 border px-3 py-2 rounded-lg text-[12px]">← Артка</a>
+<img src="logo.png?v=1100" class="w-8 h-8 rounded-full border">
+<div><h1 id="deptName" class="font-black text-[16px]">Бөлүм</h1><p class="text-[11px] text-gray-500">v1100 IDEAL • <span id="today"></span></p></div>
+</div>
+<div class="flex gap-2">
+<a href="reports.html?v=1100" class="bg-purple-600 text-white px-3 py-2 rounded-lg text-[13px]">📊 Отчет</a>
+<a href="worker.html?v=1100" target="_blank" class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px]">👷 Жумушчу</a>
+</div>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4">
+<div class="bg-white border-2 border-gray-200 p-3 rounded-xl text-center"><div class="text-[10px] font-bold text-gray-600">БАРДЫГЫ</div><div id="c_all" class="text-[26px] font-black">0</div></div>
+<div class="bg-green-50 border border-green-200 p-3 rounded-xl text-center"><div class="text-[10px] font-bold text-green-800">ЖУМУШТА</div><div id="c_in" class="text-[26px] font-black text-green-700">0</div></div>
+<div class="bg-red-50 border border-red-200 p-3 rounded-xl text-center"><div class="text-[10px] font-bold text-red-800">СЫРТТА</div><div id="c_out" class="text-[26px] font-black text-red-700">0</div></div>
+<div class="bg-orange-50 border border-orange-200 p-3 rounded-xl text-center"><div class="text-[10px] font-bold text-orange-800">КЕЧИККЕН</div><div id="c_late" class="text-[26px] font-black text-orange-700">0</div></div>
+<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-center"><div class="text-[10px] font-bold text-blue-800">ЭРТЕ КЕТКЕН</div><div id="c_early" class="text-[26px] font-black text-blue-700">0</div></div>
+</div>
+<div class="mt-3 flex gap-2"><input id="search" oninput="render()" placeholder="🔍 Аты / ПИН издөө..." class="border rounded-lg px-3 py-2 text-[13px] w-full bg-yellow-50"></div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm overflow-hidden">
+<table class="w-full text-[13px]" id="tbl">
+<thead class="bg-gray-50 text-[11px]"><tr><th class="p-2 text-left">Аты</th><th class="p-2">ПИН</th><th class="p-2">Статус</th><th class="p-2">Кирди</th><th class="p-2">Чыкты</th><th class="p-2">GPS</th><th class="p-2">Тел</th></tr></thead>
+<tbody id="tbody"><tr><td colspan=7 class="p-6 text-center text-gray-400">Жүктөлүүдө...</td></tr></tbody>
+</table>
+</div>
+<div class="text-center text-[11px] text-gray-400 mt-3">dept.html v1100 IDEAL</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script>
+firebase.initializeApp({databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"});
+const db=firebase.database();
+const urlParams=new URLSearchParams(location.search);
+let deptName=decodeURIComponent(urlParams.get('d')||'');
+if(!deptName){ deptName=localStorage.getItem('lastDept')||'Администрация'; }
+localStorage.setItem('lastDept', deptName);
+document.getElementById('deptName').innerText=deptName.toUpperCase();
+document.getElementById('today').innerText=new Date().toLocaleDateString('ky-KG');
+let todayStr=new Date().toISOString().slice(0,10);
+let allPins={}, allWorkers={}, allLogs={};
+
+db.ref('osh/pins').on('value', s=>{ allPins=s.val()||{}; render(); });
+db.ref('osh/workers').on('value', s=>{ allWorkers=s.val()||{}; render(); });
+db.ref('osh/logs/'+todayStr).on('value', s=>{ allLogs=s.val()||{}; render(); });
+
 function render(){
-  mL.clearLayers();let b=[],f=allData.filter(d=>{if(filter=='all')return true;if(filter=='in')return d.w&&d.inn;if(filter=='out')return!d.w||!d.inn});
-  let inc=allData.filter(d=>d.w&&d.inn).length,outc=allData.length-inc;
-  document.getElementById('stats').innerHTML=`<span class="bg-green-100 text-green-700 px-2 py-1 rounded">Ичинде ${inc} / ${areas.length} аймак</span><span class="bg-red-100 text-red-700 px-2 py-1 rounded">Сыртында ${outc}</span>`;
-  let h="";f.forEach(d=>{
-    if(d.w){L.marker([d.w.lat,d.w.lng],{icon:ic(d.inn?'g':'r')}).addTo(mL).bindPopup(`<b>${d.name}</b><br>#${d.pin}<br>${d.inn?'🟢 Ичинде':'🔴 Сыртында'}`);b.push([d.w.lat,d.w.lng])}
-    h+=`<div class="bg-white p-3 rounded-xl shadow-sm border-l-4 ${d.w?(d.inn?'border-l-green-500':'border-l-red-500'):'border-l-gray-300'}"><div class="font-bold text-[13px]">${d.name} <span class="text-[10px] text-gray-500">#${d.pin}</span></div><div class="text-[11px] ${d.w?(d.inn?'text-green-600':'text-red-600'):'text-gray-400'}">${d.w?(d.inn?'🟢 Ичинде':'🔴 Сыртында'):'⚪ Жок'}</div></div>`
+  let q=(document.getElementById('search').value||'').toLowerCase();
+  let pins=Object.entries(allPins).filter(([pin, v])=> v.bolum===deptName );
+  if(q) pins=pins.filter(([pin,v])=> (v.name+' '+pin).toLowerCase().includes(q) );
+
+  let c_all=pins.length, c_in=0, c_out=0, c_late=0, c_early=0;
+  let html='';
+  pins.forEach(([pin, info])=>{
+    let worker=Object.values(allWorkers).find(w=>w.pin==pin);
+    let log=allLogs[pin];
+    let isIn=!!worker;
+    if(isIn) c_in++; else c_out++;
+    if(log?.late) c_late++;
+    if(log?.earlyLeave) c_early++;
+
+    let status=isIn?'🟢 Жумушта':'🔴 Сыртта';
+    let cls=isIn?'bg-green-100 text-green-700':'bg-red-100 text-red-700';
+    if(log?.late){ status='🕘 Кечикти'; cls='bg-orange-100 text-orange-800'; }
+    if(log?.earlyLeave){ status='🏃 Эрте кетти'; cls='bg-blue-100 text-blue-800'; }
+
+    let firstIn=log?.firstIn||'-';
+    let lastOut=log?.lastOut||'-';
+    let gps=worker?`${worker.lat.toFixed(4)}, ${worker.acc}м`:'-';
+    let phone=info.deviceId?`✅ ${info.deviceId.slice(0,6)}`:'❌ Жок';
+
+    html+=`<tr class="border-t hover:bg-gray-50"><td class="p-2 font-medium">${info.name}</td><td class="p-2 font-bold">${pin}</td><td class="p-2"><span class="px-2 py-1 rounded-full text-[11px] font-bold ${cls}">${status}</span></td><td class="p-2">${firstIn}</td><td class="p-2">${lastOut}</td><td class="p-2 text-[11px]">${gps}</td><td class="p-2 text-[11px]">${phone}</td></tr>`;
   });
-  if(b.length)map.fitBounds(b,{padding:[30,30],maxZoom:17});
-  document.getElementById('list').innerHTML=h||'<div class="bg-white p-6 text-center text-gray-400">Бош</div>';
+  if(pins.length==0) html='<tr><td colspan=7 class="p-6 text-center text-gray-400">Бул бөлүмдө кызматкер жок</td></tr>';
+  document.getElementById('tbody').innerHTML=html;
+  document.getElementById('c_all').innerText=c_all;
+  document.getElementById('c_in').innerText=c_in;
+  document.getElementById('c_out').innerText=c_out;
+  document.getElementById('c_late').innerText=c_late;
+  document.getElementById('c_early').innerText=c_early;
 }
-</script></body></html>
+</script>
+</body>
+</html>
