@@ -1,178 +1,131 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Жумушчу - v1306 MULTI</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Жумушчу - v1100 FIXED v4.1</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}
-body{background:#f1f5f9;overflow:hidden}
-.header{padding:10px;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center}
-.btn{padding:8px 12px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-.btn-green{background:#16a34a;color:#fff}
-.btn-blue{background:#2563eb;color:#fff}
-#map{height:55vh;width:100%;border:3px solid #111}
-.status{padding:12px;text-align:center;font-weight:bold;font-size:18px;border-radius:12px;margin:8px}
-.in{background:#dcfce7;color:#16a34a;border:2px solid #16a34a}
-.out{background:#fee2e2;color:#dc2626;border:2px solid #dc2626;animation:blink 1s infinite}
-@keyframes blink{50%{opacity:0.6}}
-.info{padding:8px;background:#fff;margin:8px;border-radius:10px;font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.pinBox{display:flex;gap:8px;margin:8px}
-.pinBox input{flex:1;padding:12px;border:2px solid #ddd;border-radius:10px;font-size:16px;text-align:center;letter-spacing:3px}
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial}body{background:#f0fdf4;padding:10px}
+.card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:10px}
+.input{padding:12px;border:2px solid #e2e8f0;border-radius:12px;font-size:16px;width:100%;text-align:center;letter-spacing:2px;font-weight:bold}
+.btn{padding:12px 16px;border:none;border-radius:12px;font-weight:bold;cursor:pointer;font-size:14px;width:100%}
+.btn-green{background:#16a34a;color:#fff}.btn-blue{background:#2563eb;color:#fff}
+#map{height:50vh;border-radius:12px;border:3px solid #16a34a}
+.status{padding:10px;border-radius:10px;font-weight:bold;text-align:center;margin:8px 0}
+.ok{background:#dcfce7;color:#166534}.bad{background:#fee2e2;color:#991b1b}.wait{background:#fef3c7;color:#92400e}
 </style>
 </head>
 <body>
-<div class="header">
-<div><b>📍 GPS Tracker</b> <small>v1306 MULTI • 10.10.2026</small></div>
-<div><small id="deptLabel">ГСВ №10</small></div>
+<div class="card" id="loginBox">
+<h3 style="text-align:center">👷 Жумушчу кирүү</h3>
+<p style="text-align:center;color:#64748b;font-size:12px;margin:6px 0">v1100 FIXED v4.1 • Админ берген ПИН'ди жазыңыз</p>
+<input id="pinInput" class="input" placeholder="ПИН мисалы 1111" type="number">
+<button class="btn btn-green" style="margin-top:10px" onclick="login()">🔓 Кирүү</button>
+<div id="loginMsg" style="font-size:12px;color:#dc2626;text-align:center;margin-top:8px"></div>
+<div style="text-align:center;margin-top:10px"><a href="admin.html?v=1100FIXED4" style="font-size:11px;color:#2563eb">← Админкага</a></div>
 </div>
 
-<div class="pinBox">
-<input id="pin" placeholder="ПИН" type="tel" maxlength="6">
-<button class="btn btn-blue" onclick="login()">Кирүү</button>
-<button class="btn btn-green" onclick="startGPS()">▶️ GPS Күйгүз</button>
-</div>
-
+<div class="card" id="workBox" style="display:none">
+<div style="display:flex;justify-content:space-between;align-items:center"><div><b id="wName">--</b><br><small id="wDept" style="color:#64748b">--</small><br><small id="wPhone" style="color:#16a34a"></small></div><button style="padding:6px 10px;border:none;border-radius:8px;background:#fee2e2;color:#dc2626;font-weight:bold" onclick="logout()">Чыгуу</button></div>
+<div id="status" class="status wait">📍 GPS күтүлүүдө...</div>
 <div id="map"></div>
-
-<div id="status" class="status in">📡 ПИН жазып Кирүү басыңыз</div>
-
-<div class="info" id="info">
-<b>💡 v1306 MULTI кантип иштейт:</b><br>
-• Бөлүмдө 3 аймак бар болсо (мисалы Кадамжай, Пулгон, Майдан) - кайсынысына кирсеңиз да <span style="color:#16a34a"><b>ЖУМУШТА</b></span><br>
-• Баарынан чыксаңыз гана <span style="color:#dc2626"><b>СЫРТТА</b></span> + телефон титирейт + Telegram'га билдирүү кетет<br>
-• Картада бардык аймактарыңыз кызгылт болуп көрүнөт
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+<div class="card" style="margin:0;padding:8px;text-align:center"><small>Широта</small><br><b id="lat">--</b></div>
+<div class="card" style="margin:0;padding:8px;text-align:center"><small>Долгота</small><br><b id="lng">--</b></div>
+</div>
+<button class="btn btn-blue" style="margin-top:10px" onclick="sendLocation()">📤 Жайгашкан жерди жөнөтүү</button>
+<div id="log" style="font-size:10px;color:#64748b;margin-top:8px;max-height:80px;overflow:auto"></div>
 </div>
 
 <script>
-let map = L.map('map').setView([40.114,71.74],13);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-let workerMarker=null;
-let areaLayers=[];
-let allAreas=[]; // [[[lat,lng],[lat,lng]], [[lat,lng]]] - көп аймак
-let currentDept='ГСВ №10';
-let workerName='Иматали';
-let workerPin='';
-let inside=false;
-let watchId=null;
-let lastOutsideAlert=0;
-
-// === POINT IN POLYGON (ray casting) ===
-function isPointInPolygon(point, vs){
-  let x=point[0], y=point[1];
-  let inside=false;
-  for(let i=0,j=vs.length-1;i<vs.length;j=i++){
-    let xi=vs[i][0], yi=vs[i][1];
-    let xj=vs[j][0], yj=vs[j][1];
-    let intersect=((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi);
-    if(intersect) inside=!inside;
-  }
-  return inside;
-}
-function isInsideAny(lat,lng){
-  if(allAreas.length===0) return true; // Аймак жок болсо жумушта деп эсептейбиз
-  for(let area of allAreas){
-    if(isPointInPolygon([lat,lng], area)) return true;
-  }
-  return false;
-}
+let worker=null; let map=null; let marker=null; let areaPolys=[]; let watchId=null;
+function getWorkers(){ try{return JSON.parse(localStorage.getItem('gps_workers')||'[]')}catch(e){return []} }
+function getAreas(dept){ let s=localStorage.getItem('gps_area_'+dept); if(!s) return []; try{let d=JSON.parse(s); let arr=(Array.isArray(d[0])&&typeof d[0][0]==='number')?[d]:d; return arr;}catch(e){return []} }
 
 function login(){
-  workerPin=document.getElementById('pin').value.trim();
-  if(!workerPin){ alert('ПИН жазыңыз!'); return; }
-  try{
-    let workers=JSON.parse(localStorage.getItem('gps_workers')||'[]');
-    let w=workers.find(x=>x.pin===workerPin);
-    if(w){ workerName=w.name||'Жумушчу'; currentDept=w.dept||'ГСВ №10'; }
-  }catch(e){}
-  document.getElementById('deptLabel').innerText=currentDept+' • ПИН '+workerPin;
-  loadAreas();
-  document.getElementById('status').innerText='✅ '+workerName+' • ПИН '+workerPin+' • GPS күйгүзүңүз';
-  document.getElementById('status').className='status in';
+ let pin=document.getElementById('pinInput').value.trim();
+ if(!pin){document.getElementById('loginMsg').innerText='ПИН жазыңыз!';return;}
+ let workers=getWorkers();
+ let w=workers.find(x=>x.pin===pin);
+ if(!w){document.getElementById('loginMsg').innerText='❌ ПИН '+pin+' табылбады! Админ v4.1 да кайра бериңиз.';return;}
+ worker=w;
+ localStorage.setItem('gps_current_pin',pin);
+ document.getElementById('loginBox').style.display='none';
+ document.getElementById('workBox').style.display='block';
+ document.getElementById('wName').innerText=w.name;
+ document.getElementById('wDept').innerText=w.dept;
+ document.getElementById('wPhone').innerText=(w.phone||'')+' '+(w.address||'');
+ initMap();
+ startTracking();
+ log('✅ '+w.name+' кирди • '+w.dept);
 }
 
-function loadAreas(){
-  // Картаны тазалоо
-  areaLayers.forEach(l=>map.removeLayer(l)); areaLayers=[]; allAreas=[];
-  let keys=['gps_area_'+currentDept,'dept_area_GSV_10','kadamjay_area','gps_area_ГСВ №10'];
-  let found=false;
-  for(let k of keys){
-    let saved=localStorage.getItem(k); if(!saved) continue;
-    try{
-      let data=JSON.parse(saved); if(!data||!data.length) continue;
-      let areas=[];
-      if(Array.isArray(data[0]) && typeof data[0][0]==='number'){ areas=[data]; } // 1 аймак
-      else { areas=data; } // көп аймак
-      // Валидация
-      areas=areas.filter(a=>a&&a.length>=3);
-      if(areas.length===0) continue;
-      allAreas=areas;
-      areas.forEach((latlngs,i)=>{
-        let poly=L.polygon(latlngs,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:0.35,weight:3}).addTo(map);
-        poly.bindPopup(`Аймак ${i+1} • ${currentDept}`);
-        areaLayers.push(poly);
-      });
-      if(areaLayers.length>0){ let g=new L.featureGroup(areaLayers); map.fitBounds(g.getBounds().pad(0.2)); }
-      document.getElementById('info').innerHTML=`✅ <b>${areas.length} аймак жүктөлдү</b> • ${currentDept}<br>Картада кызгылт аймактар. Кайсынысына кирсеңиз да жумуштасыз.`;
-      found=true; break;
-    }catch(e){ console.log(e); }
-  }
-  if(!found){
-    document.getElementById('info').innerHTML='⚠️ Аймак табылган жок! Админ картадан аймак чийиши керек.';
-    allAreas=[];
-  }
+function logout(){ if(watchId) navigator.geolocation.clearWatch(watchId); localStorage.removeItem('gps_current_pin'); location.reload(); }
+
+function initMap(){
+ if(map) return;
+ map=L.map('map').setView([40.114,71.74],14);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+ // Аймакты жүктөө
+ let areas=getAreas(worker.dept);
+ areas.forEach(ll=>{
+   let p=L.polygon(ll,{color:'#16a34a',fillColor:'#86efac',fillOpacity:0.3,weight:3}).addTo(map);
+   areaPolys.push(p);
+ });
+ if(areas.length){ let g=new L.featureGroup(areaPolys); map.fitBounds(g.getBounds().pad(0.3)); }
 }
 
-function startGPS(){
-  if(!workerPin){ alert('Алгач ПИН жазып Кирүү басыңыз!'); return; }
-  if(!navigator.geolocation){ alert('Браузер GPS колдобойт'); return; }
-  if(watchId) navigator.geolocation.clearWatch(watchId);
-  document.getElementById('status').innerText='📡 GPS изделүүдө...';
-  watchId=navigator.geolocation.watchPosition(onPos, onErr, {enableHighAccuracy:true, maximumAge:3000, timeout:10000});
+function isInside(lat,lng){
+ if(!areaPolys.length) return true; // аймак жок болсо ичинде деп эсептейбиз
+ let inside=false;
+ areaPolys.forEach(p=>{
+   let pts=p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]);
+   if(pointInPoly([lat,lng],pts)) inside=true;
+ });
+ return inside;
+}
+function pointInPoly(point, vs){
+ let x=point[0], y=point[1]; let inside=false;
+ for(let i=0,j=vs.length-1;i<vs.length;j=i++){
+   let xi=vs[i][0], yi=vs[i][1]; let xj=vs[j][0], yj=vs[j][1];
+   let intersect=((yi>y)!=(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi);
+   if(intersect) inside=!inside;
+ }
+ return inside;
 }
 
-function onPos(pos){
-  let lat=pos.coords.latitude, lng=pos.coords.longitude, acc=Math.round(pos.coords.accuracy);
-  if(workerMarker) map.removeLayer(workerMarker);
-  workerMarker=L.marker([lat,lng]).addTo(map).bindPopup(`${workerName}<br>ПИН ${workerPin}<br>±${acc}м`);
-
-  let nowInside=isInsideAny(lat,lng);
-
-  if(nowInside){
-    inside=true;
-    document.getElementById('status').innerText=`🟢 ЖУМУШТА • ${workerName} • ${allAreas.length} аймактын ичинде • ±${acc}м`;
-    document.getElementById('status').className='status in';
-    document.body.style.background='#f1f5f9';
-  }else{
-    inside=false;
-    document.getElementById('status').innerText=`🔴 СЫРТТА! ${workerName} (ПИН ${workerPin}) ${allAreas.length} аймактын баарынан чыкты! Картаны караңыз!`;
-    document.getElementById('status').className='status out';
-    document.body.style.background='#fee2e2';
-    if(navigator.vibrate) navigator.vibrate([500,200,500]);
-    // Telegram - 1 мүнөттө 1 жолу гана жөнөтүү
-    let now=Date.now();
-    if(now-lastOutsideAlert>60000){
-      lastOutsideAlert=now;
-      sendTelegram(lat,lng);
-    }
-  }
+function startTracking(){
+ if(!navigator.geolocation){ document.getElementById('status').innerText='❌ GPS жок'; return; }
+ watchId=navigator.geolocation.watchPosition(pos=>{
+   let lat=pos.coords.latitude; let lng=pos.coords.longitude;
+   document.getElementById('lat').innerText=lat.toFixed(6);
+   document.getElementById('lng').innerText=lng.toFixed(6);
+   if(!marker){ marker=L.marker([lat,lng]).addTo(map); } else marker.setLatLng([lat,lng]);
+   map.setView([lat,lng],16);
+   // Текшерүү
+   let inside=isInside(lat,lng);
+   let st=document.getElementById('status');
+   if(inside){ st.className='status ok'; st.innerText='✅ Жумушта • '+worker.dept; }
+   else{ st.className='status bad'; st.innerText='🚨 Сыртта! Аймактан чыктыңыз'; }
+   // Сактоо
+   let workers=getWorkers();
+   let idx=workers.findIndex(w=>w.pin===worker.pin);
+   if(idx>=0){ workers[idx].lastLat=lat; workers[idx].lastLng=lng; workers[idx].lastTime=Date.now(); workers[idx].inside=inside; localStorage.setItem('gps_workers',JSON.stringify(workers)); }
+ }, err=>{ document.getElementById('status').innerText='❌ GPS ката: '+err.message; }, {enableHighAccuracy:true});
 }
 
-function onErr(e){ document.getElementById('status').innerText='❌ GPS ката: '+e.message; document.getElementById('status').className='status out'; }
-
-function sendTelegram(lat,lng){
-  // Сиздин бот токениңиз (мурдагы)
-  const BOT_TOKEN='8872817102:AAH-XGiI_Xua43xG6n-5Aahvb4n2fDRoJvk';
-  const CHAT_ID='340097572';
-  let gmaps=`https://maps.google.com/?q=${lat},${lng}`;
-  let text=`🚨 АЙМАКТАН ЧЫКТЫ! v1306 MULTI\n👤 ${workerName} ПИН ${workerPin}\n🏢 ${currentDept}\n📍 ${lat.toFixed(5)},${lng.toFixed(5)}\n${allAreas.length} аймактын баарынан сыртта\n🗺️ ${gmaps}`;
-  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(text)}`).then(r=>{ console.log('telegram sent'); }).catch(()=>{});
+function sendLocation(){
+ let lat=document.getElementById('lat').innerText; let lng=document.getElementById('lng').innerText;
+ if(lat==='--'){ alert('GPS алына элек!'); return; }
+ log('📤 Жөнөтүлдү: '+lat+', '+lng+' • '+new Date().toLocaleTimeString());
+ alert('✅ Жайгашкан жер жөнөтүлдү!\n'+lat+', '+lng);
 }
 
-// Авто жүктөө
-window.onload=()=>{ loadAreas(); };
+function log(t){ let d=document.getElementById('log'); d.innerHTML='<div>'+new Date().toLocaleTimeString()+' - '+t+'</div>'+d.innerHTML; }
+
+// Авто кирүү
+let savedPin=localStorage.getItem('gps_current_pin');
+if(savedPin){ document.getElementById('pinInput').value=savedPin; login(); }
 </script>
 </body>
 </html>
