@@ -1,11 +1,8 @@
 [
   {
-    "name": "Эмина",
-    "dept": "ГСВ №7",
+    "name": "Иматали",
+    "dept": "Администрация",
     "pin": "6666",
-    "phone": "",
-    "deviceId": null,
-    "lastLat": 0,
-    "lastLng": 0
+    "phone": "0703292535"
   }
 ]
