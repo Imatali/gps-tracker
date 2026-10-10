@@ -12,8 +12,18 @@ th,td{vertical-align:top}
 </head>
 
 <body class="bg-[#f8fafc] p-3 font-sans">
-<div class="max-w-[1450px] mx-auto">
+<section id="authBox" class="max-w-md mx-auto mt-12 bg-white p-6 rounded-xl card-shadow">
+  <h2 class="font-bold text-xl mb-2">🔐 Администратордун кирүүсү</h2>
+  <p id="authStatus" class="text-sm text-gray-600 mb-3">Firebase текшерилүүдө...</p>
+  <form id="authForm" class="hidden space-y-3">
+    <input id="adminEmail" type="email" autocomplete="username" required placeholder="Электрондук почта" class="border rounded-lg p-3 w-full">
+    <input id="adminPassword" type="password" autocomplete="current-password" required placeholder="Сырсөз" class="border rounded-lg p-3 w-full">
+    <button id="authButton" type="submit" class="bg-blue-600 text-white p-3 rounded-lg w-full font-bold">Кирүү</button>
+  </form>
+</section>
+<div id="adminApp" class="max-w-[1450px] mx-auto hidden">
 
+<div class="flex justify-end mb-2"><button onclick="logoutAdmin()" class="bg-slate-700 text-white px-3 py-2 rounded-lg text-sm">🚪 Чыгуу</button></div>
 <!-- БАШКЫ БӨЛҮК -->
 <div class="bg-white p-4 rounded-xl card-shadow mb-3">
   <div class="flex justify-between items-center gap-2 flex-wrap">
@@ -35,7 +45,7 @@ th,td{vertical-align:top}
          class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[13px] font-bold">
         📊 Отчет
       </a>
-      <a href="worker.html?v=1010"
+      <a href="worker.html?v=1104"
          target="_blank"
          class="bg-emerald-600 text-white px-3 py-2 rounded-lg text-[13px] font-bold">
         👷 Жумушчу
@@ -89,7 +99,7 @@ th,td{vertical-align:top}
 <div class="mt-3 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 p-3 rounded-xl flex justify-between items-center flex-wrap gap-2">
   <div class="text-[13px]">
     👷 <b>Жумушчу:</b>
-    <span class="text-blue-600">worker.html?v=1010</span>
+    <span class="text-blue-600">worker.html?v=1104</span>
   </div>
   <button onclick="copyWorkerLink()"
     class="bg-white border px-3 py-1.5 rounded-lg text-sm shadow-sm">
@@ -212,19 +222,49 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1102
+  Кадамжай ЖДПБ | Admin v1106 (Auth)
 </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <script>
 firebase.initializeApp({
-  databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com"
+  databaseURL:"https://gps-tracker-osh-default-rtdb.firebaseio.com",
+  authDomain:"gps-tracker-osh.firebaseapp.com"
 });
 
 const db = firebase.database();
+const auth = firebase.auth();
+const ADMIN_UID = '5sQsmvDSAdUXqYsqDrcg8J0Ggcw1';
+let adminAuthorized = false;
+const authBox = document.getElementById('authBox');
+const authStatus = document.getElementById('authStatus');
+const authForm = document.getElementById('authForm');
+const adminApp = document.getElementById('adminApp');
+function ensureAdmin() {
+  if (!adminAuthorized || auth.currentUser?.uid !== ADMIN_UID) {
+    throw new Error('Администратордун уруксаты жок');
+  }
+}
+window.logoutAdmin = async function () { await auth.signOut(); };
+authForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = document.getElementById('authButton');
+  button.disabled = true;
+  authStatus.textContent = 'Кирүү текшерилүүдө...';
+  try {
+    await auth.signInWithEmailAndPassword(
+      document.getElementById('adminEmail').value.trim(),
+      document.getElementById('adminPassword').value
+    );
+    document.getElementById('adminPassword').value = '';
+  } catch (error) {
+    authStatus.textContent = 'Кирүү катасы: ' + error.message;
+  } finally { button.disabled = false; }
+});
 
 let depts = JSON.parse(
   localStorage.getItem('myDepts') ||
@@ -282,29 +322,53 @@ function timeString(timestamp) {
   });
 }
 
-// FIREBASE МААЛЫМАТТАРЫ
-db.ref('osh/pins').on('value', snapshot => {
-  allPins = snapshot.val() || {};
-  render();
-});
-
-db.ref('osh/workers').on('value', snapshot => {
-  allWorkers = snapshot.val() || {};
-  render();
-});
-
-function listenTodayLogs() {
-  const todayStr = localDateString(Date.now());
-  db.ref('osh/logs/' + todayStr).on('value', snapshot => {
-    allLogs = snapshot.val() || {};
-    render();
+// Маалыматтар администратор текшерилгенден кийин гана жүктөлөт.
+let listening = false;
+const subscriptions = [];
+function subscribe(path, callback) {
+  const ref = db.ref(path);
+  ref.on('value', callback, error => {
+    authStatus.textContent = 'Firebase окуу катасы: ' + error.message;
+  });
+  subscriptions.push(ref);
+}
+function stopListeners() {
+  subscriptions.forEach(ref => ref.off());
+  subscriptions.length = 0;
+  listening = false;
+  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {};
+}
+function startListeners() {
+  if (listening) return;
+  listening = true;
+  subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
+  subscribe('osh/workers', snapshot => { allWorkers = snapshot.val() || {}; render(); });
+  subscribe('osh/logs/' + localDateString(Date.now()), snapshot => {
+    allLogs = snapshot.val() || {}; render();
+  });
+  subscribe('osh/attendance', snapshot => {
+    allAttendance = snapshot.val() || {}; renderAttendance();
   });
 }
-listenTodayLogs();
-
-db.ref('osh/attendance').on('value', snapshot => {
-  allAttendance = snapshot.val() || {};
-  renderAttendance();
+auth.onAuthStateChanged(async user => {
+  adminAuthorized = Boolean(user && user.uid === ADMIN_UID);
+  if (adminAuthorized) {
+    authBox.classList.add('hidden');
+    adminApp.classList.remove('hidden');
+    startListeners();
+    render(); renderAttendance();
+  } else {
+    stopListeners();
+    adminApp.classList.add('hidden');
+    authBox.classList.remove('hidden');
+    authForm.classList.remove('hidden');
+    authStatus.textContent = user
+      ? 'Бул аккаунт администратор эмес. Башка аккаунт менен кириңиз.'
+      : 'Администратордун почтасын жана сырсөзүн киргизиңиз.';
+    if (user) {
+      await auth.signOut();
+    }
+  }
 });
 
 // Ар бир учурдагы PIN үчүн акыркы белгилүү каттоо абалын табуу.
@@ -472,6 +536,7 @@ function render() {
 
 // ЖАҢЫ PIN ТҮЗҮҮ
 window.addWorker = async function() {
+  ensureAdmin();
   const name = document.getElementById('nameInput').value.trim();
   const bolum = document.getElementById('deptInput').value;
 
@@ -533,6 +598,7 @@ window.addWorker = async function() {
 
 // PIN ӨЧҮРҮҮ
 window.delPin = async function(pin) {
+  ensureAdmin();
   if (!confirm(pin + ' PIN-кодун өчүрөсүзбү?')) return;
 
   try {
@@ -545,6 +611,7 @@ window.delPin = async function(pin) {
 
 // ТЕЛЕФОНГО БАЙЛАНЫШТЫ ТАЗАЛОО
 window.resetPin = async function(pin) {
+  ensureAdmin();
   if (!confirm(
     pin + ' PIN-кодунун телефон байланышын тазалайсызбы?'
   )) return;
@@ -562,6 +629,7 @@ window.resetPin = async function(pin) {
 
 // БӨЛҮМДҮ ӨЧҮРҮҮ
 window.delDept = async function(dept) {
+  ensureAdmin();
   if (!confirm(
     '"' + dept + '" бөлүмүн тизмеден өчүрөсүзбү? ' +
     'Бул аракет бөлүмгө тиешелүү PIN-коддорду өчүрбөйт.'
@@ -573,6 +641,7 @@ window.delDept = async function(dept) {
 };
 
 window.addDept = function() {
+  ensureAdmin();
   const dept = prompt('Жаңы бөлүмдүн атын жазыңыз:');
   if (!dept || !dept.trim()) return;
 
@@ -589,12 +658,13 @@ window.addDept = function() {
 };
 
 window.filterDept = function(dept) {
+  ensureAdmin();
   location.href = 'dept.html?d=' +
-    encodeURIComponent(dept) + '&v=1101';
+    encodeURIComponent(dept) + '&v=1105';
 };
 
 window.copyWorkerLink = async function() {
-  const link = 'https://imatali.github.io/gps-tracker/worker.html?v=1010';
+  const link = 'https://imatali.github.io/gps-tracker/worker.html?v=1104';
 
   try {
     await navigator.clipboard.writeText(link);
@@ -699,8 +769,6 @@ document.getElementById('attendanceDate')
 document.getElementById('attendanceType')
   .addEventListener('change', renderAttendance);
 
-render();
-renderAttendance();
 </script>
 </body>
 </html>
