@@ -85,11 +85,7 @@ button.out {
     🚪 Жумуштан кеттим
   </button>
 
-  <a class="small-link" onclick="clearPhone()">
-    ♻️ Башка ПИН киргизүү / Телефон кулпусун тазалоо
-  </a>
-
-  <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
+   <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
     v1105 GPS + Firebase Anonymous Authentication
   </div>
 </div>
@@ -255,20 +251,7 @@ try {
     }
   }
 
-  // PIN башка түзмөккө байланып калбасын текшерүү
-  async function releaseOldPin(pin) {
-    const ref = db.ref('osh/pins/' + pin);
-    const snap = await ref.get();
-    const data = snap.val();
-
-    if (data && data.deviceId === deviceId) {
-      await ref.update({
-        deviceId: null,
-        lastSeen: null
-      });
-    }
-  }
-
+  
   // GPS аймагын текшерүү: dept.html v1103 менен бирдей Firebase жолу.
   const MAX_GPS_ACCURACY = 100; // метр
 
@@ -331,14 +314,16 @@ try {
       const oldPin = localStorage.getItem('myPin');
 
       if (oldPin && oldPin !== pin) {
-        const accepted = confirm(
-          'Бул телефон мурда ' + oldPin +
-          ' ПИНине байланышкан. Жаңы ПИН менен улантасызбы?'
-        );
+  throw new Error(
+    'Бул телефондо башка PIN сакталган. PINди алмаштыруу үчүн администраторго кайрылыңыз.'
+  );
+}
 
         if (!accepted) return;
 
-        await releaseOldPin(oldPin);
+        throw new Error(
+  'Бул телефондо башка PIN сакталган. PINди алмаштыруу үчүн администраторго кайрылыңыз.'
+);
 
         localStorage.removeItem('myPin');
         localStorage.removeItem('myWorkerId');
@@ -513,39 +498,6 @@ try {
     } catch (error) {
       log('❌ ' + error.message);
       alert('Ката: ' + error.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  window.clearPhone = async function() {
-    if (busy) return;
-
-    const pin = localStorage.getItem('myPin');
-
-    if (!confirm(
-      'Телефондун жергиликтүү байланышын тазалайбызбы? ' +
-      'Кызматкердин тарыхы өчүрүлбөйт.'
-    )) return;
-
-    setBusy(true);
-
-    try {
-      await authReady;
-      if (pin) {
-        await releaseOldPin(pin);
-      }
-
-      localStorage.removeItem('myPin');
-      localStorage.removeItem('myWorkerId');
-      localStorage.removeItem('myName');
-
-      log('♻️ Телефондогу байланыш тазаланды');
-      refreshUI();
-
-    } catch (error) {
-      log('❌ ' + error.message);
-      alert('Тазалоо ишке ашкан жок: ' + error.message);
     } finally {
       setBusy(false);
     }
