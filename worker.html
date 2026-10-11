@@ -319,14 +319,6 @@ try {
   );
 }
 
-       const oldPin = localStorage.getItem('myPin');
-
-if (oldPin && oldPin !== pin) {
-  throw new Error(
-    'Бул телефондо башка PIN сакталган. PINди алмаштыруу үчүн администраторго кайрылыңыз.'
-  );
-}
-
 log('🔎 ПИН текшерилүүдө...');
 
       const pinSnap = await db.ref('osh/pins/' + pin).get();
