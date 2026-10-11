@@ -319,18 +319,15 @@ try {
   );
 }
 
-        if (!accepted) return;
+       const oldPin = localStorage.getItem('myPin');
 
-        throw new Error(
-  'Бул телефондо башка PIN сакталган. PINди алмаштыруу үчүн администраторго кайрылыңыз.'
-);
+if (oldPin && oldPin !== pin) {
+  throw new Error(
+    'Бул телефондо башка PIN сакталган. PINди алмаштыруу үчүн администраторго кайрылыңыз.'
+  );
+}
 
-        localStorage.removeItem('myPin');
-        localStorage.removeItem('myWorkerId');
-        localStorage.removeItem('myName');
-      }
-
-      log('🔎 ПИН текшерилүүдө...');
+log('🔎 ПИН текшерилүүдө...');
 
       const pinSnap = await db.ref('osh/pins/' + pin).get();
       const data = pinSnap.val();
