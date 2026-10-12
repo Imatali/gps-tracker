@@ -81,7 +81,15 @@ auth.onAuthStateChanged(user=>{
     authForm.hidden=false;
     authInfo.textContent=user?'Бул аккаунтка администратор укугу берилген эмес.':'Администратор аккаунтуңуз менен кириңиз.';
     if(user && user.uid!==ADMIN_UID) auth.signOut().catch(()=>{});
-    if(dataListening){db.ref('osh/pins').off();db.ref(areaPath).off();dataListening=false;}
+    
+if (dataListening) {
+  db.ref('osh/pins').off();
+  db.ref('osh/attendance').off();
+  db.ref(areaPath).off();
+  dataListening = false;
+}
+workerMarkers.clearLayers();
+
     workerList.replaceChildren();replaceAreas([]);
   }
 },err=>{authGate.style.display='flex';authForm.hidden=false;authInfo.textContent='Firebase текшерүү катасы';authError.textContent=err.message;});
@@ -90,6 +98,62 @@ let remoteAreas = null;
 const map = L.map('map',{doubleClickZoom:false}).setView([40.114,71.74],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 let areas=[];
+  
+const workerMarkers = L.layerGroup().addTo(map);
+
+function showWorkerLocations(data) {
+  workerMarkers.clearLayers();
+
+  const latest = {};
+
+  Object.values(data || {}).forEach(item => {
+    if (!item || !item.pin || !item.time) return;
+
+    const pin = String(item.pin);
+    const lat = Number(item.lat);
+    const lng = Number(item.lng);
+
+    if (item.lat == null || item.lng == null ||
+        !Number.isFinite(lat) || !Number.isFinite(lng) ||
+        Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+
+    if (!latest[pin] || Number(item.time) > Number(latest[pin].time)) {
+      latest[pin] = item;
+    }
+  });
+
+  Object.values(latest).forEach(item => {
+    if (normalize(item.bolum) !== normalize(deptId)) return;
+
+    const isWorking = item.type === 'in';
+    const color = isWorking ? '#16a34a' : '#dc2626';
+    const time = new Date(Number(item.time)).toLocaleString('ky-KG');
+
+    const marker = L.circleMarker(
+      [Number(item.lat), Number(item.lng)],
+      {
+        radius: 9,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1
+      }
+    ).addTo(workerMarkers);
+
+    const popup = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = item.name || 'Кызматкер';
+
+    const details = document.createElement('div');
+    details.textContent =
+      (isWorking ? '🟢 Жумушта' : '🔴 Жумуштан кеткен') +
+      ' | Акыркы GPS: ' + time;
+
+    popup.append(name, details);
+    marker.bindPopup(popup);
+  });
+}
+
 let tempPoly=null;
 let drawing=false;
 let points=[];
@@ -117,9 +181,32 @@ function showWorkers(data){
   if(!list.length){const empty=document.createElement('div');empty.className='muted';empty.style.marginTop='12px';empty.textContent='Бул бөлүмдө кызматкер табылган жок. Админ панелинен PIN жазуусунун бөлүмүн текшериңиз.';workerList.appendChild(empty);}
   list.forEach(([pin,w])=>addWorker(w.name,pin,w.bolum||w.dept||''));
 }
-function startDataListeners(){
-  try{requireAdmin();if(deptId){db.ref('osh/pins').on('value',snap=>showWorkers(snap.val()),error=>{status.textContent='Firebase окуу катасы: '+error.message;});loadAreas();}}
-  catch(error){status.textContent='Firebase баштоо катасы: '+error.message;}
+
+function startDataListeners() {
+  try {
+    requireAdmin();
+
+    if (!deptId) return;
+
+    db.ref('osh/pins').on('value', snap => {
+      showWorkers(snap.val());
+    }, error => {
+      status.textContent = 'Firebase PIN окуу катасы: ' + error.message;
+    });
+
+    db.ref('osh/attendance').on('value', snap => {
+      showWorkerLocations(snap.val());
+    }, error => {
+      status.textContent = 'GPS маалыматтарын окуу катасы: ' + error.message;
+    });
+
+    loadAreas();
+
+  } catch (error) {
+    status.textContent = 'Firebase баштоо катасы: ' + error.message;
+  }
+}
+
 }
 function savedAreas(){
  try{const raw=JSON.parse(localStorage.getItem(storageKey)||'[]');if(!Array.isArray(raw)||!raw.length)return[];return typeof raw[0]?.[0]==='number'?[raw]:raw;}catch{return[];}
