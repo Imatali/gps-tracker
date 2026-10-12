@@ -99,7 +99,12 @@ const map = L.map('map',{doubleClickZoom:false}).setView([40.114,71.74],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 let areas=[];
   
+
+map.createPane('workerPane');
+map.getPane('workerPane').style.zIndex = 650;
+
 const workerMarkers = L.layerGroup().addTo(map);
+
 
 function showWorkerLocations(data) {
   workerMarkers.clearLayers();
@@ -132,6 +137,7 @@ function showWorkerLocations(data) {
     const marker = L.circleMarker(
       [Number(item.lat), Number(item.lng)],
       {
+        pane: 'workerPane',
         radius: 9,
         color: '#ffffff',
         weight: 2,
