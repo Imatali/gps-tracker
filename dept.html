@@ -207,7 +207,6 @@ function startDataListeners() {
   }
 }
 
-}
 function savedAreas(){
  try{const raw=JSON.parse(localStorage.getItem(storageKey)||'[]');if(!Array.isArray(raw)||!raw.length)return[];return typeof raw[0]?.[0]==='number'?[raw]:raw;}catch{return[];}
 }
