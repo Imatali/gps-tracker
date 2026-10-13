@@ -2,18 +2,18 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Отчёт — Кадамжай ЖДПБ v1104</title>
+<title>Отчёт — Кадамжай ЖДПБ v1105</title>
 <style>
-*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f8fafc;color:#172033;margin:0;padding:12px}.wrap{max-width:1450px;margin:auto}.header,.panel,.auth{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0001}.header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:170px minmax(140px,1fr) minmax(170px,1.5fr) repeat(3,auto);gap:8px;margin-bottom:12px}.input,.btn{padding:11px;border-radius:9px;font-size:14px}.input{width:100%;border:1px solid #cbd5e1;background:white}.btn{border:0;font-weight:bold;cursor:pointer;background:#2563eb;color:white}.btn.green{background:#16a34a}.btn.dark{background:#334155}.btn.gray{background:#e2e8f0;color:#172033}.btn:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.stat{background:#fff;padding:16px;border-radius:12px;text-align:center;border:1px solid #e2e8f0}.stat small{font-size:12px;color:#64748b}.stat b{display:block;font-size:27px;margin-top:6px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:11px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}th{background:#f1f5f9}#status{font-size:13px;color:#475569;margin-bottom:12px}.auth{max-width:440px;margin:60px auto}.auth input{margin:6px 0}.hidden{display:none!important}.muted{font-size:12px;color:#64748b}.late{color:#c2410c;font-weight:bold}.ok{color:#15803d;font-weight:bold}.absent{color:#b91c1c;font-weight:bold}@media(max-width:850px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.filters .btn{width:100%}}
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f8fafc;color:#172033;margin:0;padding:12px}.wrap{max-width:1450px;margin:auto}.header,.panel,.auth{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0001}.header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:120px 170px minmax(140px,1fr) minmax(170px,1.5fr) repeat(3,auto);gap:8px;margin-bottom:12px}.input,.btn{padding:11px;border-radius:9px;font-size:14px}.input{width:100%;border:1px solid #cbd5e1;background:white}.btn{border:0;font-weight:bold;cursor:pointer;background:#2563eb;color:white}.btn.green{background:#16a34a}.btn.dark{background:#334155}.btn.gray{background:#e2e8f0;color:#172033}.btn:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.stat{background:#fff;padding:16px;border-radius:12px;text-align:center;border:1px solid #e2e8f0}.stat small{font-size:12px;color:#64748b}.stat b{display:block;font-size:27px;margin-top:6px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:11px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}th{background:#f1f5f9}#status{font-size:13px;color:#475569;margin-bottom:12px}.auth{max-width:440px;margin:60px auto}.auth input{margin:6px 0}.hidden{display:none!important}.muted{font-size:12px;color:#64748b}.late{color:#c2410c;font-weight:bold}.ok{color:#15803d;font-weight:bold}.absent{color:#b91c1c;font-weight:bold}@media(max-width:850px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.filters .btn{width:100%}}
 @media print{.filters,.header button,#status,.auth{display:none!important}body{background:white;padding:0}.panel,.stat{box-shadow:none}}
 </style>
 </head>
 <body>
 <section id="authBox" class="auth"><h2>🔐 Отчётко кирүү</h2><p id="authStatus" class="muted">Firebase текшерилүүдө...</p><form id="authForm" class="hidden"><input class="input" id="email" type="email" autocomplete="username" placeholder="Электрондук почта" required><input class="input" id="password" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn" type="submit" id="loginBtn">Кирүү</button></form></section>
 <main id="app" class="wrap hidden">
-<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1104 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
-<div class="filters"><input class="input" type="date" id="date"><select class="input" id="dept"><option value="all">Бардык бөлүмдөр</option></select><input class="input" id="search" placeholder="🔎 Аты / PIN издөө"><button class="btn" id="refreshBtn">🔃 Жаңылоо</button><button class="btn green" id="csvBtn">📥 Excel (.xlsx)</button><button class="btn dark" id="printBtn">🖨️ PDF</button></div>
-<div id="status">Firebase'ден маалымат жүктөлүүдө...</div>
+<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1105 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
+<div class="filters"><select class="input" id="mode"><option value="day">Күндүк</option><option value="week">Жумалык</option><option value="month">Айлык</option></select><input class="input" type="date" id="date"><select class="input" id="dept"><option value="all">Бардык бөлүмдөр</option></select><input class="input" id="search" placeholder="🔎 Аты / PIN издөө"><button class="btn" id="refreshBtn">🔃 Жаңылоо</button><button class="btn green" id="csvBtn">📥 Excel (.xlsx)</button><button class="btn dark" id="printBtn">🖨️ PDF</button></div>
+<div id="periodNote" class="muted" style="margin-bottom:8px"></div><div id="status">Firebase'ден маалымат жүктөлүүдө...</div>
 <div class="stats"><div class="stat"><small>БАРДЫГЫ</small><b id="s_all">0</b></div><div class="stat"><small>КЕЛДИ</small><b id="s_in">0</b></div><div class="stat"><small>КЕЧИКТИ</small><b id="s_late">0</b></div><div class="stat"><small>КЕЛБЕДИ</small><b id="s_abs">0</b></div></div>
 <div class="panel"><b>📋 <span id="dateLabel"></span> — Отчёт</b> <span class="muted">· Табылды: <span id="found">0</span></span><div class="tablewrap"><table><thead><tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>PIN</th><th>Кирди</th><th>Чыкты</th><th>Статус</th><th>График булагы</th><th>План</th><th>Катталган саат*</th><th>Текшерүү</th><th>Телефон</th></tr></thead><tbody id="tbody"><tr><td colspan="12">Жүктөлүүдө...</td></tr></tbody></table></div></div>
 <div class="muted">* Катталган саат — биринчи кирүү менен акыркы чыгуу аралыгынын графикке туура келген бөлүгү. Бул толук иштеген убакыттын далили эмес. Аймактан чыгуу, өргүү жана дежурство азырынча эсептелбейт. Каттоо жетишсиз болсо саат чыгарылбайт.</div>
@@ -38,7 +38,7 @@ $('date').value=localDate(Date.now());
 $('backBtn').onclick=()=>location.href='admin.html?v=1113';
 $('logoutBtn').onclick=()=>auth.signOut();
 $('printBtn').onclick=()=>window.print();
-$('date').onchange=render;$('dept').onchange=render;$('search').oninput=render;$('refreshBtn').onclick=()=>{if(authorized)render()};
+$('mode').onchange=render;$('date').onchange=render;$('dept').onchange=render;$('search').oninput=render;$('refreshBtn').onclick=()=>{if(authorized)render()};
 $('authForm').onsubmit=async e=>{e.preventDefault();$('loginBtn').disabled=true;$('authStatus').textContent='Кирүү текшерилүүдө...';try{await auth.signInWithEmailAndPassword($('email').value.trim(),$('password').value);$('password').value=''}catch(err){$('authStatus').textContent='Кирүү катасы: '+err.message}finally{$('loginBtn').disabled=false}};
 function stop(){unsub.forEach(fn=>fn());unsub=[];pins={};attendance={};deptSchedules={};workerSchedules={};defaultSchedule=null;readyPins=false;readyAttendance=false;readySchedules=false;rows=[]}
 function listen(path,cb){const ref=db.ref(path);ref.on('value',cb,e=>{$('status').textContent='❌ Firebase окуу катасы: '+e.message});unsub.push(()=>ref.off('value',cb))}
@@ -68,14 +68,65 @@ function counted(first,last,windows,date){
  const a=(first-midnight)/60000,b=(last-midnight)/60000;
  return Math.round(windows.reduce((sum,[x,y])=>sum+Math.max(0,Math.min(b,y)-Math.max(a,x)),0));
 }
-function render(){if(!authorized)return;if(!readyPins||!readyAttendance||!readySchedules){$('status').textContent='⏳ Маалымат жүктөлүүдө...';return}
-const date=$('date').value,selected=$('dept').value,q=$('search').value.trim().toLocaleLowerCase();
-const depts=[...new Set(Object.values(pins).filter(v=>v&&typeof v==='object').map(v=>String(v.bolum||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ky'));
-$('dept').replaceChildren();const all=document.createElement('option');all.value='all';all.textContent='Бардык бөлүмдөр';$('dept').append(all);depts.forEach(d=>{const opt=document.createElement('option');opt.value=d;opt.textContent=d;$('dept').append(opt)});$('dept').value=selected==='all'||depts.includes(selected)?selected:'all';
-const events={};for(const e of Object.values(attendance)){if(!e||typeof e!=='object'||!e.pin||!Number.isFinite(Number(e.time))||localDate(Number(e.time))!==date)continue;const pin=String(e.pin);if(!events[pin])events[pin]={ins:[],outs:[]};if(e.type==='in')events[pin].ins.push(Number(e.time));if(e.type==='out')events[pin].outs.push(Number(e.time))}
-rows=Object.entries(pins).filter(([pin,v])=>v&&typeof v==='object'&&($('dept').value==='all'||String(v.bolum||'')===$('dept').value)&&(!q||(String(v.name||'')+' '+pin+' '+String(v.bolum||'')).toLocaleLowerCase().includes(q))).map(([pin,v])=>{const ev=events[pin]||{ins:[],outs:[]};const first=ev.ins.length?Math.min(...ev.ins):null;const last=ev.outs.length?Math.max(...ev.outs):null;const resolved=scheduleFor(pin,v,date),plan=planFor(resolved.schedule,date),start=minutes(resolved.schedule?.start),arrival=first!=null?new Date(first):null;const late=plan.mins>0&&!!arrival&&start!==null&&(arrival.getHours()*60+arrival.getMinutes()>start);const worked=plan.mins===0?0:counted(first,last,plan.windows,date);const review=plan.mins===null?'График катасы':plan.mins===0?(first||last?'Эс алуудагы каттоо':'—'):worked===null?'Каттоо жетишсиз':'Алдын ала';return{pin,name:String(v.name||''),dept:String(v.bolum||''),timeIn:first,timeOut:last,late,source:resolved.source,planned:plan.mins,worked,review,phone:v.deviceId?'Байланган':'Байланган эмес',status:plan.mins===0?'Эс алуу':!first?'Келбеди':late?'Кечикти':'Убагында'}}).sort((a,b)=>a.dept.localeCompare(b.dept,'ky')||a.name.localeCompare(b.name,'ky'));
-$('s_all').textContent=rows.length;$('s_in').textContent=rows.filter(r=>r.timeIn).length;$('s_late').textContent=rows.filter(r=>r.late).length;$('s_abs').textContent=rows.filter(r=>!r.timeIn&&r.planned>0).length;$('found').textContent=rows.length;$('dateLabel').textContent=date.split('-').reverse().join('.');$('status').textContent='✅ Firebase: '+Object.keys(pins).length+' PIN, '+Object.keys(attendance).length+' окуя жүктөлдү';
-$('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.dept)}</td><td>${escapeHtml(r.pin)}</td><td>${clock(r.timeIn)}</td><td>${clock(r.timeOut)}</td><td class="${!r.timeIn&&r.planned>0?'absent':r.late?'late':'ok'}">${r.status}</td><td>${escapeHtml(r.source)}</td><td>${fmtDuration(r.planned)}</td><td>${fmtDuration(r.worked)}</td><td>${escapeHtml(r.review)}</td><td>${r.phone}</td></tr>`).join(''):'<tr><td colspan="12">Маалымат табылган жок</td></tr>';
+function rangeDates(date,mode){
+ const d=new Date(date+'T12:00:00');if(Number.isNaN(d.getTime()))return [];
+ let from=new Date(d),to=new Date(d);
+ if(mode==='week'){from.setDate(d.getDate()-((d.getDay()+6)%7));to=new Date(from);to.setDate(from.getDate()+6)}
+ if(mode==='month'){from.setDate(1);to=new Date(d.getFullYear(),d.getMonth()+1,0,12)}
+ const result=[];for(let x=new Date(from);x<=to;x.setDate(x.getDate()+1))result.push(localDate(x.getTime()));return result;
+}
+function render(){
+ if(!authorized)return;
+ if(!readyPins||!readyAttendance||!readySchedules){$('status').textContent='⏳ Маалымат жүктөлүүдө...';return}
+ const date=$('date').value,mode=$('mode').value,dates=rangeDates(date,mode),today=localDate(Date.now()),selected=$('dept').value,q=$('search').value.trim().toLocaleLowerCase();
+ if(!dates.length)return;
+ const depts=[...new Set(Object.values(pins).filter(v=>v&&typeof v==='object').map(v=>String(v.bolum||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ky'));
+ $('dept').replaceChildren();const all=document.createElement('option');all.value='all';all.textContent='Бардык бөлүмдөр';$('dept').append(all);depts.forEach(d=>{const opt=document.createElement('option');opt.value=d;opt.textContent=d;$('dept').append(opt)});$('dept').value=selected==='all'||depts.includes(selected)?selected:'all';
+ const dateSet=new Set(dates),events={};
+ for(const e of Object.values(attendance)){
+  if(!e||typeof e!=='object'||!e.pin||!Number.isFinite(Number(e.time)))continue;
+  const day=localDate(Number(e.time));if(!dateSet.has(day))continue;
+  const pin=String(e.pin);if(!events[pin])events[pin]={};if(!events[pin][day])events[pin][day]={ins:[],outs:[]};
+  if(e.type==='in')events[pin][day].ins.push(Number(e.time));if(e.type==='out')events[pin][day].outs.push(Number(e.time));
+ }
+ const workers=Object.entries(pins).filter(([pin,v])=>v&&typeof v==='object'&&($('dept').value==='all'||String(v.bolum||'')===$('dept').value)&&(!q||(String(v.name||'')+' '+pin+' '+String(v.bolum||'')).toLocaleLowerCase().includes(q)));
+ rows=workers.map(([pin,v])=>{
+  const daily=dates.map(day=>{
+   const ev=events[pin]?.[day]||{ins:[],outs:[]};const first=ev.ins.length?Math.min(...ev.ins):null,last=ev.outs.length?Math.max(...ev.outs):null;
+   const resolved=scheduleFor(pin,v,day),plan=planFor(resolved.schedule,day),start=minutes(resolved.schedule?.start),arrival=first!=null?new Date(first):null;
+   const late=plan.mins>0&&!!arrival&&start!==null&&(arrival.getHours()*60+arrival.getMinutes()>start);
+   const worked=plan.mins===0?0:counted(first,last,plan.windows,day);
+   const review=day>today?'Келе элек күн':plan.mins===null?'График катасы':plan.mins===0?(first||last?'Эс алуудагы каттоо':'—'):worked===null?'Каттоо жетишсиз':'Алдын ала';
+   return {day,first,last,late,source:resolved.source,planned:plan.mins,worked,review,status:day>today?'Келе элек күн':plan.mins===0?'Эс алуу':!first?'Каттоо жок':late?'Кечикти':'Убагында'};
+  });
+  if(mode==='day'){
+   const d=daily[0];return{pin,name:String(v.name||''),dept:String(v.bolum||''),timeIn:d.first,timeOut:d.last,late:d.late,source:d.source,planned:d.planned,worked:d.worked,review:d.review,phone:v.deviceId?'Байланган':'Байланган эмес',status:d.status,daily};
+  }
+  const elapsed=daily.filter(d=>d.day<=today),planKnown=elapsed.every(d=>d.planned!==null),planned=planKnown?elapsed.reduce((a,d)=>a+d.planned,0):null;
+  const worked=elapsed.some(d=>d.worked!==null)?elapsed.reduce((a,d)=>a+(d.worked||0),0):null;
+  const incomplete=elapsed.filter(d=>d.planned>0&&d.worked===null).length;
+  const missing=elapsed.filter(d=>d.planned>0&&!d.first).length;
+  const lateDays=elapsed.filter(d=>d.late).length;
+  const future=daily.some(d=>d.day>today);
+  return{pin,name:String(v.name||''),dept:String(v.bolum||''),planned,worked,missing,lateDays,incomplete,daysWithEntry:elapsed.filter(d=>d.first).length,review:!planKnown?'График катасы':incomplete?'Текшерүү керек':future?'Алдын ала':'Алдын ала',phone:v.deviceId?'Байланган':'Байланган эмес',daily};
+ }).sort((a,b)=>a.dept.localeCompare(b.dept,'ky')||a.name.localeCompare(b.name,'ky'));
+ $('found').textContent=rows.length;
+ const label=d=>d.split('-').reverse().join('.');$('dateLabel').textContent=mode==='day'?label(date):label(dates[0])+' — '+label(dates.at(-1));
+ const monthFuture=mode==='month'&&dates.at(-1)>today;
+ $('periodNote').textContent=mode==='day'?'Күндүк отчёт · алдын ала маалымат':mode==='week'?'Жумалык жыйынтык · дүйшөмбүдөн жекшембиге чейин':monthFuture?'Айлык табель · АЛДЫН АЛА (25инде чыгарууга болот, келечектеги күндөр эсептелбейт)':'Айлык табель · мезгил аяктаган, бирок администратордун текшерүүсү талап кылынат';
+ $('status').textContent='✅ Firebase: '+Object.keys(pins).length+' PIN, '+Object.keys(attendance).length+' окуя жүктөлдү';
+ const head=$('tbody').closest('table').querySelector('thead');
+ if(mode==='day'){
+  head.innerHTML='<tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>PIN</th><th>Кирди</th><th>Чыкты</th><th>Статус</th><th>График булагы</th><th>План</th><th>Катталган саат*</th><th>Текшерүү</th><th>Телефон</th></tr>';
+  $('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.dept)}</td><td>${escapeHtml(r.pin)}</td><td>${clock(r.timeIn)}</td><td>${clock(r.timeOut)}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.source)}</td><td>${fmtDuration(r.planned)}</td><td>${fmtDuration(r.worked)}</td><td>${escapeHtml(r.review)}</td><td>${escapeHtml(r.phone)}</td></tr>`).join(''):'<tr><td colspan="12">Маалымат табылган жок</td></tr>';
+  $('s_all').textContent=rows.length;$('s_in').textContent=rows.filter(r=>r.timeIn).length;$('s_late').textContent=rows.filter(r=>r.late).length;$('s_abs').textContent=rows.filter(r=>!r.timeIn&&r.planned>0&&date<=today).length;
+  $('s_in').previousElementSibling.textContent='КЕЛДИ';$('s_late').previousElementSibling.textContent='КЕЧИКТИ';$('s_abs').previousElementSibling.textContent='КАТТОО ЖОК';
+ }else{
+  head.innerHTML='<tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>PIN</th><th>План*</th><th>Катталган саат*</th><th>Кирген күн</th><th>Каттоо жок күн</th><th>Кечиккен күн</th><th>Текшерүү</th><th>Телефон</th></tr>';
+  $('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.dept)}</td><td>${escapeHtml(r.pin)}</td><td>${fmtDuration(r.planned)}</td><td>${fmtDuration(r.worked)}</td><td>${r.daysWithEntry}</td><td>${r.missing}</td><td>${r.lateDays}</td><td>${escapeHtml(r.review)}</td><td>${escapeHtml(r.phone)}</td></tr>`).join(''):'<tr><td colspan="11">Маалымат табылган жок</td></tr>';
+  $('s_all').textContent=rows.length;$('s_in').textContent=rows.reduce((n,r)=>n+r.daysWithEntry,0);$('s_late').textContent=rows.reduce((n,r)=>n+r.lateDays,0);$('s_abs').textContent=rows.reduce((n,r)=>n+r.missing,0);
+  $('s_in').previousElementSibling.textContent='КИРГЕН КҮНДӨР';$('s_late').previousElementSibling.textContent='КЕЧИККЕН КҮНДӨР';$('s_abs').previousElementSibling.textContent='КАТТОО ЖОК КҮНДӨР';
+ }
 }
 
 // Чыныгы Excel XLSX: текст Excel тарабынан UTF-8 CSV катары чечмеленбейт.
@@ -86,17 +137,10 @@ $('csvBtn').onclick = () => {
     return;
   }
   try {
-    const data = [
-      ['№', 'Аты-жөнү', 'Бөлүм', 'PIN', 'Кирди', 'Чыкты',
-       'Статус', 'График булагы', 'План', 'Катталган саат',
-       'Текшерүү', 'Телефон'],
-      ...rows.map((r, i) => [
-        i + 1, r.name, r.dept, String(r.pin),
-        clock(r.timeIn), clock(r.timeOut),
-        r.status, r.source, fmtDuration(r.planned),
-        fmtDuration(r.worked), r.review, r.phone
-      ])
-    ];
+    const mode=$('mode').value;
+    const data=mode==='day'?
+      [['№','Аты-жөнү','Бөлүм','PIN','Кирди','Чыкты','Статус','График булагы','План','Катталган саат','Текшерүү','Телефон'],...rows.map((r,i)=>[i+1,r.name,r.dept,String(r.pin),clock(r.timeIn),clock(r.timeOut),r.status,r.source,fmtDuration(r.planned),fmtDuration(r.worked),r.review,r.phone])]:
+      [['№','Аты-жөнү','Бөлүм','PIN','План','Катталган саат','Кирген күн','Каттоо жок күн','Кечиккен күн','Текшерүү','Телефон'],...rows.map((r,i)=>[i+1,r.name,r.dept,String(r.pin),fmtDuration(r.planned),fmtDuration(r.worked),r.daysWithEntry,r.missing,r.lateDays,r.review,r.phone])];
     const sheet = XLSX.utils.aoa_to_sheet(data);
     sheet['!cols'] = [
       {wch:6},{wch:26},{wch:24},{wch:12},
@@ -105,8 +149,8 @@ $('csvBtn').onclick = () => {
     ];
     sheet['!autofilter'] = {ref:sheet['!ref']};
     const book = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(book, sheet, 'Күндүк отчёт');
-    XLSX.writeFile(book, 'otchet_' + $('date').value + '.xlsx');
+    XLSX.utils.book_append_sheet(book, sheet, mode==='day'?'Күндүк отчёт':mode==='week'?'Жумалык табель':'Айлык табель');
+    XLSX.writeFile(book, 'otchet_'+mode+'_'+$('date').value+'.xlsx');
   } catch (err) {
     console.error('XLSX экспорт катасы:', err);
     alert('Excel файлын түзүүдө ката кетти: ' + err.message);
