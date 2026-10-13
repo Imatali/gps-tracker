@@ -324,7 +324,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1111 (Worker schedules)
+  Кадамжай ЖДПБ | Admin v1112 (Department schedule links)
 </div>
 </div>
 
@@ -676,6 +676,11 @@ function render() {
             <div class="text-[10px]">БАРДЫГЫ<br><b>${total}</b></div>
           </div>
         </div>
+        <button type="button" data-dept="${escapeAttr(d)}"
+          onclick="openDeptSchedule(this.dataset.dept)"
+          class="mt-3 w-full bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-3 py-2 text-[12px] font-bold hover:bg-blue-100">
+          📅 Иштөө графиги
+        </button>
       </div>`;
   });
 
@@ -963,6 +968,13 @@ window.filterDept = function(dept) {
   ensureAdmin();
   location.href = 'dept.html?d=' +
     encodeURIComponent(dept) + '&v=1105';
+};
+
+// Тандалган бөлүмдүн графигин өзүнчө барактан башкаруу.
+window.openDeptSchedule = function(dept) {
+  ensureAdmin();
+  if (!depts.includes(dept)) return;
+  location.href = 'schedule.html?d=' + encodeURIComponent(dept) + '&v=2';
 };
 
 window.copyWorkerLink = async function() {
