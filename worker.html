@@ -77,8 +77,9 @@ button.out {
          maxlength="4" placeholder="4 орундуу ПИН">
 
   <button id="btn" onclick="login()">Кирүү</button>
+  <button id="previewBtn" type="button" onclick="previewSchedule()" style="background:#e0e7ff;color:#1e40af">📅 Графикти көрүү</button>
 
-  <div id="log">📡 GPS аныкталууда...</div>
+  <div id="log">📅 Графикти GPSсиз көрүүгө болот.</div>
   <div id="info"></div>
   <div id="scheduleInfo" style="font-size:13px;background:#eff6ff;border-radius:8px;padding:10px;margin-top:12px;display:none"></div>
 
@@ -87,7 +88,7 @@ button.out {
   </button>
 
    <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
-    v1114 GPS + Firebase + графикти көрсөтүү
+    v1115 GPS + Firebase + каттоосуз графикти көрүү
   </div>
 </div>
 
@@ -100,6 +101,7 @@ const logEl = document.getElementById('log');
 const btn = document.getElementById('btn');
 const pinInput = document.getElementById('pin');
 const outBtn = document.getElementById('outBtn');
+const previewBtn = document.getElementById('previewBtn');
 
 const log = text => {
   logEl.innerText = text;
@@ -198,16 +200,8 @@ try {
     });
   }
 
-  // Барак ачылганда GPS текшерилет
-  getGPS()
-    .then(position => {
-      log('✅ GPS даяр. Тактыгы: ' +
-          Math.round(position.accuracy) + ' м');
-    })
-    .catch(error => {
-      log('⚠️ ' + error.message +
-          '. Катталуу үчүн GPS керек.');
-    });
+  // GPS барак ачылганда алынбайт: графикти көрүү GPS уруксатын талап кылбайт.
+  log('📅 Графикти GPSсиз көрүүгө болот. Жумушка катталууда GPS текшерилет.');
 
   // Кызматкерге маалымат катары гана көрсөтүлөт. Каттоого жана табелге таасир этпейт.
   const scheduleFallback = {start:'08:30',lunchS:'12:00',lunchE:'13:00',end:'17:30',workDays:[1,2,3,4,5]};
@@ -221,7 +215,7 @@ try {
     if (!['start','lunchS','lunchE','end'].every(k => /^\d{2}:\d{2}$/.test(value[k]||''))) return null;
     return value;
   }
-  async function showTodaySchedule(pin) {
+  async function showTodaySchedule(pin, preview = false) {
     const box = document.getElementById('scheduleInfo');
     const request = ++scheduleRequest;
     if (!pin) { box.style.display='none'; return; }
@@ -238,7 +232,7 @@ try {
         db.ref('osh/deptSchedules/'+deptKey).get(),
         db.ref('osh/settings/defaultSchedule').get()
       ]);
-      if (request !== scheduleRequest || localStorage.getItem('myPin') !== pin || !localStorage.getItem('myWorkerId')) return;
+      if (request !== scheduleRequest || (!preview && (localStorage.getItem('myPin') !== pin || !localStorage.getItem('myWorkerId')))) return;
       const config = workerSnap.val() || {};
       const today = localDateKey();
       const temporary = config.temporary;
@@ -267,6 +261,27 @@ try {
     }
   }
 
+  // Маалымат көрүү гана: attendance/workers жазылбайт жана deviceId байланыштырылбайт.
+  window.previewSchedule = async function() {
+    if (busy) return;
+    const pin = pinInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      alert('Графикти көрүү үчүн 4 орундуу ПИН жазыңыз');
+      return;
+    }
+    const oldPin = localStorage.getItem('myPin');
+    if (oldPin && oldPin !== pin) {
+      alert('Бул түзмөктө башка PIN сакталган. Администраторго кайрылыңыз.');
+      return;
+    }
+    previewBtn.disabled = true;
+    try {
+      await showTodaySchedule(pin, true);
+    } finally {
+      previewBtn.disabled = false;
+    }
+  };
+
   function refreshUI() {
     const myPin = localStorage.getItem('myPin');
     const myWorkerId = localStorage.getItem('myWorkerId');
@@ -280,6 +295,7 @@ try {
       pinInput.style.display = 'none';
       btn.style.display = 'none';
       outBtn.style.display = 'block';
+      previewBtn.style.display = 'none';
       showTodaySchedule(myPin);
     } else {
       document.getElementById('title').innerText =
@@ -290,6 +306,7 @@ try {
       btn.disabled = false;
       btn.innerText = 'Кирүү';
       outBtn.style.display = 'none';
+      previewBtn.style.display = 'block';
       ++scheduleRequest;
       document.getElementById('scheduleInfo').style.display = 'none';
 
@@ -305,6 +322,7 @@ try {
     busy = value;
     btn.disabled = value;
     outBtn.disabled = value;
+    previewBtn.disabled = value;
 
     if (value) {
       btn.innerText = 'Күтүңүз...';
