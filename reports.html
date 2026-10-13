@@ -198,8 +198,25 @@ async function numberWorkbook(){
    sh.getCell(row,3).value=String(r.pin);
    r.daily.forEach((d,j)=>{sh.getCell(row,j+4).value=numberCell(d,today)});
    // Тастыкталбаган/толук эмес каттоолорду иштелген саат деп эсептебейбиз
-   sh.getCell(row,35).value=r.daily.some(d=>d.day<=today&&d.planned>0&&d.worked===null)?'—':(r.worked===null?'—':Number((r.worked/60).toFixed(2)));
-   sh.getCell(row,36).value=r.review;
+   const incompleteDays = r.daily.filter(
+  d => d.day <= today && d.planned > 0 && d.worked === null
+);
+
+const completedDays = r.daily.filter(
+  d => d.day <= today && d.planned > 0 && d.worked !== null
+);
+
+const totalMinutes = completedDays.reduce(
+  (sum, d) => sum + d.worked, 0
+);
+
+sh.getCell(row,35).value = completedDays.length
+  ? Number((totalMinutes / 60).toFixed(2))
+  : '—';
+
+sh.getCell(row,36).value = incompleteDays.length
+  ? `Текшерүү керек (${incompleteDays.length} күн)`
+  : r.review;
   });
   const last=7+Math.max(workers.length,1);
   for(let r=6;r<=last;r++){
