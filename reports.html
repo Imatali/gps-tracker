@@ -76,8 +76,51 @@ rows=Object.entries(pins).filter(([pin,v])=>v&&typeof v==='object'&&($('dept').v
 $('s_all').textContent=rows.length;$('s_in').textContent=rows.filter(r=>r.timeIn).length;$('s_late').textContent=rows.filter(r=>r.late).length;$('s_abs').textContent=rows.filter(r=>!r.timeIn&&r.planned>0).length;$('found').textContent=rows.length;$('dateLabel').textContent=date.split('-').reverse().join('.');$('status').textContent='✅ Firebase: '+Object.keys(pins).length+' PIN, '+Object.keys(attendance).length+' окуя жүктөлдү';
 $('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.dept)}</td><td>${escapeHtml(r.pin)}</td><td>${clock(r.timeIn)}</td><td>${clock(r.timeOut)}</td><td class="${!r.timeIn&&r.planned>0?'absent':r.late?'late':'ok'}">${r.status}</td><td>${escapeHtml(r.source)}</td><td>${fmtDuration(r.planned)}</td><td>${fmtDuration(r.worked)}</td><td>${escapeHtml(r.review)}</td><td>${r.phone}</td></tr>`).join(''):'<tr><td colspan="12">Маалымат табылган жок</td></tr>';
 }
-function csvCell(v){const s=String(v??'');return '"'+s.replace(/"/g,'""')+'"'}
-$('csvBtn').onclick=()=>{if(!authorized||!readyPins||!readyAttendance||!readySchedules)return;const data=[['№','Аты-жөнү','Бөлүм','PIN','Кирди','Чыкты','Статус','График булагы','План','Катталган саат','Текшерүү','Телефон'],...rows.map((r,i)=>[i+1,r.name,r.dept,r.pin,clock(r.timeIn),clock(r.timeOut),r.status,r.source,fmtDuration(r.planned),fmtDuration(r.worked),r.review,r.phone])];const csv='sep=;\r\n'+data.map(row=>row.map(csvCell).join(';')).join('\r\n');const bytes=new Uint8Array(2+csv.length*2);bytes[0]=0xFF;bytes[1]=0xFE;for(let i=0;i<csv.length;i++){const c=csv.charCodeAt(i);bytes[2+i*2]=c&255;bytes[3+i*2]=c>>8;}const blob=new Blob([bytes],{type:'text/csv;charset=utf-16le'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='otchet_'+$('date').value+'.csv';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+
+function csvCell(v) {
+  const s = String(v ?? '');
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+$('csvBtn').onclick = () => {
+  if (!authorized || !readyPins || !readyAttendance || !readySchedules) return;
+
+  const data = [
+    ['№', 'Аты-жөнү', 'Бөлүм', 'PIN', 'Кирди', 'Чыкты',
+     'Статус', 'График булагы', 'План', 'Катталган саат',
+     'Текшерүү', 'Телефон'],
+    ...rows.map((r, i) => [
+      i + 1, r.name, r.dept, r.pin,
+      clock(r.timeIn), clock(r.timeOut),
+      r.status, r.source,
+      fmtDuration(r.planned),
+      fmtDuration(r.worked),
+      r.review, r.phone
+    ])
+  ];
+
+  const csv = 'sep=;\r\n' +
+    data.map(row => row.map(csvCell).join(';')).join('\r\n');
+
+  // UTF-8 BOM: Excel кыргызча тамгаларды туура окушу үчүн
+  const blob = new Blob(
+    ['\uFEFF', csv],
+    { type: 'text/csv;charset=utf-8;' }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+
+  a.href = url;
+  a.download = 'otchet_' + $('date').value + '.csv';
+
+  document.body.append(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
 </script>
 </body>
 </html>
