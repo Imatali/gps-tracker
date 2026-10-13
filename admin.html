@@ -108,8 +108,10 @@ th,td{vertical-align:top}
 </div>
 
 <!-- ЖАЛПЫ ГРАФИК -->
-<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
-  <h3 class="font-bold mb-2">⚙️ Жалпы жумуш графиги</h3>
+<details class="mt-4 bg-white rounded-xl card-shadow overflow-hidden">
+  <summary class="cursor-pointer select-none p-4 font-bold text-sm hover:bg-slate-50">⚙️ Жалпы жөндөөлөр <span class="text-gray-500 font-normal">— жалпы жумуш графиги</span></summary>
+  <div class="px-4 pb-4">
+  <h3 class="font-bold mb-2">Жалпы жумуш графиги</h3>
   <p class="text-xs text-gray-500 mb-3">Бул график жаңы PIN түзүүдө колдонулат. Мурдагы кызматкерлердин графиктери өзгөрбөйт.</p>
   <div class="flex flex-wrap gap-3 mb-3" id="defaultWorkDays">
     <label><input type="checkbox" value="1" checked> Дүй</label>
@@ -128,8 +130,12 @@ th,td{vertical-align:top}
     <button onclick="saveDefaultSchedule()" class="bg-blue-600 text-white rounded px-4 py-2">💾 Сактоо</button>
   </div>
   <p id="defaultScheduleStatus" class="text-xs text-gray-500 mt-2">Жалпы график жүктөлүүдө...</p>
-</div>
+  </div>
+</details>
 
+<!-- Убактылуу шайкештик: эски формалар JS функциялары үчүн гана сакталды.
+     Башкаруу эми schedule.html барагында жүргүзүлөт. -->
+<div id="legacyScheduleCompatibility" class="hidden" aria-hidden="true" inert>
 <!-- БӨЛҮМДҮН ЖЕКЕ ГРАФИГИ -->
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
   <h3 class="font-bold mb-2">🏢 Бөлүмдүн жеке графиги</h3>
@@ -267,6 +273,8 @@ th,td{vertical-align:top}
   </div>
 </div>
 
+</div>
+
 <!-- КЕЛҮҮ-КЕТҮҮ ТАРЫХЫ -->
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
   <h3 class="font-bold text-lg mb-3">
@@ -324,7 +332,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1112 (Department schedule links)
+  Кадамжай ЖДПБ | Admin v1113 (Simplified dashboard)
 </div>
 </div>
 
