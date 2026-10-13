@@ -2,7 +2,7 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Отчёт — Кадамжай ЖДПБ v1103</title>
+<title>Отчёт — Кадамжай ЖДПБ v1104</title>
 <style>
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f8fafc;color:#172033;margin:0;padding:12px}.wrap{max-width:1450px;margin:auto}.header,.panel,.auth{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0001}.header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:170px minmax(140px,1fr) minmax(170px,1.5fr) repeat(3,auto);gap:8px;margin-bottom:12px}.input,.btn{padding:11px;border-radius:9px;font-size:14px}.input{width:100%;border:1px solid #cbd5e1;background:white}.btn{border:0;font-weight:bold;cursor:pointer;background:#2563eb;color:white}.btn.green{background:#16a34a}.btn.dark{background:#334155}.btn.gray{background:#e2e8f0;color:#172033}.btn:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.stat{background:#fff;padding:16px;border-radius:12px;text-align:center;border:1px solid #e2e8f0}.stat small{font-size:12px;color:#64748b}.stat b{display:block;font-size:27px;margin-top:6px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:11px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}th{background:#f1f5f9}#status{font-size:13px;color:#475569;margin-bottom:12px}.auth{max-width:440px;margin:60px auto}.auth input{margin:6px 0}.hidden{display:none!important}.muted{font-size:12px;color:#64748b}.late{color:#c2410c;font-weight:bold}.ok{color:#15803d;font-weight:bold}.absent{color:#b91c1c;font-weight:bold}@media(max-width:850px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.filters .btn{width:100%}}
 @media print{.filters,.header button,#status,.auth{display:none!important}body{background:white;padding:0}.panel,.stat{box-shadow:none}}
@@ -11,8 +11,8 @@
 <body>
 <section id="authBox" class="auth"><h2>🔐 Отчётко кирүү</h2><p id="authStatus" class="muted">Firebase текшерилүүдө...</p><form id="authForm" class="hidden"><input class="input" id="email" type="email" autocomplete="username" placeholder="Электрондук почта" required><input class="input" id="password" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn" type="submit" id="loginBtn">Кирүү</button></form></section>
 <main id="app" class="wrap hidden">
-<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1103 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
-<div class="filters"><input class="input" type="date" id="date"><select class="input" id="dept"><option value="all">Бардык бөлүмдөр</option></select><input class="input" id="search" placeholder="🔎 Аты / PIN издөө"><button class="btn" id="refreshBtn">🔃 Жаңылоо</button><button class="btn green" id="csvBtn">📥 Excel (CSV)</button><button class="btn dark" id="printBtn">🖨️ PDF</button></div>
+<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1104 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
+<div class="filters"><input class="input" type="date" id="date"><select class="input" id="dept"><option value="all">Бардык бөлүмдөр</option></select><input class="input" id="search" placeholder="🔎 Аты / PIN издөө"><button class="btn" id="refreshBtn">🔃 Жаңылоо</button><button class="btn green" id="csvBtn">📥 Excel (.xlsx)</button><button class="btn dark" id="printBtn">🖨️ PDF</button></div>
 <div id="status">Firebase'ден маалымат жүктөлүүдө...</div>
 <div class="stats"><div class="stat"><small>БАРДЫГЫ</small><b id="s_all">0</b></div><div class="stat"><small>КЕЛДИ</small><b id="s_in">0</b></div><div class="stat"><small>КЕЧИКТИ</small><b id="s_late">0</b></div><div class="stat"><small>КЕЛБЕДИ</small><b id="s_abs">0</b></div></div>
 <div class="panel"><b>📋 <span id="dateLabel"></span> — Отчёт</b> <span class="muted">· Табылды: <span id="found">0</span></span><div class="tablewrap"><table><thead><tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>PIN</th><th>Кирди</th><th>Чыкты</th><th>Статус</th><th>График булагы</th><th>План</th><th>Катталган саат*</th><th>Текшерүү</th><th>Телефон</th></tr></thead><tbody id="tbody"><tr><td colspan="12">Жүктөлүүдө...</td></tr></tbody></table></div></div>
@@ -21,6 +21,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 'use strict';
 const firebaseConfig={apiKey:'AIzaSyBQWMBefKYWiPQnJVHcANZLqkz2Vnt2VME',authDomain:'gps-tracker-osh.firebaseapp.com',databaseURL:'https://gps-tracker-osh-default-rtdb.firebaseio.com',projectId:'gps-tracker-osh',appId:'1:588347508048:web:1b6fd5417ff8f4e5f29855'};
@@ -77,48 +78,39 @@ $('s_all').textContent=rows.length;$('s_in').textContent=rows.filter(r=>r.timeIn
 $('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.dept)}</td><td>${escapeHtml(r.pin)}</td><td>${clock(r.timeIn)}</td><td>${clock(r.timeOut)}</td><td class="${!r.timeIn&&r.planned>0?'absent':r.late?'late':'ok'}">${r.status}</td><td>${escapeHtml(r.source)}</td><td>${fmtDuration(r.planned)}</td><td>${fmtDuration(r.worked)}</td><td>${escapeHtml(r.review)}</td><td>${r.phone}</td></tr>`).join(''):'<tr><td colspan="12">Маалымат табылган жок</td></tr>';
 }
 
-function csvCell(v) {
-  const s = String(v ?? '');
-  return '"' + s.replace(/"/g, '""') + '"';
-}
-
+// Чыныгы Excel XLSX: текст Excel тарабынан UTF-8 CSV катары чечмеленбейт.
 $('csvBtn').onclick = () => {
   if (!authorized || !readyPins || !readyAttendance || !readySchedules) return;
-
-  const data = [
-    ['№', 'Аты-жөнү', 'Бөлүм', 'PIN', 'Кирди', 'Чыкты',
-     'Статус', 'График булагы', 'План', 'Катталган саат',
-     'Текшерүү', 'Телефон'],
-    ...rows.map((r, i) => [
-      i + 1, r.name, r.dept, r.pin,
-      clock(r.timeIn), clock(r.timeOut),
-      r.status, r.source,
-      fmtDuration(r.planned),
-      fmtDuration(r.worked),
-      r.review, r.phone
-    ])
-  ];
-
-  const csv = 'sep=;\r\n' +
-    data.map(row => row.map(csvCell).join(';')).join('\r\n');
-
-  // UTF-8 BOM: Excel кыргызча тамгаларды туура окушу үчүн
-  const blob = new Blob(
-    ['\uFEFF', csv],
-    { type: 'text/csv;charset=utf-8;' }
-  );
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-
-  a.href = url;
-  a.download = 'otchet_' + $('date').value + '.csv';
-
-  document.body.append(a);
-  a.click();
-  a.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  if (typeof XLSX === 'undefined') {
+    alert('Excel китепканасы жүктөлгөн жок. Интернетти текшерип, баракты жаңыртыңыз.');
+    return;
+  }
+  try {
+    const data = [
+      ['№', 'Аты-жөнү', 'Бөлүм', 'PIN', 'Кирди', 'Чыкты',
+       'Статус', 'График булагы', 'План', 'Катталган саат',
+       'Текшерүү', 'Телефон'],
+      ...rows.map((r, i) => [
+        i + 1, r.name, r.dept, String(r.pin),
+        clock(r.timeIn), clock(r.timeOut),
+        r.status, r.source, fmtDuration(r.planned),
+        fmtDuration(r.worked), r.review, r.phone
+      ])
+    ];
+    const sheet = XLSX.utils.aoa_to_sheet(data);
+    sheet['!cols'] = [
+      {wch:6},{wch:26},{wch:24},{wch:12},
+      {wch:12},{wch:12},{wch:16},{wch:19},
+      {wch:15},{wch:19},{wch:24},{wch:20}
+    ];
+    sheet['!autofilter'] = {ref:sheet['!ref']};
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, sheet, 'Күндүк отчёт');
+    XLSX.writeFile(book, 'otchet_' + $('date').value + '.xlsx');
+  } catch (err) {
+    console.error('XLSX экспорт катасы:', err);
+    alert('Excel файлын түзүүдө ката кетти: ' + err.message);
+  }
 };
 
 </script>
