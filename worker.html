@@ -88,7 +88,7 @@ button.out {
   </button>
 
    <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
-    v1115 GPS + Firebase + каттоосуз графикти көрүү
+    v1116 GPS + Firebase + 7 күндүк график
   </div>
 </div>
 
@@ -220,7 +220,7 @@ try {
     const request = ++scheduleRequest;
     if (!pin) { box.style.display='none'; return; }
     box.style.display='block';
-    box.textContent='📅 Бүгүнкү график жүктөлүүдө...';
+    box.textContent='📅 7 күндүк график жүктөлүүдө...';
     try {
       await authReady;
       const pinSnap = await db.ref('osh/pins/'+pin).get();
@@ -234,28 +234,43 @@ try {
       ]);
       if (request !== scheduleRequest || (!preview && (localStorage.getItem('myPin') !== pin || !localStorage.getItem('myWorkerId')))) return;
       const config = workerSnap.val() || {};
-      const today = localDateKey();
       const temporary = config.temporary;
-      let schedule, source;
-      if (temporary && temporary.from <= today && today <= temporary.to && cleanSchedule(temporary.schedule)) {
-        schedule=temporary.schedule; source='Убактылуу график';
-      } else if (config.mode==='custom' && cleanSchedule(config.permanent)) {
-        schedule=config.permanent; source='Жеке туруктуу график';
-      } else if (config.mode==='legacy' || !config.mode) {
-        schedule=cleanSchedule(pinData.schedule); source='Мурдагы PIN графиги';
-      } else {
-        schedule=null;
+      const today = new Date();
+      const weekdays = ['Жек','Дүй','Шей','Шар','Бей','Жума','Ише'];
+      const lines = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        const dateKey = localDateKey(day);
+        let schedule = null;
+        let source = '';
+        if (temporary && temporary.from <= dateKey && dateKey <= temporary.to && cleanSchedule(temporary.schedule)) {
+          schedule = temporary.schedule;
+          source = 'Убактылуу график';
+        } else if (config.mode === 'custom' && cleanSchedule(config.permanent)) {
+          schedule = config.permanent;
+          source = 'Жеке туруктуу график';
+        } else if ((config.mode === 'legacy' || !config.mode) && cleanSchedule(pinData.schedule)) {
+          schedule = pinData.schedule;
+          source = 'Мурдагы PIN графиги';
+        }
+        if (!schedule && cleanSchedule(deptSnap.val())) {
+          schedule = deptSnap.val();
+          source = 'Бөлүмдүн графиги';
+        }
+        if (!schedule) {
+          schedule = cleanSchedule(defaultSnap.val()) || scheduleFallback;
+          source = 'Жалпы график';
+        }
+        const dateLabel = String(day.getDate()).padStart(2, '0') + '.' + String(day.getMonth()+1).padStart(2, '0');
+        const label = `${dateLabel} (${weekdays[day.getDay()]})`;
+        const hours = schedule.workDays.includes(day.getDay())
+          ? `${schedule.start}–${schedule.lunchS}, ${schedule.lunchE}–${schedule.end}`
+          : 'Эс алуу күнү';
+        lines.push(`${label}: ${hours} — ${source}`);
       }
-      if (!schedule) {
-        schedule=cleanSchedule(deptSnap.val()); source='Бөлүмдүн графиги';
-      }
-      if (!schedule) {
-        schedule=cleanSchedule(defaultSnap.val()) || scheduleFallback; source='Жалпы график';
-      }
-      const isWorkday = schedule.workDays.includes(new Date().getDay());
-      box.textContent = isWorkday
-        ? `📅 Бүгүнкү график (${source}): ${schedule.start}–${schedule.lunchS}, ${schedule.lunchE}–${schedule.end}. Тыныгуу: ${schedule.lunchS}–${schedule.lunchE}.`
-        : `📅 Бүгүн эс алуу күнү (${source}).`;
+      if (request !== scheduleRequest) return;
+      box.style.whiteSpace = 'pre-line';
+      box.textContent = '📅 Алдыдагы 7 күндүн графиги\n' + lines.join('\n');
     } catch (error) {
       if (request === scheduleRequest) box.textContent='⚠️ Графикти жүктөө мүмкүн болгон жок. Каттоо функциясы өзгөргөн жок.';
     }
