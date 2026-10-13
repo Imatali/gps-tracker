@@ -157,6 +157,58 @@ th,td{vertical-align:top}
   <p id="deptScheduleStatus" class="text-xs text-gray-500 mt-2">Бөлүм тандалууда...</p>
 </div>
 
+<!-- КЫЗМАТКЕРДИН ЖЕКЕ ЖАНА УБАКТЫЛУУ ГРАФИГИ -->
+<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
+  <h3 class="font-bold mb-2">👤 Кызматкердин жеке графиги</h3>
+  <p class="text-xs text-amber-700 mb-3">Бул бөлүм график жөндөөлөрүн өзүнчө сактайт. Азырынча worker.html жана табель бул жаңы жөндөөлөрдү автоматтык колдонбойт.</p>
+  <label class="text-xs block mb-2">Кызматкер
+    <select id="workerScheduleSelect" onchange="showWorkerSchedule()" class="border rounded p-2 block w-full max-w-md"></select>
+  </label>
+  <label class="text-xs block mb-2">Туруктуу графиктин булагы
+    <select id="workerScheduleMode" onchange="showWorkerScheduleMode()" class="border rounded p-2 block w-full max-w-md">
+      <option value="legacy">Мурдагы PIN графиги (өзгөртүүсүз)</option>
+      <option value="inherit">Бөлүмдүн графиги</option>
+      <option value="custom">Жеке туруктуу график</option>
+    </select>
+  </label>
+  <div id="workerPermanentFields" class="border rounded-lg p-3 mb-3">
+    <div class="font-semibold text-sm mb-2">Туруктуу жеке график</div>
+    <div id="workerPermanentDays" class="flex flex-wrap gap-3 mb-2">
+      <label><input type="checkbox" value="1"> Дүй</label><label><input type="checkbox" value="2"> Шей</label>
+      <label><input type="checkbox" value="3"> Шар</label><label><input type="checkbox" value="4"> Бей</label>
+      <label><input type="checkbox" value="5"> Жума</label><label><input type="checkbox" value="6"> Ише</label>
+      <label><input type="checkbox" value="0"> Жек</label>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <label class="text-xs">Келүү<input id="workerPermanentStart" type="time" class="border rounded p-2 block"></label>
+      <label class="text-xs">Тыныгууга чыгуу<input id="workerPermanentLunchS" type="time" class="border rounded p-2 block"></label>
+      <label class="text-xs">Тыныгуудан келүү<input id="workerPermanentLunchE" type="time" class="border rounded p-2 block"></label>
+      <label class="text-xs">Кетүү<input id="workerPermanentEnd" type="time" class="border rounded p-2 block"></label>
+    </div>
+  </div>
+  <label class="flex items-center gap-2 text-sm mb-2"><input type="checkbox" id="workerTempEnabled" onchange="showWorkerScheduleMode()"> Убактылуу график кошуу</label>
+  <div id="workerTempFields" class="border rounded-lg p-3 mb-3 hidden">
+    <div class="flex flex-wrap gap-2 mb-3">
+      <label class="text-xs">Башталган күн<input id="workerTempFrom" type="date" class="border rounded p-2 block"></label>
+      <label class="text-xs">Бүткөн күн (кошо эсептелет)<input id="workerTempTo" type="date" class="border rounded p-2 block"></label>
+    </div>
+    <div id="workerTempDays" class="flex flex-wrap gap-3 mb-2">
+      <label><input type="checkbox" value="1"> Дүй</label><label><input type="checkbox" value="2"> Шей</label>
+      <label><input type="checkbox" value="3"> Шар</label><label><input type="checkbox" value="4"> Бей</label>
+      <label><input type="checkbox" value="5"> Жума</label><label><input type="checkbox" value="6"> Ише</label>
+      <label><input type="checkbox" value="0"> Жек</label>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <label class="text-xs">Келүү<input id="workerTempStart" type="time" class="border rounded p-2 block"></label>
+      <label class="text-xs">Тыныгууга чыгуу<input id="workerTempLunchS" type="time" class="border rounded p-2 block"></label>
+      <label class="text-xs">Тыныгуудан келүү<input id="workerTempLunchE" type="time" class="border rounded p-2 block"></label>
+      <label class="text-xs">Кетүү<input id="workerTempEnd" type="time" class="border rounded p-2 block"></label>
+    </div>
+  </div>
+  <button onclick="saveWorkerSchedule()" class="bg-blue-600 text-white rounded px-4 py-2">💾 Кызматкердин графигин сактоо</button>
+  <p id="workerScheduleStatus" class="text-xs text-gray-500 mt-2">Кызматкер тандалууда...</p>
+</div>
+
 <!-- PIN БЕРҮҮ -->
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
   <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
@@ -272,7 +324,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1110 (Dept schedules)
+  Кадамжай ЖДПБ | Admin v1111 (Worker schedules)
 </div>
 </div>
 
@@ -341,6 +393,7 @@ const FALLBACK_DEFAULT_SCHEDULE = {
 };
 let defaultSchedule = {...FALLBACK_DEFAULT_SCHEDULE};
 let deptSchedules = {};
+let workerSchedules = {};
 // Бөлүм аталышында Firebase уруксат бербеген белгилер болушу мүмкүн.
 function deptScheduleKey(dept) { return encodeURIComponent(dept); }
 function effectiveDeptSchedule(dept) {
@@ -484,7 +537,7 @@ function stopListeners() {
   subscriptions.forEach(ref => ref.off());
   subscriptions.length = 0;
   listening = false;
-  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {}; deptSchedules = {};
+  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {}; deptSchedules = {}; workerSchedules = {};
 }
 function startListeners() {
   if (listening) return;
@@ -500,6 +553,7 @@ function startListeners() {
     deptSchedules = snapshot.val() || {};
     showDeptSchedule(); fillNewWorkerSchedule();
   });
+  subscribe('osh/workerSchedules', snapshot => { workerSchedules = snapshot.val() || {}; showWorkerSchedule(); render(); });
   subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
   subscribe('osh/workers', snapshot => { allWorkers = snapshot.val() || {}; render(); });
   subscribe('osh/logs/' + localDateString(Date.now()), snapshot => {
@@ -658,9 +712,10 @@ function render() {
 
     count++;
 
-    const schedule = v.schedule
-      ? `${v.schedule.start || '08:00'}-${v.schedule.end || '17:00'}`
-      : '08:00-17:00';
+    const config = workerSchedules[pin];
+    const schedule = config?.mode === 'custom' ? `${config.permanent.start}-${config.permanent.end} (жеке, жаңы)`
+      : config?.mode === 'inherit' ? 'Бөлүм графиги (жаңы)'
+      : v.schedule ? `${v.schedule.start || '08:00'}-${v.schedule.end || '17:00'} (PIN)` : '08:00-17:00';
 
     const phone = v.deviceId
       ? `✅ Байланган<br>
@@ -692,7 +747,88 @@ function render() {
 
   document.getElementById('pinsTable').innerHTML = table;
   document.getElementById('pinFound').innerText = count;
+  updateWorkerScheduleOptions();
 }
+
+
+// ЖАҢЫ ГРАФИК ЖӨНДӨӨЛӨРҮ: PIN маалыматтарын өзгөртпөй, өзүнчө сакталат.
+function scheduleForm(prefix, data) {
+  const base = data || defaultSchedule;
+  for (const [suffix,key] of [['Start','start'],['LunchS','lunchS'],['LunchE','lunchE'],['End','end']]) {
+    document.getElementById(prefix+suffix).value = base[key] || '';
+  }
+  document.querySelectorAll('#'+prefix+'Days input').forEach(el => {
+    el.checked = (base.workDays || []).includes(Number(el.value));
+  });
+}
+function readScheduleForm(prefix) {
+  const read = suffix => document.getElementById(prefix+suffix).value;
+  return {start:read('Start'),lunchS:read('LunchS'),lunchE:read('LunchE'),end:read('End'),
+    workDays:[...document.querySelectorAll('#'+prefix+'Days input:checked')].map(el=>Number(el.value)).sort()};
+}
+function validSchedule(data) {
+  return data.start && data.lunchS && data.lunchE && data.end &&
+    data.start < data.lunchS && data.lunchS <= data.lunchE && data.lunchE < data.end &&
+    data.workDays.length > 0;
+}
+function updateWorkerScheduleOptions() {
+  const select = document.getElementById('workerScheduleSelect');
+  const previous = select.value;
+  const entries = Object.entries(allPins).filter(([,v])=>v && typeof v==='object');
+  select.innerHTML = entries.map(([pin,v])=>`<option value="${escapeAttr(pin)}">${escapeHTML(v.name||'Аты жок')} — ${escapeHTML(v.bolum||'')} (${escapeHTML(pin)})</option>`).join('');
+  if (entries.some(([pin])=>pin===previous)) select.value = previous;
+  if (select.value !== select.dataset.loadedPin) showWorkerSchedule();
+}
+function showWorkerScheduleMode() {
+  const custom = document.getElementById('workerScheduleMode').value === 'custom';
+  document.getElementById('workerPermanentFields').classList.toggle('hidden',!custom);
+  document.getElementById('workerTempFields').classList.toggle('hidden',!document.getElementById('workerTempEnabled').checked);
+}
+function showWorkerSchedule() {
+  const select = document.getElementById('workerScheduleSelect');
+  const pin = select.value;
+  select.dataset.loadedPin = pin;
+  const worker = allPins[pin];
+  if (!worker) { document.getElementById('workerScheduleStatus').textContent='Кызматкер жок'; return; }
+  const config = workerSchedules[pin] || {};
+  const base = worker.schedule || effectiveDeptSchedule(worker.bolum);
+  document.getElementById('workerScheduleMode').value = config.mode || 'legacy';
+  scheduleForm('workerPermanent',config.permanent || base);
+  const temp = config.temporary;
+  document.getElementById('workerTempEnabled').checked = !!temp;
+  document.getElementById('workerTempFrom').value = temp?.from || '';
+  document.getElementById('workerTempTo').value = temp?.to || '';
+  scheduleForm('workerTemp',temp?.schedule || base);
+  showWorkerScheduleMode();
+  document.getElementById('workerScheduleStatus').textContent = config.mode
+    ? 'График жөндөөлөрү жүктөлдү (азырынча worker.html колдонбойт)'
+    : 'Мурдагы PIN графиги өзгөртүлгөн жок';
+}
+window.saveWorkerSchedule = async function() {
+  ensureAdmin();
+  const pin = document.getElementById('workerScheduleSelect').value;
+  if (!pin || !allPins[pin]) { alert('Кызматкерди тандаңыз'); return; }
+  const mode = document.getElementById('workerScheduleMode').value;
+  const config = {mode};
+  if (mode === 'custom') {
+    config.permanent = readScheduleForm('workerPermanent');
+    if (!validSchedule(config.permanent)) { alert('Туруктуу графикти туура толтуруңуз'); return; }
+  }
+  if (document.getElementById('workerTempEnabled').checked) {
+    const from = document.getElementById('workerTempFrom').value;
+    const to = document.getElementById('workerTempTo').value;
+    const schedule = readScheduleForm('workerTemp');
+    if (!from || !to || from > to || !validSchedule(schedule)) {
+      alert('Убактылуу графиктин күндөрүн жана убакыттарын туура толтуруңуз'); return;
+    }
+    config.temporary = {from,to,schedule};
+  }
+  try {
+    await db.ref('osh/workerSchedules/'+pin).set(config);
+    document.getElementById('workerScheduleStatus').textContent = 'Жөндөөлөр Firebase базасына сакталды';
+    alert('Кызматкердин график жөндөөлөрү сакталды. worker.html азырынча эски график менен иштейт.');
+  } catch (error) { alert('Сактоо катасы: '+error.message); }
+};
 
 // ЖАҢЫ PIN ТҮЗҮҮ
 document.getElementById('deptInput').addEventListener('change', fillNewWorkerSchedule);
@@ -766,7 +902,7 @@ window.delPin = async function(pin) {
   if (!confirm(pin + ' PIN-кодун өчүрөсүзбү?')) return;
 
   try {
-    await db.ref('osh/pins/' + pin).remove();
+    await db.ref('osh').update({['pins/'+pin]:null,['workerSchedules/'+pin]:null});
     alert('PIN өчүрүлдү');
   } catch (error) {
     alert('Өчүрүү катасы: ' + error.message);
