@@ -80,13 +80,14 @@ button.out {
 
   <div id="log">📡 GPS аныкталууда...</div>
   <div id="info"></div>
+  <div id="scheduleInfo" style="font-size:13px;background:#eff6ff;border-radius:8px;padding:10px;margin-top:12px;display:none"></div>
 
   <button id="outBtn" class="out" onclick="leaveWork()">
     🚪 Жумуштан кеттим
   </button>
 
    <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
-    v1105 GPS + Firebase Anonymous Authentication
+    v1114 GPS + Firebase + графикти көрсөтүү
   </div>
 </div>
 
@@ -208,6 +209,64 @@ try {
           '. Катталуу үчүн GPS керек.');
     });
 
+  // Кызматкерге маалымат катары гана көрсөтүлөт. Каттоого жана табелге таасир этпейт.
+  const scheduleFallback = {start:'08:30',lunchS:'12:00',lunchE:'13:00',end:'17:30',workDays:[1,2,3,4,5]};
+  let scheduleRequest = 0;
+  function localDateKey(date = new Date()) {
+    const n = v => String(v).padStart(2,'0');
+    return date.getFullYear()+'-'+n(date.getMonth()+1)+'-'+n(date.getDate());
+  }
+  function cleanSchedule(value) {
+    if (!value || !Array.isArray(value.workDays)) return null;
+    if (!['start','lunchS','lunchE','end'].every(k => /^\d{2}:\d{2}$/.test(value[k]||''))) return null;
+    return value;
+  }
+  async function showTodaySchedule(pin) {
+    const box = document.getElementById('scheduleInfo');
+    const request = ++scheduleRequest;
+    if (!pin) { box.style.display='none'; return; }
+    box.style.display='block';
+    box.textContent='📅 Бүгүнкү график жүктөлүүдө...';
+    try {
+      await authReady;
+      const pinSnap = await db.ref('osh/pins/'+pin).get();
+      const pinData = pinSnap.val();
+      if (!pinData) throw new Error('PIN маалыматы табылган жок');
+      const deptKey = encodeURIComponent(pinData.bolum||'');
+      const [workerSnap, deptSnap, defaultSnap] = await Promise.all([
+        db.ref('osh/workerSchedules/'+pin).get(),
+        db.ref('osh/deptSchedules/'+deptKey).get(),
+        db.ref('osh/settings/defaultSchedule').get()
+      ]);
+      if (request !== scheduleRequest || localStorage.getItem('myPin') !== pin || !localStorage.getItem('myWorkerId')) return;
+      const config = workerSnap.val() || {};
+      const today = localDateKey();
+      const temporary = config.temporary;
+      let schedule, source;
+      if (temporary && temporary.from <= today && today <= temporary.to && cleanSchedule(temporary.schedule)) {
+        schedule=temporary.schedule; source='Убактылуу график';
+      } else if (config.mode==='custom' && cleanSchedule(config.permanent)) {
+        schedule=config.permanent; source='Жеке туруктуу график';
+      } else if (config.mode==='legacy' || !config.mode) {
+        schedule=cleanSchedule(pinData.schedule); source='Мурдагы PIN графиги';
+      } else {
+        schedule=null;
+      }
+      if (!schedule) {
+        schedule=cleanSchedule(deptSnap.val()); source='Бөлүмдүн графиги';
+      }
+      if (!schedule) {
+        schedule=cleanSchedule(defaultSnap.val()) || scheduleFallback; source='Жалпы график';
+      }
+      const isWorkday = schedule.workDays.includes(new Date().getDay());
+      box.textContent = isWorkday
+        ? `📅 Бүгүнкү график (${source}): ${schedule.start}–${schedule.lunchS}, ${schedule.lunchE}–${schedule.end}. Тыныгуу: ${schedule.lunchS}–${schedule.lunchE}.`
+        : `📅 Бүгүн эс алуу күнү (${source}).`;
+    } catch (error) {
+      if (request === scheduleRequest) box.textContent='⚠️ Графикти жүктөө мүмкүн болгон жок. Каттоо функциясы өзгөргөн жок.';
+    }
+  }
+
   function refreshUI() {
     const myPin = localStorage.getItem('myPin');
     const myWorkerId = localStorage.getItem('myWorkerId');
@@ -221,6 +280,7 @@ try {
       pinInput.style.display = 'none';
       btn.style.display = 'none';
       outBtn.style.display = 'block';
+      showTodaySchedule(myPin);
     } else {
       document.getElementById('title').innerText =
         '📍 Жумушка келдим';
@@ -230,6 +290,8 @@ try {
       btn.disabled = false;
       btn.innerText = 'Кирүү';
       outBtn.style.display = 'none';
+      ++scheduleRequest;
+      document.getElementById('scheduleInfo').style.display = 'none';
 
       const savedPin = localStorage.getItem('myPin');
 
