@@ -130,6 +130,33 @@ th,td{vertical-align:top}
   <p id="defaultScheduleStatus" class="text-xs text-gray-500 mt-2">Жалпы график жүктөлүүдө...</p>
 </div>
 
+<!-- БӨЛҮМДҮН ЖЕКЕ ГРАФИГИ -->
+<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
+  <h3 class="font-bold mb-2">🏢 Бөлүмдүн жеке графиги</h3>
+  <p class="text-xs text-gray-500 mb-3">Бөлүмгө график сакталбаса, жалпы график колдонулат. Мурдагы PIN графиктери өзгөрбөйт.</p>
+  <label class="text-xs block mb-2">Бөлүм
+    <select id="deptScheduleSelect" onchange="showDeptSchedule()" class="border rounded p-2 block w-full max-w-sm"></select>
+  </label>
+  <div id="deptWorkDays" class="flex flex-wrap gap-3 mb-3">
+    <label><input type="checkbox" value="1"> Дүй</label>
+    <label><input type="checkbox" value="2"> Шей</label>
+    <label><input type="checkbox" value="3"> Шар</label>
+    <label><input type="checkbox" value="4"> Бей</label>
+    <label><input type="checkbox" value="5"> Жума</label>
+    <label><input type="checkbox" value="6"> Ише</label>
+    <label><input type="checkbox" value="0"> Жек</label>
+  </div>
+  <div class="flex flex-wrap gap-3 items-end">
+    <label class="text-xs">Келүү<input id="deptStart" type="time" class="border rounded p-2 block"></label>
+    <label class="text-xs">Тыныгууга чыгуу<input id="deptLunchS" type="time" class="border rounded p-2 block"></label>
+    <label class="text-xs">Тыныгуудан келүү<input id="deptLunchE" type="time" class="border rounded p-2 block"></label>
+    <label class="text-xs">Кетүү<input id="deptEnd" type="time" class="border rounded p-2 block"></label>
+    <button onclick="saveDeptSchedule()" class="bg-blue-600 text-white rounded px-4 py-2">💾 Сактоо</button>
+    <button onclick="removeDeptSchedule()" class="bg-gray-100 border rounded px-4 py-2">↩ Жалпы графикке кайтаруу</button>
+  </div>
+  <p id="deptScheduleStatus" class="text-xs text-gray-500 mt-2">Бөлүм тандалууда...</p>
+</div>
+
 <!-- PIN БЕРҮҮ -->
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
   <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
@@ -245,7 +272,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1108 (Auth)
+  Кадамжай ЖДПБ | Admin v1110 (Dept schedules)
 </div>
 </div>
 
@@ -313,6 +340,67 @@ const FALLBACK_DEFAULT_SCHEDULE = {
   workDays:[1,2,3,4,5]
 };
 let defaultSchedule = {...FALLBACK_DEFAULT_SCHEDULE};
+let deptSchedules = {};
+// Бөлүм аталышында Firebase уруксат бербеген белгилер болушу мүмкүн.
+function deptScheduleKey(dept) { return encodeURIComponent(dept); }
+function effectiveDeptSchedule(dept) {
+  return deptSchedules[deptScheduleKey(dept)] || defaultSchedule;
+}
+function updateDeptScheduleOptions() {
+  const el = document.getElementById('deptScheduleSelect');
+  const previous = el.value;
+  el.innerHTML = depts.map(d => `<option value="${escapeAttr(d)}">${escapeHTML(d)}</option>`).join('');
+  if (depts.includes(previous)) el.value = previous;
+  showDeptSchedule();
+}
+function showDeptSchedule() {
+  const dept = document.getElementById('deptScheduleSelect').value;
+  const own = deptSchedules[deptScheduleKey(dept)];
+  const data = own || defaultSchedule;
+  for (const [id,key] of [['deptStart','start'],['deptLunchS','lunchS'],['deptLunchE','lunchE'],['deptEnd','end']]) {
+    document.getElementById(id).value = data[key] || '';
+  }
+  document.querySelectorAll('#deptWorkDays input').forEach(el => {
+    el.checked = (data.workDays || []).includes(Number(el.value));
+  });
+  document.getElementById('deptScheduleStatus').textContent = dept
+    ? (own ? 'Бул бөлүмдүн жеке графиги сакталган' : 'Бул бөлүм жалпы графикти колдонот')
+    : 'Бөлүм жок';
+}
+function fillNewWorkerSchedule() {
+  const dept = document.getElementById('deptInput').value;
+  const data = effectiveDeptSchedule(dept);
+  for (const [id,key] of [['s1','start'],['s2','lunchS'],['s3','lunchE'],['s4','end']]) {
+    document.getElementById(id).value = data[key];
+  }
+}
+window.saveDeptSchedule = async function() {
+  ensureAdmin();
+  const dept = document.getElementById('deptScheduleSelect').value;
+  if (!dept || !depts.includes(dept)) { alert('Бөлүмдү тандаңыз'); return; }
+  const get = id => document.getElementById(id).value;
+  const start=get('deptStart'), lunchS=get('deptLunchS'), lunchE=get('deptLunchE'), end=get('deptEnd');
+  const workDays=[...document.querySelectorAll('#deptWorkDays input:checked')].map(el=>Number(el.value)).sort();
+  if (!(start && lunchS && lunchE && end && start < lunchS && lunchS <= lunchE && lunchE < end)) {
+    alert('Графиктин убакыттарын туура белгилеңиз'); return;
+  }
+  // Эс алуу күндөрү гана болгон бөлүм үчүн [] ордуна атайын маанини сактайбыз.
+  if (!workDays.length) { alert('Азырынча кеминде бир жумуш күнүн тандаңыз'); return; }
+  try {
+    await db.ref('osh/deptSchedules/' + deptScheduleKey(dept)).set({dept,start,lunchS,lunchE,end,workDays});
+    document.getElementById('deptScheduleStatus').textContent='Бөлүмдүн графиги сакталды';
+    alert('Бөлүмдүн графиги сакталды');
+  } catch(error) { alert('Сактоо катасы: '+error.message); }
+};
+window.removeDeptSchedule = async function() {
+  ensureAdmin();
+  const dept = document.getElementById('deptScheduleSelect').value;
+  if (!dept || !deptSchedules[deptScheduleKey(dept)]) return;
+  if (!confirm('Бул бөлүмдүн жеке графигин өчүрүп, жалпы графикке кайтарасызбы?')) return;
+  try { await db.ref('osh/deptSchedules/' + deptScheduleKey(dept)).remove(); }
+  catch(error) { alert('Ката: '+error.message); }
+};
+
 function showDefaultSchedule() {
   for (const [id, key] of [['defaultStart','start'],['defaultLunchS','lunchS'],['defaultLunchE','lunchE'],['defaultEnd','end']]) {
     document.getElementById(id).value = defaultSchedule[key];
@@ -325,6 +413,8 @@ function showDefaultSchedule() {
     document.getElementById(id).value = defaultSchedule[key];
   }
   document.getElementById('defaultScheduleStatus').textContent = 'Жалпы график даяр';
+  showDeptSchedule();
+  fillNewWorkerSchedule();
 }
 window.saveDefaultSchedule = async function() {
   ensureAdmin();
@@ -394,7 +484,7 @@ function stopListeners() {
   subscriptions.forEach(ref => ref.off());
   subscriptions.length = 0;
   listening = false;
-  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {};
+  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {}; deptSchedules = {};
 }
 function startListeners() {
   if (listening) return;
@@ -405,6 +495,10 @@ function startListeners() {
       ? {...FALLBACK_DEFAULT_SCHEDULE, ...stored}
       : {...FALLBACK_DEFAULT_SCHEDULE};
     showDefaultSchedule();
+  });
+  subscribe('osh/deptSchedules', snapshot => {
+    deptSchedules = snapshot.val() || {};
+    showDeptSchedule(); fillNewWorkerSchedule();
   });
   subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
   subscribe('osh/workers', snapshot => { allWorkers = snapshot.val() || {}; render(); });
@@ -471,6 +565,7 @@ function render() {
   ).join('');
 
   if (cur && depts.includes(cur)) sel.value = cur;
+  updateDeptScheduleOptions();
 
   let late = 0, lunchOut = 0, lunchIn = 0, early = 0, absent = 0;
 
@@ -600,11 +695,14 @@ function render() {
 }
 
 // ЖАҢЫ PIN ТҮЗҮҮ
+document.getElementById('deptInput').addEventListener('change', fillNewWorkerSchedule);
+
 window.addWorker = async function() {
   ensureAdmin();
   const name = document.getElementById('nameInput').value.trim();
   const bolum = document.getElementById('deptInput').value;
 
+  const appliedSchedule = effectiveDeptSchedule(bolum);
   const s1 = document.getElementById('s1').value;
   const s2 = document.getElementById('s2').value;
   const s3 = document.getElementById('s3').value;
@@ -650,7 +748,7 @@ window.addWorker = async function() {
         lunchS: s2,
         lunchE: s3,
         end: s4,
-        workDays: [...defaultSchedule.workDays]
+        workDays: [...appliedSchedule.workDays]
       },
       deviceId: null
     });
@@ -704,6 +802,7 @@ window.delDept = async function(dept) {
   depts = depts.filter(d => d !== dept);
   saveDepts();
   render();
+  fillNewWorkerSchedule();
 };
 
 window.addDept = function() {
@@ -721,6 +820,7 @@ window.addDept = function() {
   depts.push(name);
   saveDepts();
   render();
+  fillNewWorkerSchedule();
 };
 
 window.filterDept = function(dept) {
