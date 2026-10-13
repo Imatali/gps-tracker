@@ -107,6 +107,29 @@ th,td{vertical-align:top}
   </button>
 </div>
 
+<!-- ЖАЛПЫ ГРАФИК -->
+<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
+  <h3 class="font-bold mb-2">⚙️ Жалпы жумуш графиги</h3>
+  <p class="text-xs text-gray-500 mb-3">Бул график жаңы PIN түзүүдө колдонулат. Мурдагы кызматкерлердин графиктери өзгөрбөйт.</p>
+  <div class="flex flex-wrap gap-3 mb-3" id="defaultWorkDays">
+    <label><input type="checkbox" value="1" checked> Дүй</label>
+    <label><input type="checkbox" value="2" checked> Шей</label>
+    <label><input type="checkbox" value="3" checked> Шар</label>
+    <label><input type="checkbox" value="4" checked> Бей</label>
+    <label><input type="checkbox" value="5" checked> Жума</label>
+    <label><input type="checkbox" value="6"> Ише</label>
+    <label><input type="checkbox" value="0"> Жек</label>
+  </div>
+  <div class="flex flex-wrap gap-3 items-end">
+    <label class="text-xs">Келүү<input id="defaultStart" type="time" value="08:30" class="border rounded p-2 block"></label>
+    <label class="text-xs">Тыныгууга чыгуу<input id="defaultLunchS" type="time" value="12:00" class="border rounded p-2 block"></label>
+    <label class="text-xs">Тыныгуудан келүү<input id="defaultLunchE" type="time" value="13:00" class="border rounded p-2 block"></label>
+    <label class="text-xs">Кетүү<input id="defaultEnd" type="time" value="17:30" class="border rounded p-2 block"></label>
+    <button onclick="saveDefaultSchedule()" class="bg-blue-600 text-white rounded px-4 py-2">💾 Сактоо</button>
+  </div>
+  <p id="defaultScheduleStatus" class="text-xs text-gray-500 mt-2">Жалпы график жүктөлүүдө...</p>
+</div>
+
 <!-- PIN БЕРҮҮ -->
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
   <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
@@ -130,7 +153,7 @@ th,td{vertical-align:top}
     <div class="flex gap-1">
       <div>
         <label class="text-[10px] block">Келүү</label>
-        <input id="s1" type="time" value="08:00"
+        <input id="s1" type="time" value="08:30"
           class="border w-[100px] p-1.5 rounded text-[12px]">
       </div>
       <div>
@@ -145,7 +168,7 @@ th,td{vertical-align:top}
       </div>
       <div>
         <label class="text-[10px] block">Кетүү</label>
-        <input id="s4" type="time" value="17:00"
+        <input id="s4" type="time" value="17:30"
           class="border w-[100px] p-1.5 rounded text-[12px]">
       </div>
     </div>
@@ -285,6 +308,38 @@ let allPins = {};
 let allWorkers = {};
 let allLogs = {};
 let allAttendance = {};
+const FALLBACK_DEFAULT_SCHEDULE = {
+  start:'08:30', lunchS:'12:00', lunchE:'13:00', end:'17:30',
+  workDays:[1,2,3,4,5]
+};
+let defaultSchedule = {...FALLBACK_DEFAULT_SCHEDULE};
+function showDefaultSchedule() {
+  for (const [id, key] of [['defaultStart','start'],['defaultLunchS','lunchS'],['defaultLunchE','lunchE'],['defaultEnd','end']]) {
+    document.getElementById(id).value = defaultSchedule[key];
+  }
+  document.querySelectorAll('#defaultWorkDays input').forEach(el => {
+    el.checked = defaultSchedule.workDays.includes(Number(el.value));
+  });
+  // PIN түзүү формасына да жаңы баштапкы убакыттарды коюу.
+  for (const [id,key] of [['s1','start'],['s2','lunchS'],['s3','lunchE'],['s4','end']]) {
+    document.getElementById(id).value = defaultSchedule[key];
+  }
+  document.getElementById('defaultScheduleStatus').textContent = 'Жалпы график даяр';
+}
+window.saveDefaultSchedule = async function() {
+  ensureAdmin();
+  const get = id => document.getElementById(id).value;
+  const start=get('defaultStart'), lunchS=get('defaultLunchS'), lunchE=get('defaultLunchE'), end=get('defaultEnd');
+  const workDays = [...document.querySelectorAll('#defaultWorkDays input:checked')].map(x=>Number(x.value)).sort();
+  if (!(start && lunchS && lunchE && end && start < lunchS && lunchS <= lunchE && lunchE < end) || !workDays.length) {
+    alert('Убакыттарды жана жумуш күндөрүн туура белгилеңиз'); return;
+  }
+  try {
+    await db.ref('osh/settings/defaultSchedule').set({start,lunchS,lunchE,end,workDays});
+    alert('Жалпы график сакталды');
+  } catch(error) { alert('Сактоо катасы: '+error.message); }
+};
+
 
 function saveDepts() {
   localStorage.setItem('myDepts', JSON.stringify(depts));
@@ -344,6 +399,13 @@ function stopListeners() {
 function startListeners() {
   if (listening) return;
   listening = true;
+  subscribe('osh/settings/defaultSchedule', snapshot => {
+    const stored = snapshot.val();
+    defaultSchedule = stored && Array.isArray(stored.workDays)
+      ? {...FALLBACK_DEFAULT_SCHEDULE, ...stored}
+      : {...FALLBACK_DEFAULT_SCHEDULE};
+    showDefaultSchedule();
+  });
   subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
   subscribe('osh/workers', snapshot => { allWorkers = snapshot.val() || {}; render(); });
   subscribe('osh/logs/' + localDateString(Date.now()), snapshot => {
@@ -587,7 +649,8 @@ window.addWorker = async function() {
         start: s1,
         lunchS: s2,
         lunchE: s3,
-        end: s4
+        end: s4,
+        workDays: [...defaultSchedule.workDays]
       },
       deviceId: null
     });
