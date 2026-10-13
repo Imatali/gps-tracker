@@ -2,7 +2,7 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Отчёт — Кадамжай ЖДПБ v1108</title>
+<title>Отчёт — Кадамжай ЖДПБ v1109</title>
 <style>
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f8fafc;color:#172033;margin:0;padding:12px}.wrap{max-width:1450px;margin:auto}.header,.panel,.auth{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0001}.header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:120px 170px minmax(140px,1fr) minmax(170px,1.5fr) repeat(3,auto);gap:8px;margin-bottom:12px}.input,.btn{padding:11px;border-radius:9px;font-size:14px}.input{width:100%;border:1px solid #cbd5e1;background:white}.btn{border:0;font-weight:bold;cursor:pointer;background:#2563eb;color:white}.btn.green{background:#16a34a}.btn.dark{background:#334155}.btn.gray{background:#e2e8f0;color:#172033}.btn:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.stat{background:#fff;padding:16px;border-radius:12px;text-align:center;border:1px solid #e2e8f0}.stat small{font-size:12px;color:#64748b}.stat b{display:block;font-size:27px;margin-top:6px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:11px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}th{background:#f1f5f9}#status{font-size:13px;color:#475569;margin-bottom:12px}.auth{max-width:440px;margin:60px auto}.auth input{margin:6px 0}.hidden{display:none!important}.muted{font-size:12px;color:#64748b}.late{color:#c2410c;font-weight:bold}.ok{color:#15803d;font-weight:bold}.absent{color:#b91c1c;font-weight:bold}@media(max-width:850px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.filters .btn{width:100%}}
 @media print{.filters,.header button,#status,.auth{display:none!important}body{background:white;padding:0}.panel,.stat{box-shadow:none}}
@@ -11,7 +11,7 @@
 <body>
 <section id="authBox" class="auth"><h2>🔐 Отчётко кирүү</h2><p id="authStatus" class="muted">Firebase текшерилүүдө...</p><form id="authForm" class="hidden"><input class="input" id="email" type="email" autocomplete="username" placeholder="Электрондук почта" required><input class="input" id="password" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn" type="submit" id="loginBtn">Кирүү</button></form></section>
 <main id="app" class="wrap hidden">
-<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1108 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
+<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1109 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
 <div class="filters"><select class="input" id="mode"><option value="day">Күндүк</option><option value="week">Жумалык</option><option value="month">Айлык</option><option value="number">Число боюнча табель</option></select><input class="input" type="date" id="date"><select class="input" id="dept"><option value="all">Бардык бөлүмдөр</option></select><input class="input" id="search" placeholder="🔎 Аты / PIN издөө"><button class="btn" id="refreshBtn">🔃 Жаңылоо</button><button class="btn green" id="csvBtn">📥 Excel (.xlsx)</button><button class="btn dark" id="printBtn">🖨️ PDF</button></div>
 <div id="periodNote" class="muted" style="margin-bottom:8px"></div><div id="status">Firebase'ден маалымат жүктөлүүдө...</div>
 <div class="stats"><div class="stat"><small>БАРДЫГЫ</small><b id="s_all">0</b></div><div class="stat"><small>КЕЛДИ</small><b id="s_in">0</b></div><div class="stat"><small>КЕЧИКТИ</small><b id="s_late">0</b></div><div class="stat"><small>КЕЛБЕДИ</small><b id="s_abs">0</b></div></div>
@@ -162,16 +162,31 @@ async function numberWorkbook(){
   sh.getColumn(1).width=5;sh.getColumn(2).width=23;sh.getColumn(3).width=9;
   for(let col=4;col<=34;col++)sh.getColumn(col).width=3.8;
   sh.getColumn(35).width=12;sh.getColumn(36).width=20;
-  sh.mergeCells('J1:Z1');sh.getCell('J1').value='ТАБЕЛЬ УЧЕТА РАБОЧЕГО ВРЕМЕНИ';
-  sh.getCell('J1').font={bold:true,size:13};sh.getCell('J1').alignment={horizontal:'center'};
-  // Үлгүдөгү H2 саптан 3 ячейка солго: E2
-  sh.mergeCells('E2:T2');sh.getCell('E2').value=`${MONTH_KY[month]} ${year} — айлык табель`;
-  sh.getCell('E2').font={bold:true,size:11};sh.getCell('E2').alignment={horizontal:'center'};
-  sh.getCell('AB2').value='«Утверждаю»';
-  sh.mergeCells('Y3:AJ3');sh.getCell('Y3').value='Директор ЦОВП Кадамжайского района';
-  sh.mergeCells('H4:X4');sh.getCell('H4').value='Бөлүмдүн аталышы: '+(dept||'Аталышы жок');
-  sh.getCell('H4').font={bold:true,size:11};
-  sh.mergeCells('Y4:AJ4');sh.getCell('Y4').value='____________________________________';
+  // Үлгүдөгүдөй: аталыштар борбордо, бекитүү оң жакта.
+  sh.mergeCells('J1:Z1');
+  sh.getCell('J1').value='ТАБЕЛЬ УЧЕТА РАБОЧЕГО ВРЕМЕНИ';
+  sh.getCell('J1').font={name:'Arial',bold:true,size:13};
+  sh.getCell('J1').alignment={horizontal:'center',vertical:'middle'};
+  sh.mergeCells('J2:Z2');
+  sh.getCell('J2').value=`${MONTH_KY[month]} ${year} — айлык табель`;
+  sh.getCell('J2').font={name:'Arial',bold:true,size:11};
+  sh.getCell('J2').alignment={horizontal:'center',vertical:'middle'};
+  sh.mergeCells('J4:Z4');
+  sh.getCell('J4').value='Бөлүмдүн аталышы: '+(dept||'Аталышы жок');
+  sh.getCell('J4').font={name:'Arial',bold:true,size:11};
+  sh.getCell('J4').alignment={horizontal:'center',vertical:'middle'};
+  sh.mergeCells('AA2:AJ2');
+  sh.getCell('AA2').value='«Утверждаю»';
+  sh.getCell('AA2').alignment={horizontal:'center'};
+  sh.mergeCells('AA3:AJ3');
+  sh.getCell('AA3').value='Директор ЦОВП Кадамжайского района';
+  sh.getCell('AA3').alignment={horizontal:'center'};
+  sh.mergeCells('AA4:AJ4');
+  sh.getCell('AA4').value='____________________________';
+  sh.getCell('AA4').alignment={horizontal:'center'};
+  sh.getRow(1).height=23;
+  sh.getRow(2).height=21;
+  sh.getRow(4).height=23;
   sh.getCell('A6').value='№';sh.getCell('B6').value='Аты';sh.getCell('C6').value='PIN';
   sh.mergeCells('D6:AH6');sh.getCell('D6').value='Число';
   sh.mergeCells('A6:A7');sh.mergeCells('B6:B7');sh.mergeCells('C6:C7');
