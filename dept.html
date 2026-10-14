@@ -196,10 +196,16 @@ const finishBtn=document.getElementById('finishBtn');
 const undoBtn=document.getElementById('undoBtn');
 const drawBtn=document.getElementById('drawBtn');
 function safeText(node,value){node.textContent=String(value==null?'':value);}
-function addWorker(name,pin,department){
+let selectedWorkerPin = null;
+  
+  function addWorker(name,pin,department){
   const item=document.createElement('div');item.className='worker';
   const main=document.createElement('strong');safeText(main,name||'Аты жок');
   const sub=document.createElement('div');sub.className='muted';safeText(sub,'PIN: '+pin+' • '+department);
+  item.onclick = () => {
+  selectedWorkerPin = String(pin);
+  alert('Тандалган кызматкер: ' + name + '\nPIN: ' + pin);
+};
   item.append(main,sub);workerList.appendChild(item);
 }
 function showWorkers(data){
