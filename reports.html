@@ -141,7 +141,7 @@ function numberCell(d,today){
  if(d.day>today)return '';
  if(d.planned===null)return '?';
  if(d.planned===0)return 'Э';
- if(d.worked===null)return 'КЖ';
+ if(d.worked===null)return d.first!==null?'К':'КЖ';
  return Number((d.worked/60).toFixed(2));
 }
 const MONTH_KY=['','январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
@@ -265,7 +265,24 @@ sh.getCell(row,38).value = incompleteDays.length
   sh.getCell(footer+1,9).value='__________________________';
   sh.getCell(footer+1,23).value='Ст. Мс:             _________________________';
   for(const row of [footer,footer+1])for(const col of [4,9,23])sh.getCell(row,col).font={name:'Arial',size:9};
-  sh.pageSetup.printArea=`A1:AL${footer+1}`;
+  sh.mergeCells(`B${footer+3}:AL${footer+3}`);
+
+sh.getCell(footer+3,2).value =
+  'Шарттуу белгилер: К — келген, чыгуу каттоосу жетишсиз; КЖ — кирүү каттоосу жок; Э — эс алуу күнү; ? — график катасы; сан — эсептелген саат; бош — келечектеги күн.';
+
+sh.getCell(footer+3,2).font = {
+  name:'Arial',
+  size:9
+};
+
+sh.getCell(footer+3,2).alignment = {
+  horizontal:'left',
+  vertical:'middle',
+  wrapText:true
+};
+
+sh.getRow(footer+3).height = 30;
+  sh.pageSetup.printArea=`A1:AL${footer+3}`;
   sh.pageSetup.horizontalCentered=true;
  }
  return book;
