@@ -452,10 +452,7 @@ async function deleteRegistrationAreas() {
   clearRegistrationAreas();
   unsavedAreaChanges = false;
 
-  workerList.replaceChildren();
-  replaceAreas([]);
-
-  return true;
+   return true;
 }
 document.getElementById('clearBtn').onclick=async()=>{
   if (selectedAreaType === 'registration') {
