@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="authGate"><div id="authBox"><h2>🔒 Администратордун кирүүсү</h2><p id="authInfo">Firebase текшерилүүдө...</p><form id="authForm" hidden><input id="authEmail" type="email" autocomplete="username" placeholder="Электрондук почта" required><input id="authPassword" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn green" type="submit">Кирүү</button></form><p id="authError" role="alert"></p><button class="btn dark" id="authReturn" type="button">← Админ барагына кайтуу</button></div></div>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1106</div></div><div><select id="areaType" class="btn dark">
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1107 (аймактарды оңдоо)</div></div><div><select id="areaType" class="btn dark">
   <option value="work">🟦 Жумуш аймагы</option>
   <option value="registration">🟩 Каттоочу аймак</option>
   <option value="home">🟥 Үй аймагы (PIN)</option>
@@ -50,6 +50,8 @@ if (unsavedAreaChanges) {
 }
   
   selectedAreaType = areaTypeSelect.value;
+  updateAreaVisibility();
+  msg.textContent = selectedAreaType === 'home' ? 'Үй аймагы: кызматкерди тандаңыз. Эски туура эмес аймактарды сактабаңыз.' : 'Аймак режими алмаштырылды.';
 });
 const normalize = value => String(value == null ? '' : value).normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase();
 if (!deptId) { title.textContent='Бөлүм көрсөтүлгөн жок'; status.textContent='admin.html аркылуу бөлүмдү тандаңыз (d параметри жок).'; }
@@ -203,6 +205,10 @@ let selectedWorkerPin = null;
   const main=document.createElement('strong');safeText(main,name||'Аты жок');
   const sub=document.createElement('div');sub.className='muted';safeText(sub,'PIN: '+pin+' • '+department);
   item.onclick = () => {
+  if (drawing || unsavedAreaChanges) {
+    alert('Адегенде чийүүнү бүтүрүп, өзгөртүүнү сактаңыз.');
+    return;
+  }
   selectedWorkerPin = String(pin);
   loadHomeArea(selectedWorkerPin);
   document.querySelectorAll('.worker').forEach(el => {
@@ -269,6 +275,7 @@ function addRegistrationPolygon(coords) {
   }).addTo(map);
 
   registrationAreas.push(polygon);
+  updateAreaVisibility();
 }
 function clearRegistrationAreas() {
   registrationAreas.forEach(polygon => map.removeLayer(polygon));
@@ -283,11 +290,12 @@ function replaceRegistrationAreas(data) {
   data.forEach(addRegistrationPolygon);
 }
   
-function addPolygon(coords){if(!Array.isArray(coords)||coords.length<3)return;const p=L.polygon(coords,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:.35,weight:3}).addTo(map);areas.push(p);}
+function addPolygon(coords){if(!Array.isArray(coords)||coords.length<3)return;const p=L.polygon(coords,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:.35,weight:3}).addTo(map);areas.push(p);updateAreaVisibility();}
 function replaceAreas(data){
   areas.forEach(p=>map.removeLayer(p));areas=[];
   (Array.isArray(data)?data:[]).forEach(addPolygon);
-  if(areas.length)map.fitBounds(L.featureGroup(areas).getBounds().pad(.2));
+  if(areas.length && selectedAreaType === 'work')map.fitBounds(L.featureGroup(areas).getBounds().pad(.2));
+  updateAreaVisibility();
 }
 let homeAreas = [];
 
@@ -306,21 +314,43 @@ function clearHomeAreas() {
   }).addTo(map);
 
   homeAreas.push(polygon);
+  updateAreaVisibility();
 }
-  function loadHomeArea(pin) {
+// Режимдер бири-биринин полигондорун көрсөтпөйт.
+function updateAreaVisibility() {
+  const sets = [
+    [areas, selectedAreaType === 'work'],
+    [registrationAreas, selectedAreaType === 'registration'],
+    [homeAreas, selectedAreaType === 'home']
+  ];
+  sets.forEach(([polygons, visible]) => polygons.forEach(p => {
+    if (visible && !map.hasLayer(p)) p.addTo(map);
+    if (!visible && map.hasLayer(p)) map.removeLayer(p);
+  }));
+}
+let homeLoadSequence = 0;
+function loadHomeArea(pin) {
+  const sequence = ++homeLoadSequence;
   clearHomeAreas();
-
   if (!pin) return;
-
   db.ref('osh/homeAreas/byPin/' + pin).once('value')
     .then(snap => {
+      if (sequence !== homeLoadSequence || selectedWorkerPin !== pin) return;
       const data = snap.val();
-      if (!data || !Array.isArray(data.polygons)) return;
-
+      if (!data || !Array.isArray(data.polygons)) {
+        msg.textContent = 'Бул кызматкерге үй аймагы сакталган эмес.';
+        return;
+      }
       data.polygons.forEach(addHomePolygon);
+      updateAreaVisibility();
+      if (selectedAreaType === 'home' && homeAreas.length) {
+        map.fitBounds(L.featureGroup(homeAreas).getBounds().pad(.2));
+      }
+      msg.textContent = 'PIN ' + pin + ': ' + homeAreas.length + ' үй аймагы жүктөлдү. Тууралыгын текшериңиз.';
     })
     .catch(error => {
-      console.error('Үй аймагын жүктөө катасы:', error);
+      msg.textContent = 'Үй аймагын окуу катасы: ' + error.message;
+      console.error(error);
     });
 }
 function loadRegistrationAreas() {
@@ -350,10 +380,10 @@ function loadAreas(){
     remoteLoaded=true;
     if(value && Array.isArray(value.polygons)){
       remoteAreas=value.polygons;
-      if(!drawing){replaceAreas(remoteAreas);msg.textContent='✅ Firebase: '+areas.length+' аймак жүктөлдү';}
+      if(!drawing && !unsavedAreaChanges){replaceAreas(remoteAreas);msg.textContent='✅ Firebase: '+areas.length+' аймак жүктөлдү';}
     }else{
       remoteAreas=null;
-      if(!drawing){replaceAreas(savedAreas());msg.textContent='Firebase\'де аймак жок. Бул браузердеги эски аймак көрсөтүлдү. Firebase\'ге көчүрүү үчүн «Сактоо» басыңыз.';}
+      if(!drawing && !unsavedAreaChanges){replaceAreas(savedAreas());msg.textContent='Firebase\'де аймак жок. Бул браузердеги эски аймак көрсөтүлдү. Firebase\'ге көчүрүү үчүн «Сактоо» басыңыз.';}
     }
   },err=>{msg.textContent='❌ Firebase аймагын окуу катасы: '+err.message;});
 }
@@ -401,6 +431,7 @@ function finishDrawing(){
   msg.textContent = '⚠️ Үй аймагын чийүү азырынча даяр эмес.';
   return;
 }
+  updateAreaVisibility();
   unsavedAreaChanges = true;
   msg.textContent='✅ Аймак чийилди ('+completed.length+' чекит). Эми «Сактоо» басыңыз.';
 }
@@ -409,7 +440,12 @@ drawBtn.onclick=()=>{
   alert('Алгач сол жактан кызматкерди тандаңыз');
   return;
 }
-  if(drawing){stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];points=[];msg.textContent='Чийүү токтотулду';return;}
+  if(drawing){stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];msg.textContent='Чийүү токтотулду';return;}
+  if (selectedAreaType === 'home' && homeAreas.length) {
+    if (!confirm('Эски үй аймагын картадан убактылуу алып, жаңы аймакты чийесизби? Firebaseдеги эски маалымат «Сактоо» басылганча өзгөрбөйт.')) return;
+    ++homeLoadSequence;
+    clearHomeAreas();
+  }
   drawing=true;points=[];
   if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
   map.doubleClickZoom.disable();
@@ -453,6 +489,7 @@ document.getElementById('saveBtn').onclick=async()=>{
       if (!remoteLoaded) {
         throw new Error('Firebase жүктөлүп бүтө элек');
       }
+      if (!unsavedAreaChanges) throw new Error('Жаңы каттоочу аймак чийилген жок');
       await saveRegistrationAreas();
       unsavedAreaChanges = false;
       msg.textContent = '✅ Каттоочу аймак Firebaseге сакталды';
@@ -472,11 +509,14 @@ document.getElementById('saveBtn').onclick=async()=>{
     if (drawing) {
       throw new Error('Алгач чийүүнү бүтүрүңүз');
     }
-    if (!areas.length) {
+    if (!homeAreas.length) {
       throw new Error('Үй аймагы чийилген эмес');
     }
+    if (!unsavedAreaChanges) {
+      throw new Error('Жаңы үй аймагы чийилген жок. Мурунку аймакты кайра сактоого болбойт.');
+    }
 
-    const polygons = areas.map(p =>
+    const polygons = homeAreas.map(p =>
       p.getLatLngs()[0].map(ll => [ll.lat, ll.lng])
     );
 
@@ -488,7 +528,7 @@ document.getElementById('saveBtn').onclick=async()=>{
     });
 
     unsavedAreaChanges = false;
-    msg.textContent = '✅ Үй аймагы Firebaseге сакталды';
+    msg.textContent = '✅ PIN ' + selectedWorkerPin + ' үй аймагы Firebaseге сакталды';
   } catch (error) {
     alert('Сактоо катасы: ' + error.message);
   }
@@ -499,6 +539,7 @@ document.getElementById('saveBtn').onclick=async()=>{
   if(!remoteLoaded){alert('Firebase жүктөлүп бүтө элек');return;}
   if(drawing){alert('Адегенде «Чийүүнү бүтүрүү» баскычын басыңыз');return;}
   if(!areas.length){alert('Сактай турган аймак жок');return;}
+  if(!unsavedAreaChanges){alert('Жаңы жумуш аймагы чийилген жок');return;}
   const polygons=areas.map(p=>p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]));
   try{
     await db.ref(areaPath).set({department:deptId,polygons,updatedAt:firebase.database.ServerValue.TIMESTAMP});
