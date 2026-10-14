@@ -159,9 +159,14 @@ async function numberWorkbook(){
   while(used.has(name)){name=base.slice(0,27)+' '+n++;}used.add(name);
   const sh=book.addWorksheet(name,{pageSetup:{paperSize:9,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.15,right:0.15,top:0.3,bottom:0.3,header:0.1,footer:0.1}}});
   sh.properties.defaultRowHeight=17;
-  sh.getColumn(1).width=5;sh.getColumn(2).width=23;sh.getColumn(3).width=9;
-  for(let col=4;col<=34;col++)sh.getColumn(col).width=3.8;
-  sh.getColumn(35).width=12;sh.getColumn(36).width=20;
+  sh.getColumn(1).width=5;   // №
+sh.getColumn(2).width=20;  // Аты
+sh.getColumn(3).width=8;   // Разряд
+sh.getColumn(4).width=9;   // Долж.
+sh.getColumn(5).width=9;   // PIN
+  for(let col=6;col<=36;col++)sh.getColumn(col).width=3.8;
+  sh.getColumn(37).width=12; // Жалпы саат
+sh.getColumn(38).width=20; // Кошумча маалымат
   // Үлгүдөгүдөй: аталыштар борбордо, бекитүү оң жакта.
   sh.mergeCells('J1:Z1');
   sh.getCell('J1').value='ТАБЕЛЬ УЧЕТА РАБОЧЕГО ВРЕМЕНИ';
@@ -175,28 +180,53 @@ async function numberWorkbook(){
   sh.getCell('J4').value='Бөлүмдүн аталышы: '+(dept||'Аталышы жок');
   sh.getCell('J4').font={name:'Arial',bold:true,size:11};
   sh.getCell('J4').alignment={horizontal:'center',vertical:'middle'};
-  sh.mergeCells('AA2:AJ2');
+ sh.mergeCells('AA2:AL2');
   sh.getCell('AA2').value='«Утверждаю»';
   sh.getCell('AA2').alignment={horizontal:'center'};
-  sh.mergeCells('AA3:AJ3');
+  sh.mergeCells('AA3:AL3');
   sh.getCell('AA3').value='Директор ЦОВП Кадамжайского района';
   sh.getCell('AA3').alignment={horizontal:'center'};
-  sh.mergeCells('AA4:AJ4');
+  sh.mergeCells('AA4:AL4');
   sh.getCell('AA4').value='____________________________';
   sh.getCell('AA4').alignment={horizontal:'center'};
   sh.getRow(1).height=23;
   sh.getRow(2).height=21;
   sh.getRow(4).height=23;
-  sh.getCell('A6').value='№';sh.getCell('B6').value='Аты';sh.getCell('C6').value='PIN';
-  sh.mergeCells('D6:AH6');sh.getCell('D6').value='Число';
-  sh.mergeCells('A6:A7');sh.mergeCells('B6:B7');sh.mergeCells('C6:C7');
-  sh.mergeCells('AI6:AI7');sh.mergeCells('AJ6:AJ7');
-  sh.getCell('AI6').value='Жалпы саат';sh.getCell('AJ6').value='Кошумча маалымат';
-  for(let j=0;j<31;j++)sh.getCell(7,j+4).value=j<monthDays?j+1:'';
+  sh.getCell('A6').value='№';
+sh.getCell('B6').value='Аты';
+sh.getCell('C6').value='Разряд';
+sh.getCell('D6').value='Долж.';
+sh.getCell('E6').value='PIN';
+  sh.mergeCells('F6:AJ6');
+sh.getCell('F6').value='Число';
+
+sh.mergeCells('A6:A7');
+sh.mergeCells('B6:B7');
+sh.mergeCells('C6:C7');
+sh.mergeCells('D6:D7');
+sh.mergeCells('E6:E7');
+
+sh.mergeCells('AK6:AK7');
+sh.mergeCells('AL6:AL7');
+  sh.getCell('AK6').value='Жалпы саат';
+sh.getCell('AL6').value='Кошумча маалымат';
+  for(let j=0;j<31;j++)sh.getCell(7,j+6).value=j<monthDays?j+1:'';
   workers.forEach((r,i)=>{
-   const row=8+i;sh.getCell(row,1).value=i+1;sh.getCell(row,2).value=r.name;
-   sh.getCell(row,3).value=String(r.pin);
-   r.daily.forEach((d,j)=>{sh.getCell(row,j+4).value=numberCell(d,today)});
+ const row=8+i;
+ sh.getCell(row,1).value=i+1;
+ sh.getCell(row,2).value=r.name;
+
+ // Разряд жана Долж. бош калат
+ sh.getCell(row,3).value='';
+ sh.getCell(row,4).value='';
+
+ // PIN
+ sh.getCell(row,5).value=String(r.pin);
+
+ // 1–31 күндөр
+ r.daily.forEach((d,j)=>{
+   sh.getCell(row,j+6).value=numberCell(d,today);
+ });
    // Тастыкталбаган/толук эмес каттоолорду иштелген саат деп эсептебейбиз
    const incompleteDays = r.daily.filter(
   d => d.day <= today && d.planned > 0 && d.worked === null
@@ -210,18 +240,18 @@ const totalMinutes = completedDays.reduce(
   (sum, d) => sum + d.worked, 0
 );
 
-sh.getCell(row,35).value = completedDays.length
+sh.getCell(row,37).value = completedDays.length
   ? Number((totalMinutes / 60).toFixed(2))
   : '—';
 
-sh.getCell(row,36).value = incompleteDays.length
+sh.getCell(row,38).value = incompleteDays.length
   ? `Текшерүү керек (${incompleteDays.length} күн)`
   : r.review;
   });
   const last=7+Math.max(workers.length,1);
   for(let r=6;r<=last;r++){
    sh.getRow(r).height=r===6?30:19;
-   for(let c=1;c<=36;c++){
+   for(let c=1;c<=38;c++){
     const cell=sh.getCell(r,c);cell.border=border;
     cell.alignment={horizontal:c===2?'left':'center',vertical:'middle',wrapText:r===6};
     cell.font={name:'Arial',size:r<=7?9:8,bold:r<=7};
@@ -235,7 +265,7 @@ sh.getCell(row,36).value = incompleteDays.length
   sh.getCell(footer+1,9).value='__________________________';
   sh.getCell(footer+1,23).value='Ст. Мс:             _________________________';
   for(const row of [footer,footer+1])for(const col of [4,9,23])sh.getCell(row,col).font={name:'Arial',size:9};
-  sh.pageSetup.printArea=`A1:AJ${footer+1}`;
+  sh.pageSetup.printArea=`A1:AL${footer+1}`;
   sh.pageSetup.horizontalCentered=true;
  }
  return book;
