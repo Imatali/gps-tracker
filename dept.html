@@ -204,6 +204,7 @@ let selectedWorkerPin = null;
   const sub=document.createElement('div');sub.className='muted';safeText(sub,'PIN: '+pin+' • '+department);
   item.onclick = () => {
   selectedWorkerPin = String(pin);
+  loadHomeArea(selectedWorkerPin);
   document.querySelectorAll('.worker').forEach(el => {
   el.style.background = '';
   el.style.border = '';
@@ -288,7 +289,40 @@ function replaceAreas(data){
   (Array.isArray(data)?data:[]).forEach(addPolygon);
   if(areas.length)map.fitBounds(L.featureGroup(areas).getBounds().pad(.2));
 }
+let homeAreas = [];
 
+function clearHomeAreas() {
+  homeAreas.forEach(polygon => map.removeLayer(polygon));
+  homeAreas = [];
+}
+  function addHomePolygon(coords) {
+  if (!Array.isArray(coords) || coords.length < 3) return;
+
+  const polygon = L.polygon(coords, {
+    color: '#2563eb',
+    fillColor: '#93c5fd',
+    fillOpacity: 0.35,
+    weight: 3
+  }).addTo(map);
+
+  homeAreas.push(polygon);
+}
+  function loadHomeArea(pin) {
+  clearHomeAreas();
+
+  if (!pin) return;
+
+  db.ref('osh/homeAreas/byPin/' + pin).once('value')
+    .then(snap => {
+      const data = snap.val();
+      if (!data || !Array.isArray(data.polygons)) return;
+
+      data.polygons.forEach(addHomePolygon);
+    })
+    .catch(error => {
+      console.error('Үй аймагын жүктөө катасы:', error);
+    });
+}
 function loadRegistrationAreas() {
   if (!deptId) return;
 
@@ -361,6 +395,8 @@ function finishDrawing(){
   addRegistrationPolygon(completed);
 } else if (selectedAreaType === 'work') {
   addPolygon(completed);
+  } else if (selectedAreaType === 'home') {
+  addHomePolygon(completed);
 } else {
   msg.textContent = '⚠️ Үй аймагын чийүү азырынча даяр эмес.';
   return;
@@ -369,11 +405,10 @@ function finishDrawing(){
   msg.textContent='✅ Аймак чийилди ('+completed.length+' чекит). Эми «Сактоо» басыңыз.';
 }
 drawBtn.onclick=()=>{
-  if (selectedAreaType === 'home') {
-    alert('Үй аймагын чийүү функциясы азырынча даяр эмес');
-    return;
-  }
-  
+  if (selectedAreaType === 'home' && !selectedWorkerPin) {
+  alert('Алгач сол жактан кызматкерди тандаңыз');
+  return;
+}
   if(drawing){stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];points=[];msg.textContent='Чийүү токтотулду';return;}
   drawing=true;points=[];
   if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
@@ -428,9 +463,37 @@ document.getElementById('saveBtn').onclick=async()=>{
   }
 
   if (selectedAreaType === 'home') {
-    alert('Үй аймагын сактоо азырынча даяр эмес');
-    return;
+  try {
+    requireAdmin();
+
+    if (!selectedWorkerPin) {
+      throw new Error('Алгач кызматкерди тандаңыз');
+    }
+    if (drawing) {
+      throw new Error('Алгач чийүүнү бүтүрүңүз');
+    }
+    if (!areas.length) {
+      throw new Error('Үй аймагы чийилген эмес');
+    }
+
+    const polygons = areas.map(p =>
+      p.getLatLngs()[0].map(ll => [ll.lat, ll.lng])
+    );
+
+    await db.ref('osh/homeAreas/byPin/' + selectedWorkerPin).set({
+      pin: selectedWorkerPin,
+      department: deptId,
+      polygons: polygons,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    unsavedAreaChanges = false;
+    msg.textContent = '✅ Үй аймагы Firebaseге сакталды';
+  } catch (error) {
+    alert('Сактоо катасы: ' + error.message);
   }
+  return;
+}
   try{requireAdmin();}catch(e){alert(e.message);return;}
   if(!deptId){alert('Бөлүм тандалган эмес');return;}
   if(!remoteLoaded){alert('Firebase жүктөлүп бүтө элек');return;}
