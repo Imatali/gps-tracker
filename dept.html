@@ -16,7 +16,11 @@
 </head>
 <body>
 <div id="authGate"><div id="authBox"><h2>🔒 Администратордун кирүүсү</h2><p id="authInfo">Firebase текшерилүүдө...</p><form id="authForm" hidden><input id="authEmail" type="email" autocomplete="username" placeholder="Электрондук почта" required><input id="authPassword" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn green" type="submit">Кирүү</button></form><p id="authError" role="alert"></p><button class="btn dark" id="authReturn" type="button">← Админ барагына кайтуу</button></div></div>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1106</div></div><div><button class="btn orange" id="drawBtn">📐 Чийүүнү баштоо</button> <button class="btn dark" id="finishBtn" disabled>✅ Чийүүнү бүтүрүү</button> <button class="btn dark" id="undoBtn" disabled>↶ Акыркы чекит</button> <button class="btn green" id="saveBtn">💾 Сактоо</button> <button class="btn red" id="clearBtn">🗑️ Өчүр</button> <button class="btn dark" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">Чыгуу</button></div></div>
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1106</div></div><div><select id="areaType" class="btn dark">
+  <option value="work">🟦 Жумуш аймагы</option>
+  <option value="registration">🟩 Каттоочу аймак</option>
+  <option value="home">🟥 Үй аймагы (PIN)</option>
+</select> <button class="btn orange" id="drawBtn">📐 Чийүүнү баштоо</button> <button class="btn dark" id="finishBtn" disabled>✅ Чийүүнү бүтүрүү</button> <button class="btn dark" id="undoBtn" disabled>↶ Акыркы чекит</button> <button class="btn green" id="saveBtn">💾 Сактоо</button> <button class="btn red" id="clearBtn">🗑️ Өчүр</button> <button class="btn dark" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">Чыгуу</button></div></div>
 <div class="main"><div class="card"><strong>👥 <span id="dLabel"></span> — <span id="wCnt">0</span> кызматкер</strong><div id="status">Firebase'ден жүктөлүүдө...</div><div id="wList"></div></div><div class="card"><div id="map"></div><div id="msg">Карта жүктөлүүдө...</div></div></div>
 <script>
 'use strict';
@@ -28,12 +32,32 @@ const status = document.getElementById('status');
 const count = document.getElementById('wCnt');
 const workerList = document.getElementById('wList');
 const msg = document.getElementById('msg');
+const areaTypeSelect = document.getElementById('areaType');
+let selectedAreaType = 'work';
+let unsavedAreaChanges = false;
+
+areaTypeSelect.addEventListener('change', function() {
+  if (drawing) {
+    areaTypeSelect.value = selectedAreaType;
+    alert('Адегенде чийүүнү бүтүрүңүз же токтотуңуз');
+    return;
+  }
+
+if (unsavedAreaChanges) {
+  areaTypeSelect.value = selectedAreaType;
+  alert('⚠️ Адегенде чийилген аймакты Firebaseге сактаңыз.');
+  return;
+}
+  
+  selectedAreaType = areaTypeSelect.value;
+});
 const normalize = value => String(value == null ? '' : value).normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase();
 if (!deptId) { title.textContent='Бөлүм көрсөтүлгөн жок'; status.textContent='admin.html аркылуу бөлүмдү тандаңыз (d параметри жок).'; }
 else { title.textContent=deptId; label.textContent=deptId; }
 const storageKey = 'gps_area_' + deptId;
 // Бөлүмдүн аталышы Firebase ачкычына коопсуз айландырылат.
 const areaPath = 'osh/deptAreas/byName/' + encodeURIComponent(deptId || '');
+const registrationAreaPath = 'osh/registrationAreas/byName/' + encodeURIComponent(deptId || '');
 const ADMIN_UID = '5sQsmvDSAdUXqYsqDrcg8J0Ggcw1';
 const firebaseConfig = {
   apiKey:'AIzaSyBQWMBefKYWiPQnJVHcANZLqkz2Vnt2VME',
@@ -86,11 +110,15 @@ if (dataListening) {
   db.ref('osh/pins').off();
   db.ref('osh/attendance').off();
   db.ref(areaPath).off();
+  db.ref(registrationAreaPath).off();
   dataListening = false;
 }
 workerMarkers.clearLayers();
+clearRegistrationAreas();
+unsavedAreaChanges = false;
 
-    workerList.replaceChildren();replaceAreas([]);
+workerList.replaceChildren();
+replaceAreas([]);
   }
 },err=>{authGate.style.display='flex';authForm.hidden=false;authInfo.textContent='Firebase текшерүү катасы';authError.textContent=err.message;});
 let remoteLoaded = false;
@@ -98,6 +126,7 @@ let remoteAreas = null;
 const map = L.map('map',{doubleClickZoom:false}).setView([40.114,71.74],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
 let areas=[];
+let registrationAreas = [];
   
 
 map.createPane('workerPane');
@@ -207,6 +236,7 @@ function startDataListeners() {
     });
 
     loadAreas();
+    loadRegistrationAreas();
 
   } catch (error) {
     status.textContent = 'Firebase баштоо катасы: ' + error.message;
@@ -216,12 +246,57 @@ function startDataListeners() {
 function savedAreas(){
  try{const raw=JSON.parse(localStorage.getItem(storageKey)||'[]');if(!Array.isArray(raw)||!raw.length)return[];return typeof raw[0]?.[0]==='number'?[raw]:raw;}catch{return[];}
 }
+function addRegistrationPolygon(coords) {
+  if (!Array.isArray(coords) || coords.length < 3) return;
+
+  const polygon = L.polygon(coords, {
+    color: '#16a34a',
+    fillColor: '#86efac',
+    fillOpacity: 0.35,
+    weight: 3
+  }).addTo(map);
+
+  registrationAreas.push(polygon);
+}
+function clearRegistrationAreas() {
+  registrationAreas.forEach(polygon => map.removeLayer(polygon));
+  registrationAreas = [];
+}
+  
+function replaceRegistrationAreas(data) {
+  clearRegistrationAreas();
+
+  if (!Array.isArray(data)) return;
+
+  data.forEach(addRegistrationPolygon);
+}
+  
 function addPolygon(coords){if(!Array.isArray(coords)||coords.length<3)return;const p=L.polygon(coords,{color:'#ff6a00',fillColor:'#ff9a3d',fillOpacity:.35,weight:3}).addTo(map);areas.push(p);}
 function replaceAreas(data){
   areas.forEach(p=>map.removeLayer(p));areas=[];
   (Array.isArray(data)?data:[]).forEach(addPolygon);
   if(areas.length)map.fitBounds(L.featureGroup(areas).getBounds().pad(.2));
 }
+
+function loadRegistrationAreas() {
+  if (!deptId) return;
+
+  db.ref(registrationAreaPath).on('value', snap => {
+    const value = snap.val();
+    const polygons = value && Array.isArray(value.polygons)
+      ? value.polygons
+      : [];
+
+  replaceRegistrationAreas(polygons);
+    
+  if (polygons.length > 0) {
+  msg.textContent = '✅ Каттоочу аймак Firebaseден жүктөлдү';
+}
+  }, error => {
+    msg.textContent = '❌ Каттоочу аймакты окуу катасы: ' + error.message;
+  });
+}
+  
 function loadAreas(){
   if(!deptId)return;
   msg.textContent='Firebase GPS аймагы жүктөлүүдө...';
@@ -243,10 +318,14 @@ function updateDrawButtons(){
   drawBtn.textContent=drawing?'✖ Чийүүнү токтотуу':'📐 Чийүүнү баштоо';
 }
 function previewPoints(){
+    const drawColor = selectedAreaType === 'registration'
+    ? '#16a34a'
+    : '#f97316';
+  
   if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
-  if(points.length===1)tempPoly=L.circleMarker(points[0],{radius:7,color:'#f97316'}).addTo(map);
-  else if(points.length===2)tempPoly=L.polyline(points,{color:'#f97316',weight:3,dashArray:'6,6'}).addTo(map);
-  else if(points.length>=3)tempPoly=L.polygon(points,{color:'#f97316',weight:3,dashArray:'6,6',fillOpacity:.2}).addTo(map);
+  if(points.length===1)tempPoly=L.circleMarker(points[0],{radius:7,color:drawColor}).addTo(map);
+  else if(points.length===2)tempPoly=L.polyline(points,{color:drawColor,weight:3,dashArray:'6,6'}).addTo(map);
+  else if(points.length>=3)tempPoly=L.polygon(points,{color:drawColor,weight:3,dashArray:'6,6',fillOpacity:.2}).addTo(map);
   updateDrawButtons();
 }
 function stopDrawing(){
@@ -267,10 +346,23 @@ function finishDrawing(){
   stopDrawing();
   if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
   points=[];
+  if (selectedAreaType === 'registration') {
+  addRegistrationPolygon(completed);
+} else if (selectedAreaType === 'work') {
   addPolygon(completed);
+} else {
+  msg.textContent = '⚠️ Үй аймагын чийүү азырынча даяр эмес.';
+  return;
+}
+  unsavedAreaChanges = true;
   msg.textContent='✅ Аймак чийилди ('+completed.length+' чекит). Эми «Сактоо» басыңыз.';
 }
 drawBtn.onclick=()=>{
+  if (selectedAreaType === 'home') {
+    alert('Үй аймагын чийүү функциясы азырынча даяр эмес');
+    return;
+  }
+  
   if(drawing){stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];points=[];msg.textContent='Чийүү токтотулду';return;}
   drawing=true;points=[];
   if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}
@@ -288,7 +380,46 @@ undoBtn.onclick=()=>{
 };
 setTimeout(()=>map.invalidateSize(),250);
 window.addEventListener('resize',()=>map.invalidateSize());
+async function saveRegistrationAreas() {
+  requireAdmin();
+
+  if (!deptId) throw new Error('Бөлүм тандалган эмес');
+  if (!registrationAreas.length) {
+    throw new Error('Каттоочу аймак чийиле элек');
+  }
+
+  const polygons = registrationAreas.map(polygon =>
+    polygon.getLatLngs()[0].map(point => [point.lat, point.lng])
+  );
+
+  await db.ref(registrationAreaPath).set({
+    department: deptId,
+    polygons: polygons,
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+}
 document.getElementById('saveBtn').onclick=async()=>{
+  if (selectedAreaType === 'registration') {
+    try {
+      if (drawing) {
+        throw new Error('Адегенде чийүүнү бүтүрүңүз');
+      }
+      if (!remoteLoaded) {
+        throw new Error('Firebase жүктөлүп бүтө элек');
+      }
+      await saveRegistrationAreas();
+      unsavedAreaChanges = false;
+      msg.textContent = '✅ Каттоочу аймак Firebaseге сакталды';
+    } catch (error) {
+      alert('Сактоо катасы: ' + error.message);
+    }
+    return;
+  }
+
+  if (selectedAreaType === 'home') {
+    alert('Үй аймагын сактоо азырынча даяр эмес');
+    return;
+  }
   try{requireAdmin();}catch(e){alert(e.message);return;}
   if(!deptId){alert('Бөлүм тандалган эмес');return;}
   if(!remoteLoaded){alert('Firebase жүктөлүп бүтө элек');return;}
@@ -297,16 +428,64 @@ document.getElementById('saveBtn').onclick=async()=>{
   const polygons=areas.map(p=>p.getLatLngs()[0].map(ll=>[ll.lat,ll.lng]));
   try{
     await db.ref(areaPath).set({department:deptId,polygons,updatedAt:firebase.database.ServerValue.TIMESTAMP});
+    unsavedAreaChanges = false;
     localStorage.setItem(storageKey,JSON.stringify(polygons));
     msg.textContent='✅ '+deptId+" GPS аймагы Firebaseге сакталды";
   }catch(e){alert('Сактоо катасы: '+e.message);}
 };
+async function deleteRegistrationAreas() {
+  requireAdmin();
+  
+  if (unsavedAreaChanges) {
+  throw new Error('Адегенде чийилген аймакты сактаңыз.');
+}
+
+  if (!deptId) {
+    throw new Error('Бөлүм тандалган эмес');
+  }
+
+  if (!confirm('Каттоочу аймакты Firebaseден өчүрөсүзбү?')) {
+    return false;
+  }
+
+  await db.ref(registrationAreaPath).remove();
+  clearRegistrationAreas();
+  unsavedAreaChanges = false;
+
+  workerList.replaceChildren();
+  replaceAreas([]);
+
+  return true;
+}
 document.getElementById('clearBtn').onclick=async()=>{
+  if (selectedAreaType === 'registration') {
+    try {
+      if (drawing) {
+        throw new Error('Адегенде чийүүнү бүтүрүңүз');
+      }
+
+      const deleted = await deleteRegistrationAreas();
+
+      if (deleted) {
+        msg.textContent = '✅ Каттоочу аймак өчүрүлдү';
+      }
+    } catch (error) {
+      alert('Өчүрүү катасы: ' + error.message);
+    }
+    return;
+  }
+  
+  if (selectedAreaType !== 'work') {
+    alert('Бул аймакты өчүрүү функциясы азырынча даяр эмес');
+    return;
+  }
+  
   try{requireAdmin();}catch(e){alert(e.message);return;}
   if(!deptId || !remoteLoaded)return;
   if(!confirm(deptId+' бөлүмүнүн Firebase GPS аймактарын өчүрөсүзбү?'))return;
   try{
     await db.ref(areaPath).remove();
+    unsavedAreaChanges = false;
     localStorage.removeItem(storageKey);
     stopDrawing();if(tempPoly){map.removeLayer(tempPoly);tempPoly=null;}points=[];
     replaceAreas([]);msg.textContent="Аймак Firebaseден өчүрүлдү";
