@@ -204,7 +204,12 @@ let selectedWorkerPin = null;
   const sub=document.createElement('div');sub.className='muted';safeText(sub,'PIN: '+pin+' • '+department);
   item.onclick = () => {
   selectedWorkerPin = String(pin);
-  alert('Тандалган кызматкер: ' + name + '\nPIN: ' + pin);
+  document.querySelectorAll('.worker').forEach(el => {
+  el.style.background = '';
+  el.style.border = '';
+});
+item.style.background = '#dcfce7';
+item.style.border = '2px solid #16a34a';
 };
   item.append(main,sub);workerList.appendChild(item);
 }
