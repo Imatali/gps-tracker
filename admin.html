@@ -235,7 +235,16 @@ th,td{vertical-align:top}
 
     <select id="deptInput"
       class="border p-2.5 rounded-lg bg-white"></select>
-    
+
+    <label class="text-[11px] font-semibold text-gray-700">
+      Кызматкердин ролу
+      <select id="roleInput" class="border p-2.5 rounded-lg bg-white block mt-1 min-w-[155px]">
+        <option value="employee">Кызматкер</option>
+        <option value="head">Бөлүм башчысы</option>
+        <option value="director">Директор</option>
+      </select>
+    </label>
+
     <div class="flex gap-1">
       <div>
         <label class="text-[10px] block">Келүү</label>
@@ -707,6 +716,7 @@ function render() {
     <tr class="bg-gray-50 text-[11px]">
       <th class="p-2 text-left">Аты-жөнү</th>
       <th class="p-2">Бөлүм</th>
+      <th class="p-2">Ролу</th>
       <th class="p-2">PIN / График</th>
       <th class="p-2">Телефон</th>
       <th class="p-2">Аракет</th>
@@ -730,6 +740,9 @@ function render() {
       : config?.mode === 'inherit' ? 'Бөлүм графиги (жаңы)'
       : v.schedule ? `${v.schedule.start || '08:00'}-${v.schedule.end || '17:00'} (PIN)` : '08:00-17:00';
 
+    const roleLabel = v.role === 'director' ? 'Директор'
+      : v.role === 'head' ? 'Бөлүм башчысы' : 'Кызматкер';
+
     const phone = v.deviceId
       ? `✅ Байланган<br>
          <button onclick="resetPin('${escapeAttr(pin)}')"
@@ -742,6 +755,7 @@ function render() {
       <tr class="border-t">
         <td class="p-2 font-medium">${escapeHTML(v.name || '')}</td>
         <td class="p-2">${escapeHTML(v.bolum || '')}</td>
+        <td class="p-2">${escapeHTML(roleLabel)}</td>
         <td class="p-2">
           <b>${escapeHTML(pin)}</b><br>
           <span class="text-[10px] text-gray-500">${escapeHTML(schedule)}</span>
@@ -755,7 +769,7 @@ function render() {
   }
 
   if (!count) {
-    table += '<tr><td colspan="5" class="p-3 text-center text-gray-400">Табылган жок</td></tr>';
+    table += '<tr><td colspan="6" class="p-3 text-center text-gray-400">Табылган жок</td></tr>';
   }
 
   document.getElementById('pinsTable').innerHTML = table;
@@ -850,7 +864,12 @@ window.addWorker = async function() {
   ensureAdmin();
   const name = document.getElementById('nameInput').value.trim();
   const bolum = document.getElementById('deptInput').value;
-  
+  const role = document.getElementById('roleInput').value;
+  if (!['employee', 'head', 'director'].includes(role)) {
+    alert('Кызматкердин ролун туура тандаңыз');
+    return;
+  }
+
   const appliedSchedule = effectiveDeptSchedule(bolum);
   const s1 = document.getElementById('s1').value;
   const s2 = document.getElementById('s2').value;
@@ -891,7 +910,7 @@ window.addWorker = async function() {
     await db.ref('osh/pins/' + pin).set({
       name: name,
       bolum: bolum,
-      role: 'employee',
+      role: role,
       deptId: String(deptIndex >= 0 ? deptIndex + 1 : 1),
       schedule: {
         start: s1,
@@ -904,6 +923,7 @@ window.addWorker = async function() {
     });
 
     document.getElementById('nameInput').value = '';
+    document.getElementById('roleInput').value = 'employee';
     alert('✅ PIN түзүлдү: ' + pin + '\nКызматкерге PIN-кодду бериңиз.');
   } catch (error) {
     alert('PIN сакталган жок: ' + error.message);
