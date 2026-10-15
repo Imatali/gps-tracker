@@ -214,9 +214,10 @@ th,td{vertical-align:top}
   <button onclick="saveWorkerSchedule()" class="bg-blue-600 text-white rounded px-4 py-2">💾 Кызматкердин графигин сактоо</button>
   <p id="workerScheduleStatus" class="text-xs text-gray-500 mt-2">Кызматкер тандалууда...</p>
 </div>
+</div>
 
 <!-- PIN БЕРҮҮ -->
-<div class="mt-4 bg-white p-4 rounded-xl card-shadow">
+<div id="pinCreationSection" class="mt-4 bg-white p-4 rounded-xl card-shadow">
   <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
     <h3 class="font-bold">👥 Кызматкерлерге PIN берүү жана график</h3>
     <div class="flex gap-2">
@@ -234,7 +235,7 @@ th,td{vertical-align:top}
 
     <select id="deptInput"
       class="border p-2.5 rounded-lg bg-white"></select>
-
+    
     <div class="flex gap-1">
       <div>
         <label class="text-[10px] block">Келүү</label>
@@ -273,7 +274,6 @@ th,td{vertical-align:top}
   </div>
 </div>
 
-</div>
 
 <!-- КЕЛҮҮ-КЕТҮҮ ТАРЫХЫ -->
 <div class="mt-4 bg-white p-4 rounded-xl card-shadow">
@@ -850,7 +850,7 @@ window.addWorker = async function() {
   ensureAdmin();
   const name = document.getElementById('nameInput').value.trim();
   const bolum = document.getElementById('deptInput').value;
-
+  
   const appliedSchedule = effectiveDeptSchedule(bolum);
   const s1 = document.getElementById('s1').value;
   const s2 = document.getElementById('s2').value;
@@ -891,6 +891,7 @@ window.addWorker = async function() {
     await db.ref('osh/pins/' + pin).set({
       name: name,
       bolum: bolum,
+      role: 'employee',
       deptId: String(deptIndex >= 0 ? deptIndex + 1 : 1),
       schedule: {
         start: s1,
