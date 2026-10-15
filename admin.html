@@ -636,6 +636,7 @@ function render() {
   ).join('');
 
   if (cur && depts.includes(cur)) sel.value = cur;
+  updateNewRoleOptions();
   updateDeptScheduleOptions();
 
   let late = 0, lunchOut = 0, lunchIn = 0, early = 0, absent = 0;
@@ -742,6 +743,10 @@ function render() {
 
     const roleLabel = v.role === 'director' ? 'Директор'
       : v.role === 'head' ? 'Бөлүм башчысы' : 'Кызматкер';
+    const currentRole = ['employee','head','director'].includes(v.role) ? v.role : 'employee';
+    const roleChoices = [['employee','Кызматкер'],['head','Бөлүм башчысы'],['director','Директор']]
+      .filter(([r]) => r === 'employee' || (v.bolum === 'Администрация' ? r === 'director' : r === 'head'))
+      .map(([r,label]) => `<option value="${r}" ${currentRole === r ? 'selected' : ''}>${label}</option>`).join('');
 
     const phone = v.deviceId
       ? `✅ Байланган<br>
@@ -755,7 +760,12 @@ function render() {
       <tr class="border-t">
         <td class="p-2 font-medium">${escapeHTML(v.name || '')}</td>
         <td class="p-2">${escapeHTML(v.bolum || '')}</td>
-        <td class="p-2">${escapeHTML(roleLabel)}</td>
+        <td class="p-2">
+          <div class="text-[11px] mb-1">${escapeHTML(roleLabel)}</div>
+          <select aria-label="${escapeAttr(v.name || pin)} ролу" data-role-pin="${escapeAttr(pin)}" class="border rounded p-1 text-[11px] bg-white">${roleChoices}</select>
+          <button type="button" data-save-role-pin="${escapeAttr(pin)}" onclick="savePinRole(this.dataset.saveRolePin)"
+            class="block mt-1 bg-blue-600 text-white px-2 py-1 rounded text-[11px]">💾 Ролду сактоо</button>
+        </td>
         <td class="p-2">
           <b>${escapeHTML(pin)}</b><br>
           <span class="text-[10px] text-gray-500">${escapeHTML(schedule)}</span>
@@ -857,16 +867,85 @@ window.saveWorkerSchedule = async function() {
   } catch (error) { alert('Сактоо катасы: '+error.message); }
 };
 
+// Кызматкердин ролун өзгөртүү. Бир бөлүмдө бир гана жетекчи болот.
+// Бир эле Firebase транзакциясында текшерип, эски жетекчини кызматкерге түшүрөбүз.
+window.savePinRole = async function(pin) {
+  ensureAdmin();
+  const select = [...document.querySelectorAll('[data-role-pin]')]
+    .find(el => el.dataset.rolePin === String(pin));
+  if (!select || !allPins[pin]) return;
+  const role = select.value;
+  const person = allPins[pin];
+  const dept = person.bolum;
+  if (!['employee','head','director'].includes(role) ||
+      (role === 'director' && dept !== 'Администрация') ||
+      (role === 'head' && dept === 'Администрация')) {
+    alert('Директор Администрацияда гана, бөлүм башчысы башка бөлүмдөрдө гана болот.');
+    render();
+    return;
+  }
+  const leaderRole = dept === 'Администрация' ? 'director' : 'head';
+  const previousLeaders = Object.entries(allPins)
+    .filter(([otherPin, p]) => otherPin !== String(pin) && p?.bolum === dept && p.role === leaderRole);
+  if (role === leaderRole && previousLeaders.length) {
+    const oldNames = previousLeaders.map(([,p]) => p.name || 'Аты жок').join(', ');
+    if (!confirm(`Бул бөлүмдүн учурдагы жетекчиси: ${oldNames}. Аны «Кызматкер» кылып, ${person.name || pin} жетекчи болсунбу?`)) {
+      render(); return;
+    }
+  }
+  if (!confirm(`${person.name || pin} (PIN ${pin}) — «${role === 'director' ? 'Директор' : role === 'head' ? 'Бөлүм башчысы' : 'Кызматкер'}» ролун сактайсызбы?`)) {
+    render(); return;
+  }
+  const button = [...document.querySelectorAll('[data-save-role-pin]')]
+    .find(el => el.dataset.saveRolePin === String(pin));
+  if (button) button.disabled = true;
+  try {
+    const result = await db.ref('osh/pins').transaction(pins => {
+      if (!pins || !pins[pin] || pins[pin].bolum !== dept) return;
+      if (role === leaderRole) {
+        for (const [otherPin, p] of Object.entries(pins)) {
+          if (otherPin !== String(pin) && p && p.bolum === dept && p.role === leaderRole) {
+            p.role = 'employee';
+          }
+        }
+      }
+      pins[pin].role = role;
+      return pins;
+    }, undefined, false);
+    if (!result.committed) throw new Error('Маалымат өзгөргөн же кызматкер табылган жок. Кайра аракет кылыңыз.');
+    alert('✅ Роль сакталды.');
+  } catch (error) {
+    alert('Ролду сактоо катасы: ' + error.message);
+    render();
+  } finally {
+    if (button) button.disabled = false;
+  }
+};
+
 // ЖАҢЫ PIN ТҮЗҮҮ
-document.getElementById('deptInput').addEventListener('change', fillNewWorkerSchedule);
+function updateNewRoleOptions() {
+  const dept = document.getElementById('deptInput').value;
+  const role = document.getElementById('roleInput');
+  const prior = role.value;
+  role.innerHTML = '<option value="employee">Кызматкер</option>' +
+    (dept === 'Администрация' ? '<option value="director">Директор</option>' : '<option value="head">Бөлүм башчысы</option>');
+  role.value = [...role.options].some(o => o.value === prior) ? prior : 'employee';
+}
+document.getElementById('deptInput').addEventListener('change', () => { fillNewWorkerSchedule(); updateNewRoleOptions(); });
 
 window.addWorker = async function() {
   ensureAdmin();
   const name = document.getElementById('nameInput').value.trim();
   const bolum = document.getElementById('deptInput').value;
   const role = document.getElementById('roleInput').value;
-  if (!['employee', 'head', 'director'].includes(role)) {
-    alert('Кызматкердин ролун туура тандаңыз');
+  if (!['employee', 'head', 'director'].includes(role) ||
+      (role === 'director' && bolum !== 'Администрация') ||
+      (role === 'head' && bolum === 'Администрация')) {
+    alert('Директор Администрацияда гана, бөлүм башчысы башка бөлүмдөрдө гана болот.');
+    return;
+  }
+  if (role !== 'employee' && Object.values(allPins).some(p => p?.bolum === bolum && p.role === role)) {
+    alert('Бул бөлүмдө жетекчи дайындалган. Жаңы PINди «Кызматкер» катары түзүп, андан кийин ролун өзгөртүңүз.');
     return;
   }
 
@@ -907,20 +986,20 @@ window.addWorker = async function() {
   const deptIndex = depts.indexOf(bolum);
 
   try {
-    await db.ref('osh/pins/' + pin).set({
-      name: name,
-      bolum: bolum,
-      role: role,
+    const newPinData = {
+      name: name, bolum: bolum, role: role,
       deptId: String(deptIndex >= 0 ? deptIndex + 1 : 1),
-      schedule: {
-        start: s1,
-        lunchS: s2,
-        lunchE: s3,
-        end: s4,
-        workDays: [...appliedSchedule.workDays]
-      },
+      schedule: {start:s1, lunchS:s2, lunchE:s3, end:s4, workDays:[...appliedSchedule.workDays]},
       deviceId: null
-    });
+    };
+    const result = await db.ref('osh/pins').transaction(pins => {
+      pins = pins || {};
+      if (pins[pin]) return;
+      if (role !== 'employee' && Object.values(pins).some(p => p?.bolum === bolum && p.role === role)) return;
+      pins[pin] = newPinData;
+      return pins;
+    }, undefined, false);
+    if (!result.committed) throw new Error('PIN же бөлүмдүн жетекчиси мурунтан бар. Кайра аракет кылыңыз.');
 
     document.getElementById('nameInput').value = '';
     document.getElementById('roleInput').value = 'employee';
