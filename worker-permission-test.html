@@ -596,9 +596,36 @@ log('🔎 ПИН текшерилүүдө...');
 </script>
   
 <div style="text-align:center; margin:20px;">
-  <button type="button" onclick="alert('Уруксат суроо формасы кийинки кадамда кошулат')">
+  <button type="button"
+    onclick="document.getElementById('permissionForm').hidden = false">
     📝 Уруксат суроо
   </button>
+</div>
+
+<div id="permissionForm" hidden
+     style="background:white; padding:20px; border-radius:12px; max-width:400px; margin:20px auto;">
+
+  <h3>📝 Уруксат суроо</h3>
+
+  <label>Кызматкердин PIN коду</label>
+  <input id="permissionPin" type="text" inputmode="numeric"
+         maxlength="4" placeholder="4 орундуу PIN">
+
+  <label>Кетүү убактысы</label>
+  <input id="permissionFrom" type="datetime-local">
+
+  <label>Кайтуу убактысы</label>
+  <input id="permissionTo" type="datetime-local">
+
+  <label>Себеби</label>
+  <textarea id="permissionReason"
+            placeholder="Уруксат суроонун себебин жазыңыз"></textarea>
+
+  <button type="button"
+    onclick="alert('Арыз жөнөтүү кийинки кадамда кошулат')">
+    📤 Арыз жөнөтүү
+  </button>
+
 </div>
   
 </body>
