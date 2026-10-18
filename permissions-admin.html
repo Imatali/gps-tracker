@@ -108,6 +108,24 @@ document.getElementById("showRequests").addEventListener("click", async () => {
 
       card.textContent = lines.join("\n");
       card.style.whiteSpace = "pre-line";
+      
+if (item.status === "pending") {
+  const actions = document.createElement("div");
+  actions.style.marginTop = "12px";
+
+  const approveBtn = document.createElement("button");
+  approveBtn.type = "button";
+  approveBtn.textContent = "Бекитүү";
+  approveBtn.style.marginRight = "10px";
+
+  const rejectBtn = document.createElement("button");
+  rejectBtn.type = "button";
+  rejectBtn.textContent = "Четке кагуу";
+
+  actions.append(approveBtn, rejectBtn);
+  card.appendChild(actions);
+}
+
       output.appendChild(card);
     }
   } catch (error) {
