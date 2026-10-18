@@ -661,12 +661,12 @@ async function sendPermissionRequest() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          pin,
-          deviceId,
-          from_time: fromTime,
-          to_time: toTime,
-          reason
-        })
+  pin,
+  deviceId,
+  from: fromTime,
+  to: toTime,
+  reason
+})
       }
     );
 
