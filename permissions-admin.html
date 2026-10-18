@@ -51,6 +51,74 @@
   </button>
 </div>
   </main>  
+
+<script>
+const API_URL = "https://gps-tracker-test.umataly.workers.dev";
+
+document.getElementById("showRequests").addEventListener("click", async () => {
+  const keyInput = document.getElementById("adminKey");
+  const output = document.getElementById("requestsList");
+  const button = document.getElementById("showRequests");
+
+  const key = keyInput.value.trim();
+  if (!key) {
+    output.textContent = "Администратордун ачкычын киргизиңиз.";
+    return;
+  }
+
+  button.disabled = true;
+  output.textContent = "Арыздар жүктөлүүдө...";
+
+  try {
+    const response = await fetch(API_URL + "/permission-list", {
+      method: "GET",
+      headers: { "X-Admin-Key": key },
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        response.status === 403
+          ? "Ачкыч туура эмес же уруксат жок."
+          : "Сервер катасы: " + response.status
+      );
+    }
+
+    const data = await response.json();
+    output.replaceChildren();
+
+    if (!Array.isArray(data.requests) || data.requests.length === 0) {
+      output.textContent = "Арыздар табылган жок.";
+      return;
+    }
+
+    for (const item of data.requests) {
+      const card = document.createElement("div");
+      card.style.cssText =
+        "border:1px solid #ddd;padding:12px;margin:10px 0;border-radius:8px";
+
+      const lines = [
+        "Арыз №" + item.id,
+        "PIN: " + item.pin,
+        "Башталышы: " + item.from_time,
+        "Аякташы: " + item.to_time,
+        "Себеби: " + item.reason,
+        "Статус: " + item.status
+      ];
+
+      card.textContent = lines.join("\n");
+      card.style.whiteSpace = "pre-line";
+      output.appendChild(card);
+    }
+  } catch (error) {
+    output.textContent = error.message;
+  } finally {
+    keyInput.value = "";
+    button.disabled = false;
+  }
+});
+</script>
+
 </body>
 </html>
 
