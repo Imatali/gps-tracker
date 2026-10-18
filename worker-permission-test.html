@@ -593,6 +593,65 @@ log('🔎 ПИН текшерилүүдө...');
 } catch (error) {
   log('Firebase катасы: ' + error.message);
 }
+
+async function showMyPermissions() {
+  const pin = document.getElementById('permissionPin').value.trim();
+  const deviceId = 'TEST-PHONE-001';
+  const output = document.getElementById('myPermissionsResult');
+
+  if (!/^\d{4}$/.test(pin)) {
+    alert('4 орундуу PIN киргизиңиз');
+    return;
+  }
+
+  if (!output) {
+    alert('Натыйжа көрсөтүүчү бөлүк табылган жок');
+    return;
+  }
+
+  output.textContent = 'Арыздар жүктөлүүдө...';
+
+  try {
+    const response = await fetch(
+      'https://gps-tracker-test.umataly.workers.dev/my-permissions',
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin, deviceId})
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Сервер катасы');
+    }
+
+    const statuses = {
+      pending: 'Каралууда',
+      approved: 'Бекитилди',
+      rejected: 'Четке кагылды'
+    };
+
+    output.replaceChildren();
+
+    if (!data.requests.length) {
+      output.textContent = 'Арыздар табылган жок';
+      return;
+    }
+
+    data.requests.forEach(item => {
+      const p = document.createElement('p');
+      p.textContent =
+        'Арыз №' + item.id + ' — ' +
+        (statuses[item.status] || item.status);
+      output.appendChild(p);
+    });
+  } catch (error) {
+    output.textContent = 'Ката: ' + error.message;
+  }
+}
+
 </script>
   
 <div style="text-align:center; margin:20px;">
@@ -600,6 +659,13 @@ log('🔎 ПИН текшерилүүдө...');
     onclick="document.getElementById('permissionForm').hidden = false">
     📝 Уруксат суроо
   </button>
+</div>
+
+<div style="text-align:center; margin:12px 0;">
+  <button type="button" onclick="showMyPermissions()">
+    📋 Менин арыздарым
+  </button>
+<div id="myPermissionsResult" style="margin-top:12px; text-align:left;"></div>
 </div>
 
 <div id="permissionForm" hidden
