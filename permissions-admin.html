@@ -122,6 +122,15 @@ if (item.status === "pending") {
   rejectBtn.type = "button";
   rejectBtn.textContent = "Четке кагуу";
 
+  
+approveBtn.addEventListener("click", () => {
+  reviewRequest(item.id, "approved");
+});
+
+rejectBtn.addEventListener("click", () => {
+  reviewRequest(item.id, "rejected");
+});
+
   actions.append(approveBtn, rejectBtn);
   card.appendChild(actions);
 }
