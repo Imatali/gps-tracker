@@ -144,6 +144,54 @@ rejectBtn.addEventListener("click", () => {
     button.disabled = false;
   }
 });
+  
+async function reviewRequest(id, status) {
+  const keyInput = document.getElementById("adminKey");
+  const output = document.getElementById("requestsList");
+  const key = keyInput.value.trim();
+
+  if (!key) {
+    alert("Администратордун ачкычын киргизиңиз.");
+    return;
+  }
+
+  if (!["approved", "rejected"].includes(status)) {
+    alert("Туура эмес чечим.");
+    return;
+  }
+
+  const action = status === "approved" ? "бекитүүнү" : "четке кагууну";
+
+  if (!confirm(`№${id} арызды ${action} ырастайсызбы?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      "https://gps-tracker-test.umataly.workers.dev/permission-review",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Key": key
+        },
+        body: JSON.stringify({ id, status })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.saved) {
+      throw new Error(data.error || "Чечим сакталган жок.");
+    }
+
+    alert("Арыз боюнча чечим сакталды.");
+    document.getElementById("showRequests").click();
+  } catch (error) {
+    output.textContent = "Ката: " + error.message;
+  }
+}
+
 </script>
 
 </body>
