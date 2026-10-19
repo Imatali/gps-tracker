@@ -70,6 +70,14 @@ function counted(first,last,windows,date){
  const a=(first-midnight)/60000,b=(last-midnight)/60000;
  return Math.round(windows.reduce((sum,[x,y])=>sum+Math.max(0,Math.min(b,y)-Math.max(a,x)),0));
 }
+ // ТЕСТ: Бекитилген уруксат убактысын эсептөө
+function approvedPermissionMinutes(approvedMinutes, returned, plannedMinutes) {
+  if (!returned || plannedMinutes == null || plannedMinutes <= 0) return 0;
+  return Math.min(
+    plannedMinutes,
+    Math.max(0, Number(approvedMinutes) || 0)
+  );
+}
 function rangeDates(date,mode){
  const d=new Date(date+'T12:00:00');if(Number.isNaN(d.getTime()))return [];
  let from=new Date(d),to=new Date(d);
