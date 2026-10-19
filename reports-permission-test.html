@@ -330,7 +330,10 @@ $('csvBtn').onclick = async () => {
     alert('Excel файлын түзүүдө ката кетти: ' + err.message);
   }
 };
-
+// ТЕСТ: уруксат сааттарын текшерүү
+console.log("Уруксат тести 1:", approvedPermissionMinutes(60, true, 480));
+console.log("Уруксат тести 2:", approvedPermissionMinutes(60, false, 480));
+console.log("Уруксат тести 3:", approvedPermissionMinutes(600, true, 480));
 </script>
 </body>
 </html>
