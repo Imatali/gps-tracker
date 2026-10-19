@@ -111,7 +111,7 @@ async function render(){
    const testDeviceId = "TEST-PHONE-001";
    if (testPin === "9999") {
   console.log("Тесттик кызматкер табылды:", testPin);
-});
+}
    const review=day>today?'Келе элек күн':plan.mins===null?'График катасы':plan.mins===0?(first||last?'Эс алуудагы каттоо':'—'):worked===null?'Каттоо жетишсиз':'Алдын ала';
    return {day,first,last,late,source:resolved.source,planned:plan.mins,worked,review,status:day>today?'Келе элек күн':plan.mins===0?'Эс алуу':!first?'Каттоо жок':late?'Кечикти':'Убагында'};
   }));
