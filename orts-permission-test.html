@@ -116,6 +116,7 @@ if (String(pin)==="1420" && day==="2026-10-21") {
    
    let approvedMinutes = 0;
    let approvedHours = 0;
+   let permissionIntervals = [];
    const testPin = String(pin);
    const testDeviceId = "TEST-PHONE-001";
 if (testPin === "1420") {
@@ -131,7 +132,7 @@ if (testPin === "1420") {
   })
   });
  const result = await response.json();
- const permissionIntervals = Array.isArray(result.intervals) ? result.intervals : [];
+ permissionIntervals = Array.isArray(result.intervals) ? result.intervals : [];
 approvedMinutes = Number(result.approvedMinutes) || 0;
 console.log("Уруксат мүнөттөрү:", approvedMinutes);
  approvedHours = approvedMinutes / 60;
