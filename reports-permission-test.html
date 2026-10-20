@@ -127,8 +127,8 @@ approvedMinutes = Number(result.approvedMinutes) || 0;
 console.log("Уруксат мүнөттөрү:", approvedMinutes);
  approvedHours = approvedMinutes / 60;
 }
-   if (testPin === "1420" && worked !== null && plan.mins > 0) {
-  worked = Math.min(plan.mins, worked + approvedMinutes);
+   if (testPin === "1420" && plan.mins > 0 && approvedMinutes > 0) {
+  worked = Math.min(plan.mins, (worked ?? 0) + approvedMinutes);
 }
    const review=day>today?'Келе элек күн':plan.mins===null?'График катасы':plan.mins===0?(first||last?'Эс алуудагы каттоо':'—'):worked===null?'Каттоо жетишсиз':'Алдын ала';
    return {day,first,last,late,source:resolved.source,planned:plan.mins,worked,review,status:day>today?'Келе элек күн':plan.mins===0?'Эс алуу':!first?'Каттоо жок':late?'Кечикти':'Убагында'};
