@@ -110,7 +110,7 @@ async function render(){
    let approvedHours = 0;
    const testPin = String(pin);
    const testDeviceId = "TEST-PHONE-001";
-if (testPin === "9999") {
+if (testPin === "1420") {
   console.log("Тесттик кызматкер табылды:", testPin);
  const response = await fetch("https://gps-tracker-test.umataly.workers.dev/permission-hours", {
   method: "POST",
@@ -127,7 +127,7 @@ approvedMinutes = Number(result.approvedMinutes) || 0;
 console.log("Уруксат мүнөттөрү:", approvedMinutes);
  approvedHours = approvedMinutes / 60;
 }
-   if (testPin === "9999" && worked !== null && plan.mins > 0) {
+   if (testPin === "1420" && worked !== null && plan.mins > 0) {
   worked = Math.min(plan.mins, worked + approvedMinutes);
 }
    const review=day>today?'Келе элек күн':plan.mins===null?'График катасы':plan.mins===0?(first||last?'Эс алуудагы каттоо':'—'):worked===null?'Каттоо жетишсиз':'Алдын ала';
