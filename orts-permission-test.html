@@ -22,7 +22,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.if (String(pin) === "1420" && day === "2026-10-21") {com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
 'use strict';
@@ -106,10 +106,7 @@ async function render(){
 let first=ev.ins.length?Math.min(...ev.ins):null;
 let last=ev.outs.length?Math.max(...ev.outs):null;
 
-if (String(pin)==="1420" && day==="2026-10-21") {
-  first=new Date(day+"T08:30:00").getTime();
-  last=new Date(day+"T10:30:00").getTime();
-}
+
    const resolved=scheduleFor(pin,v,day),plan=planFor(resolved.schedule,day),start=minutes(resolved.schedule?.start),arrival=first!=null?new Date(first):null;
    const late=plan.mins>0&&!!arrival&&start!==null&&(arrival.getHours()*60+arrival.getMinutes()>start);
    let worked=plan.mins===0?0:counted(first,last,plan.windows,day);
