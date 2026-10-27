@@ -1,0 +1,762 @@
+
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Катталуу — тесттик уруксат арыздары</title>
+<meta property="og:title" content="Кадамжай ЖДПБ - Кирүү">
+<meta property="og:description" content="Жумушка келүүнү белгилөө">
+<meta property="og:image" content="https://imatali.github.io/gps-tracker/icon.png?v=1010">
+<meta property="og:type" content="website">
+<link rel="icon" href="icon.png?v=1010">
+<link rel="apple-touch-icon" href="icon.png?v=1010">
+
+<style>
+body {
+  font-family:system-ui,-apple-system,sans-serif;
+  background:#f1f5f9;
+  padding:16px;
+  margin:0;
+}
+.box {
+  background:#fff;
+  max-width:400px;
+  margin:20px auto;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 4px 20px #0001;
+}
+input,button {
+  width:100%;
+  padding:14px;
+  margin-top:12px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:18px;
+  box-sizing:border-box;
+}
+button {
+  background:#1d4ed8;
+  color:#fff;
+  border:0;
+  font-weight:700;
+  cursor:pointer;
+}
+button:disabled {background:#94a3b8}
+button.out {
+  background:#ef4444;
+  display:none;
+  margin-top:16px;
+}
+#log {
+  font-size:13px;
+  background:#f8fafc;
+  padding:10px;
+  border-radius:8px;
+  margin-top:12px;
+  min-height:20px;
+  word-break:break-word;
+}
+.small-link {
+  display:block;
+  text-align:center;
+  margin-top:20px;
+  font-size:13px;
+  color:#64748b;
+  text-decoration:underline;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="box">
+  <h3 id="title">📍 Жумушка келдим</h3>
+
+  <input id="pin" type="tel" inputmode="numeric"
+         maxlength="4" placeholder="4 орундуу ПИН">
+
+  <button id="btn" onclick="login()">Кирүү</button>
+  <button id="previewBtn" type="button" onclick="previewSchedule()" style="background:#e0e7ff;color:#1e40af">📅 Графикти көрүү</button>
+
+  <div id="log">📅 Графикти GPSсиз көрүүгө болот.</div>
+  <div id="info"></div>
+  <div id="scheduleInfo" style="font-size:13px;background:#eff6ff;border-radius:8px;padding:10px;margin-top:12px;display:none"></div>
+
+  <button id="outBtn" class="out" onclick="leaveWork()">
+    🚪 Жумуштан кеттим
+  </button>
+
+   <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
+    v1117 TEST — GPS + график + уруксат арызы
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<script>
+const logEl = document.getElementById('log');
+const btn = document.getElementById('btn');
+const pinInput = document.getElementById('pin');
+const outBtn = document.getElementById('outBtn');
+const previewBtn = document.getElementById('previewBtn');
+
+const log = text => {
+  logEl.innerText = text;
+};
+
+let db;
+let authReady = null;
+let gpsReady = false;
+let gpsLat = null;
+let gpsLng = null;
+let busy = false;
+
+try {
+  // Өзүнчө Firebase app админ панелинин кирүү сессиясын бузбайт.
+  const workerApp = firebase.apps.find(app => app.name === 'worker-v1105') || firebase.initializeApp({
+    apiKey: "AIzaSyBQWMBefKYWiPQnJVHcANZLqkz2Vnt2VME",
+    authDomain: "gps-tracker-osh.firebaseapp.com",
+    databaseURL: "https://gps-tracker-osh-default-rtdb.firebaseio.com",
+    projectId: "gps-tracker-osh",
+    appId: "1:588347508048:web:1b6fd5417ff8f4e5f29855"
+  }, 'worker-v1105');
+
+  db = workerApp.database();
+  const workerAuth = workerApp.auth();
+  // Жумушчу сессиясы ушул өтмөктө гана сакталат.
+  authReady = workerAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+    .then(() => workerAuth.currentUser || workerAuth.signInAnonymously())
+    .then(user => {
+      if (!user) throw new Error('Анонимдүү кирүү ишке ашкан жок');
+      return user;
+    });
+  authReady.catch(error => {
+    log('❌ Firebase Authentication: ' + error.message + '. Firebase Console → Authentication → Sign-in method → Anonymous функциясын күйгүзүңүз.');
+  });
+
+  let deviceId = localStorage.getItem('deviceId');
+
+  if (!deviceId) {
+    deviceId = 'd_' +
+      (crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) +
+          Date.now().toString(36));
+
+    localStorage.setItem('deviceId', deviceId);
+  }
+
+  // GPS: ойдон чыгарылган координаталар колдонулбайт
+  function getGPS() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Бул түзмөк GPS колдобойт'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          if (!Number.isFinite(lat) ||
+              !Number.isFinite(lng)) {
+            reject(new Error('GPS координаталары туура эмес'));
+            return;
+          }
+
+          gpsLat = lat;
+          gpsLng = lng;
+          gpsReady = true;
+
+          resolve({
+            lat: lat,
+            lng: lng,
+            accuracy: position.coords.accuracy
+          });
+        },
+        error => {
+          gpsReady = false;
+
+          const messages = {
+            1: 'GPS уруксатын бериңиз',
+            2: 'GPS жайгашкан жерди аныктай алган жок',
+            3: 'GPS күтүү убактысы бүттү'
+          };
+
+          reject(new Error(
+            messages[error.code] || 'GPS катасы'
+          ));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        }
+      );
+    });
+  }
+
+  // GPS барак ачылганда алынбайт: графикти көрүү GPS уруксатын талап кылбайт.
+  log('📅 Графикти GPSсиз көрүүгө болот. Жумушка катталууда GPS текшерилет.');
+
+  // Кызматкерге маалымат катары гана көрсөтүлөт. Каттоого жана табелге таасир этпейт.
+  const scheduleFallback = {start:'08:30',lunchS:'12:00',lunchE:'13:00',end:'17:30',workDays:[1,2,3,4,5]};
+  let scheduleRequest = 0;
+  function localDateKey(date = new Date()) {
+    const n = v => String(v).padStart(2,'0');
+    return date.getFullYear()+'-'+n(date.getMonth()+1)+'-'+n(date.getDate());
+  }
+  function cleanSchedule(value) {
+    if (!value || !Array.isArray(value.workDays)) return null;
+    if (!['start','lunchS','lunchE','end'].every(k => /^\d{2}:\d{2}$/.test(value[k]||''))) return null;
+    return value;
+  }
+  async function showTodaySchedule(pin, preview = false) {
+    const box = document.getElementById('scheduleInfo');
+    const request = ++scheduleRequest;
+    if (!pin) { box.style.display='none'; return; }
+    box.style.display='block';
+    box.textContent='📅 7 күндүк график жүктөлүүдө...';
+    try {
+      await authReady;
+      const pinSnap = await db.ref('osh/pins/'+pin).get();
+      const pinData = pinSnap.val();
+      if (!pinData) throw new Error('PIN маалыматы табылган жок');
+      const deptKey = encodeURIComponent(pinData.bolum||'');
+      const [workerSnap, deptSnap, defaultSnap] = await Promise.all([
+        db.ref('osh/workerSchedules/'+pin).get(),
+        db.ref('osh/deptSchedules/'+deptKey).get(),
+        db.ref('osh/settings/defaultSchedule').get()
+      ]);
+      if (request !== scheduleRequest || (!preview && (localStorage.getItem('myPin') !== pin || !localStorage.getItem('myWorkerId')))) return;
+      const config = workerSnap.val() || {};
+      const temporary = config.temporary;
+      const today = new Date();
+      const weekdays = ['Жек','Дүй','Шей','Шар','Бей','Жума','Ише'];
+      const lines = [];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        const dateKey = localDateKey(day);
+        let schedule = null;
+        let source = '';
+        if (temporary && temporary.from <= dateKey && dateKey <= temporary.to && cleanSchedule(temporary.schedule)) {
+          schedule = temporary.schedule;
+          source = 'Убактылуу график';
+        } else if (config.mode === 'custom' && cleanSchedule(config.permanent)) {
+          schedule = config.permanent;
+          source = 'Жеке туруктуу график';
+        } else if ((config.mode === 'legacy' || !config.mode) && cleanSchedule(pinData.schedule)) {
+          schedule = pinData.schedule;
+          source = 'Мурдагы PIN графиги';
+        }
+        if (!schedule && cleanSchedule(deptSnap.val())) {
+          schedule = deptSnap.val();
+          source = 'Бөлүмдүн графиги';
+        }
+        if (!schedule) {
+          schedule = cleanSchedule(defaultSnap.val()) || scheduleFallback;
+          source = 'Жалпы график';
+        }
+        const dateLabel = String(day.getDate()).padStart(2, '0') + '.' + String(day.getMonth()+1).padStart(2, '0');
+        const label = `${dateLabel} (${weekdays[day.getDay()]})`;
+        const hours = schedule.workDays.includes(day.getDay())
+          ? `${schedule.start}–${schedule.lunchS}, ${schedule.lunchE}–${schedule.end}`
+          : 'Эс алуу күнү';
+        lines.push(`${label}: ${hours} — ${source}`);
+      }
+      if (request !== scheduleRequest) return;
+      box.style.whiteSpace = 'pre-line';
+      box.textContent = '📅 Алдыдагы 7 күндүн графиги\n' + lines.join('\n');
+    } catch (error) {
+      if (request === scheduleRequest) box.textContent='⚠️ Графикти жүктөө мүмкүн болгон жок. Каттоо функциясы өзгөргөн жок.';
+    }
+  }
+
+  // Маалымат көрүү гана: attendance/workers жазылбайт жана deviceId байланыштырылбайт.
+  window.previewSchedule = async function() {
+    if (busy) return;
+    const pin = pinInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      alert('Графикти көрүү үчүн 4 орундуу ПИН жазыңыз');
+      return;
+    }
+    const oldPin = localStorage.getItem('myPin');
+    if (oldPin && oldPin !== pin) {
+      alert('Бул түзмөктө башка PIN сакталган. Администраторго кайрылыңыз.');
+      return;
+    }
+    previewBtn.disabled = true;
+    try {
+      await showTodaySchedule(pin, true);
+    } finally {
+      previewBtn.disabled = false;
+    }
+  };
+
+  function refreshUI() {
+    const myPin = localStorage.getItem('myPin');
+    const myWorkerId = localStorage.getItem('myWorkerId');
+    const myName = localStorage.getItem('myName');
+
+    if (myPin && myWorkerId) {
+      document.getElementById('title').innerText =
+        '✅ Жумуштасыз: ' + (myName || '') +
+        ' (' + myPin + ')';
+
+      pinInput.style.display = 'none';
+      btn.style.display = 'none';
+      outBtn.style.display = 'block';
+      previewBtn.style.display = 'none';
+      showTodaySchedule(myPin);
+    } else {
+      document.getElementById('title').innerText =
+        '📍 Жумушка келдим';
+
+      pinInput.style.display = 'block';
+      btn.style.display = 'block';
+      btn.disabled = false;
+      btn.innerText = 'Кирүү';
+      outBtn.style.display = 'none';
+      previewBtn.style.display = 'block';
+      ++scheduleRequest;
+      document.getElementById('scheduleInfo').style.display = 'none';
+
+      const savedPin = localStorage.getItem('myPin');
+
+      if (savedPin) {
+        pinInput.value = savedPin;
+      }
+    }
+  }
+
+  function setBusy(value) {
+    busy = value;
+    btn.disabled = value;
+    outBtn.disabled = value;
+    previewBtn.disabled = value;
+
+    if (value) {
+      btn.innerText = 'Күтүңүз...';
+    } else {
+      btn.innerText = 'Кирүү';
+    }
+  }
+
+  
+  // GPS аймагын текшерүү: dept.html v1103 менен бирдей Firebase жолу.
+  const MAX_GPS_ACCURACY = 100; // метр
+
+  function pointOnSegment(x, y, ax, ay, bx, by) {
+    const cross = (x-ax)*(by-ay)-(y-ay)*(bx-ax);
+    if (Math.abs(cross) > 1e-10) return false;
+    return x >= Math.min(ax,bx)-1e-10 && x <= Math.max(ax,bx)+1e-10 &&
+           y >= Math.min(ay,by)-1e-10 && y <= Math.max(ay,by)+1e-10;
+  }
+
+  function pointInPolygon(lat, lng, ring) {
+    if (!Array.isArray(ring) || ring.length < 3) return false;
+    let inside = false;
+    for (let i=0, j=ring.length-1; i<ring.length; j=i++) {
+      const a=ring[i], b=ring[j];
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length<2 || b.length<2) return false;
+      const ay=Number(a[0]), ax=Number(a[1]), by=Number(b[0]), bx=Number(b[1]);
+      if (![ay,ax,by,bx].every(Number.isFinite)) return false;
+      if (pointOnSegment(lng,lat,ax,ay,bx,by)) return true;
+      if ((ay>lat)!==(by>lat) && lng < (bx-ax)*(lat-ay)/(by-ay)+ax) inside=!inside;
+    }
+    return inside;
+  }
+
+  async function verifyWorkArea(department, position) {
+    if (!department || !department.trim()) throw new Error('PIN үчүн бөлүм көрсөтүлгөн эмес. Админге кайрылыңыз.');
+    const accuracy = Number(position.accuracy);
+    if (!Number.isFinite(accuracy) || accuracy <= 0 || accuracy > MAX_GPS_ACCURACY) {
+      throw new Error('GPS тактыгы жетишсиз (' + Math.round(accuracy || 0) + ' м). Ачык жерге чыгып, кайра аракет кылыңыз.');
+    }
+    const path = 'osh/deptAreas/byName/' + encodeURIComponent(department);
+    const snapshot = await db.ref(path).get();
+    const saved = snapshot.val();
+    if (!saved || !Array.isArray(saved.polygons) || !saved.polygons.length) {
+      throw new Error('«' + department + '» бөлүмүнүн GPS аймагы Firebase\'ге сакталган эмес. Админге кайрылыңыз.');
+    }
+    const allowed = saved.polygons.some(ring => pointInPolygon(position.lat,position.lng,ring));
+    if (!allowed) throw new Error('⛔ Сиз «' + department + '» бөлүмүнүн белгиленген GPS аймагынан тышкары турасыз. Катталууга уруксат жок.');
+    return path;
+  }
+
+  window.login = async function() {
+    if (busy) return;
+
+    const pin = pinInput.value.trim();
+
+    if (!/^\d{4}$/.test(pin)) {
+      alert('4 орундуу ПИН жазыңыз');
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      await authReady;
+      // Катталуунун алдында GPS кайра алынат
+      log('📡 GPS текшерилүүдө...');
+      const position = await getGPS();
+
+      const oldPin = localStorage.getItem('myPin');
+
+      if (oldPin && oldPin !== pin) {
+  throw new Error(
+    'Бул телефондо башка PIN сакталган. PINди алмаштыруу үчүн администраторго кайрылыңыз.'
+  );
+}
+
+log('🔎 ПИН текшерилүүдө...');
+
+      const pinSnap = await db.ref('osh/pins/' + pin).get();
+      const data = pinSnap.val();
+
+      if (!data) {
+        throw new Error('Бул ПИН табылган жок');
+      }
+
+      if (data.deviceId && data.deviceId !== deviceId) {
+        throw new Error(
+          'Бул ПИН башка телефонго байланышкан: ' +
+          (data.name || '')
+        );
+      }
+
+      if (!data.name) {
+        throw new Error('Кызматкердин аты көрсөтүлгөн эмес');
+      }
+
+      // PIN бөлүмүнүн сакталган GPS аймагына туура келерин текшеребиз.
+      // Ийгиликсиз болсо Firebase'ге катталуу жазылбайт.
+      log('🗺️ Бөлүмдүн GPS аймагы текшерилүүдө...');
+      const areaPath = await verifyWorkArea(data.bolum || '', position);
+
+      const workerKey =
+        db.ref('osh/workers').push().key;
+
+      const now = Date.now();
+
+      const workerData = {
+        name: data.name,
+        bolum: data.bolum || '',
+        deptId: String(data.deptId || 1),
+        lat: position.lat,
+        lng: position.lng,
+        inside: true,
+        time: now,
+        pin: pin,
+        deviceId: deviceId,
+        gpsAccuracy: position.accuracy,
+        areaCheck: 'inside',
+        areaPath: areaPath
+      };
+
+      // Кызматкердин учурдагы абалы сакталат
+      await db.ref('osh/workers/' + workerKey)
+        .set(workerData);
+
+      // PIN жана телефон байланышы сакталат
+      await db.ref('osh/pins/' + pin).update({
+        deviceId: deviceId,
+        lastSeen: now
+      });
+
+      // Келүү тарыхына өзүнчө окуя кошулат
+      await db.ref('osh/attendance').push().set({
+        type: 'in',
+        workerId: workerKey,
+        name: data.name,
+        pin: pin,
+        bolum: data.bolum || '',
+        deptId: String(data.deptId || 1),
+        time: now,
+        lat: position.lat,
+        lng: position.lng,
+        gpsAccuracy: position.accuracy,
+        areaCheck: 'inside',
+        areaPath: areaPath,
+        deviceId: deviceId
+      });
+
+      localStorage.setItem('myPin', pin);
+      localStorage.setItem('myWorkerId', workerKey);
+      localStorage.setItem('myName', data.name);
+
+      log('✅ Жумушка келүү катталды: ' + data.name);
+      refreshUI();
+
+    } catch (error) {
+      log('❌ ' + error.message);
+      alert(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  window.leaveWork = async function() {
+    if (busy) return;
+
+    const pin = localStorage.getItem('myPin');
+    const workerId = localStorage.getItem('myWorkerId');
+
+    if (!pin || !workerId) {
+      alert('Активдүү каттоо табылган жок');
+      return;
+    }
+
+    if (!confirm('Жумуштан кетүүнү белгилейсизби?')) {
+      return;
+    }
+
+    setBusy(true);
+    log('📡 Жумуштан кетүү катталууда...');
+
+    try {
+      await authReady;
+      const workerRef = db.ref('osh/workers/' + workerId);
+      const snap = await workerRef.get();
+      const worker = snap.val();
+
+      if (!worker) {
+        throw new Error('Кызматкердин маалыматы табылган жок');
+      }
+
+      let position = null;
+
+      try {
+        position = await getGPS();
+      } catch (gpsError) {
+        // GPS жок болсо, жалган координата жазылбайт.
+        log('⚠️ GPS алынган жок. Кетүү убактысы сакталууда...');
+      }
+
+      const now = Date.now();
+
+      const updates = {
+        inside: false,
+        leaveTime: now
+      };
+
+      if (position) {
+        updates.lat = position.lat;
+        updates.lng = position.lng;
+        updates.gpsAccuracy = position.accuracy;
+      }
+
+      // Жазуу өчүрүлбөйт, статусу өзгөрөт
+      await workerRef.update(updates);
+
+      const event = {
+        type: 'out',
+        workerId: workerId,
+        name: worker.name || localStorage.getItem('myName') || '',
+        pin: pin,
+        bolum: worker.bolum || '',
+        deptId: String(worker.deptId || 1),
+        time: now,
+        deviceId: deviceId
+      };
+
+      if (position) {
+        event.lat = position.lat;
+        event.lng = position.lng;
+        event.gpsAccuracy = position.accuracy;
+      }
+
+      // Кетүү тарыхына окуя кошулат
+      await db.ref('osh/attendance').push().set(event);
+
+      localStorage.removeItem('myWorkerId');
+
+      log('🚪 Жумуштан кетүү катталды');
+      refreshUI();
+
+    } catch (error) {
+      log('❌ ' + error.message);
+      alert('Ката: ' + error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  refreshUI();
+
+} catch (error) {
+  log('Firebase катасы: ' + error.message);
+}
+
+async function showMyPermissions() {
+  const pin = document.getElementById('pin').value.trim();
+  const deviceId = localStorage.getItem('deviceId');
+   if (!deviceId) { alert('Түзмөктүн ID маалыматы табылган жок. Баракты жаңыртыңыз.'); return; }
+  const output = document.getElementById('myPermissionsResult');
+
+  if (!/^\d{4}$/.test(pin)) {
+    alert('4 орундуу PIN киргизиңиз');
+    return;
+  }
+
+  if (!output) {
+    alert('Натыйжа көрсөтүүчү бөлүк табылган жок');
+    return;
+  }
+
+  output.textContent = 'Арыздар жүктөлүүдө...';
+
+  try {
+    const response = await fetch(
+      'https://gps-tracker-test.umataly.workers.dev/my-permissions',
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({pin, deviceId})
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Сервер катасы');
+    }
+
+    const statuses = {
+      pending: 'Каралууда',
+      approved: 'Бекитилди',
+      rejected: 'Четке кагылды'
+    };
+
+    output.replaceChildren();
+
+    if (!data.requests.length) {
+      output.textContent = 'Арыздар табылган жок';
+      return;
+    }
+
+    data.requests.forEach(item => {
+      const p = document.createElement('p');
+      p.textContent =
+        'Арыз №' + item.id + ' — ' +
+        (statuses[item.status] || item.status);
+      output.appendChild(p);
+    });
+  } catch (error) {
+    output.textContent = 'Ката: ' + error.message;
+  }
+}
+
+</script>
+  
+<div style="text-align:center; margin:20px;">
+  <button type="button"
+    onclick="document.getElementById('permissionForm').hidden = false">
+    📝 Уруксат суроо
+  </button>
+</div>
+
+<div style="text-align:center; margin:12px 0;">
+  <button type="button" onclick="showMyPermissions()">
+    📋 Менин арыздарым
+  </button>
+<div id="myPermissionsResult" style="margin-top:12px; text-align:left;"></div>
+</div>
+
+<div id="permissionForm" hidden
+     style="background:white; padding:20px; border-radius:12px; max-width:400px; margin:20px auto;">
+
+  <h3>📝 Уруксат суроо</h3>
+
+  <label>Кызматкердин PIN коду</label>
+  <input id="permissionPin" type="text" inputmode="numeric"
+         maxlength="4" placeholder="4 орундуу PIN">
+
+  <label>Кетүү убактысы</label>
+  <input id="permissionFrom" type="datetime-local">
+
+  <label>Кайтуу убактысы</label>
+  <input id="permissionTo" type="datetime-local">
+
+  <label>Себеби</label>
+  <textarea id="permissionReason"
+            placeholder="Уруксат суроонун себебин жазыңыз"></textarea>
+
+  <button type="button"
+   onclick="sendPermissionRequest()">
+    📤 Арыз жөнөтүү
+  </button>
+
+</div>
+ <script>
+async function sendPermissionRequest() {
+  const pin = document.getElementById('permissionPin').value.trim();
+  const fromTime = document.getElementById('permissionFrom').value;
+  const toTime = document.getElementById('permissionTo').value;
+  const reason = document.getElementById('permissionReason').value.trim();
+
+  if (!/^\d{4}$/.test(pin)) {
+    alert('4 орундуу PIN киргизиңиз');
+    return;
+  }
+
+  const savedPin = localStorage.getItem('myPin');
+  if (savedPin && savedPin !== pin) {
+    alert('Бул телефондо башка PIN сакталган. Администраторго кайрылыңыз.');
+    return;
+  }
+
+  if (!fromTime || !toTime || !reason) {
+    alert('Бардык талааларды толтуруңуз');
+    return;
+  }
+
+  if (new Date(toTime) <= new Date(fromTime)) {
+    alert('Кайтуу убактысы кетүү убактысынан кийин болушу керек');
+    return;
+  }
+
+  // Түзмөктүн өзүнүн сакталган идентификатору
+  const deviceId = localStorage.getItem('deviceId');
+   if (!deviceId) { alert('Түзмөктүн ID маалыматы табылган жок. Баракты жаңыртыңыз.'); return; }
+
+  try {
+    const response = await fetch(
+      'https://gps-tracker-test.umataly.workers.dev/permission-request',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+  pin,
+  deviceId,
+  from: fromTime,
+  to: toTime,
+  reason
+})
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Сервер катасы');
+    }
+
+    alert('✅ Уруксат арызы тесттик серверге жөнөтүлдү!');
+    document.getElementById('permissionForm').hidden = true;
+
+  } catch (error) {
+    alert('❌ Ката: ' + error.message);
+  }
+}
+</script> 
+</body>
+</html>
