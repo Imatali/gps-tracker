@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ky">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Уруксат арыздары — TEST v1120</title>
+<style>
+:root{font-family:system-ui,Arial,sans-serif;color:#18243b;background:#f1f5f9}body{margin:0;padding:18px}main{max-width:850px;margin:25px auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 6px 25px #0001}h1{margin-top:0}p{color:#475569}.notice{background:#eff6ff;padding:12px;border-radius:9px}label{display:block;margin:12px 0 5px;font-weight:600}input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:12px;font-size:16px}button{background:#2563eb;color:#fff;border:0;border-radius:8px;padding:11px 16px;cursor:pointer;margin:10px 8px 0 0}button:disabled{opacity:.5;cursor:default}.secondary{background:#64748b}.danger{background:#b91c1c}.request{border:1px solid #d8e1eb;border-radius:10px;padding:15px;margin:12px 0;white-space:pre-line;overflow-wrap:anywhere}.status{padding:10px 0;white-space:pre-line}.muted{color:#64748b;font-size:13px}.hidden{display:none}hr{border:0;border-top:1px solid #e2e8f0;margin:20px 0}
+</style>
+</head>
+<body><main>
+<h1>Уруксат арыздары</h1>
+<p>Кадамжай ЖДПБ — администратор панели</p>
+<div class="notice"><strong>TEST v1120</strong> — тесттик Firebase аккаунту жана <code>gps-tracker-test</code> Worker гана колдонулат. Өндүрүштүк базага туташпайт.</div>
+<section id="loginSection">
+<label for="apiKey">Тесттик Firebase Web API key</label><input id="apiKey" type="password" autocomplete="off" placeholder="Firebase долбоорунун Web API key мааниси">
+<label for="email">Башкы администратордун же бөлүм башчысынын Email дареги</label><input id="email" type="email" autocomplete="username" placeholder="Email">
+<label for="password">Firebase сырсөзү</label><input id="password" type="password" autocomplete="current-password" placeholder="Сырсөз">
+<button id="signIn">Кирүү</button>
+<p class="muted">API ачкычын Firebase Console'догу <strong>gps-tracker-kadamjay-test</strong> долбоорунан алыңыз. Маалыматтар баракчада же браузер сактагычында сакталбайт. Бул жерге кызматкердин PIN кодун киргизбеңиз.</p>
+</section>
+<section id="accountSection" class="hidden"><p id="accountLabel"></p><button id="reload">Арыздарды көрсөтүү / жаңылоо</button><button id="logout" class="secondary">Чыгуу</button></section>
+<div id="message" class="status" role="status" aria-live="polite"></div><hr><div id="requestsList"></div>
+</main>
+<script>
+'use strict';
+const API='https://gps-tracker-test.umataly.workers.dev';
+const $=id=>document.getElementById(id);
+let session=null;
+function message(t){$('message').textContent=t;}
+function setBusy(b){$('signIn').disabled=b;$('reload').disabled=b;}
+function clearSession(){session=null;$('accountSection').classList.add('hidden');$('loginSection').classList.remove('hidden');$('requestsList').replaceChildren();$('password').value='';$('apiKey').value='';message('');}
+function token(){if(!session || Date.now()>=session.expiresAt){clearSession();throw Error('Кирүү мөөнөтү бүттү. Кайра кириңиз.');}return session.idToken;}
+async function api(path,opts={}){
+ const headers={Authorization:'Bearer '+token(),...(opts.body?{'Content-Type':'application/json'}:{})};
+ const response=await fetch(API+path,{...opts,headers,cache:'no-store'});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw Error(data.error||('HTTP '+response.status));
+ return data;
+}
+$('signIn').addEventListener('click',async()=>{
+ const key=$('apiKey').value.trim(),email=$('email').value.trim(),password=$('password').value;
+ if(!key||!email||!password){message('API key, Email жана сырсөз талап кылынат.');return;}
+ setBusy(true);message('Firebase авторизациясы текшерилүүдө...');
+ try{
+  const r=await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})});
+  const d=await r.json();if(!r.ok||!d.idToken)throw Error('Firebase кирүүсү ишке ашкан жок: '+(d.error?.message||r.status));
+  session={idToken:d.idToken,expiresAt:Date.now()+(Number(d.expiresIn||3600)-60)*1000,email};
+  $('password').value='';$('apiKey').value='';
+  $('loginSection').classList.add('hidden');$('accountSection').classList.remove('hidden');$('accountLabel').textContent='Кирген аккаунт: '+email;
+  await loadRequests();
+ }catch(e){message('Ката: '+e.message);}finally{setBusy(false);}
+});
+$('logout').addEventListener('click',clearSession);
+$('reload').addEventListener('click',loadRequests);
+async function loadRequests(){setBusy(true);message('Арыздар жүктөлүүдө...');$('requestsList').replaceChildren();try{
+ const data=await api('/permission-list');const list=Array.isArray(data.requests)?data.requests:[];
+ message('Арыздар: '+list.length+' (укугуңузга ылайык көрүнөт).');
+ if(!list.length){$('requestsList').textContent='Арыздар табылган жок.';return;}
+ for(const item of list){
+  const card=document.createElement('div');card.className='request';
+  const fields=[`Арыз №${item.id}`,`Башталышы: ${item.from_time||'—'}`,`Аякташы: ${item.to_time||'—'}`,`Себеби: ${item.reason||'—'}`,`Статус: ${item.status||'—'}`];
+  card.textContent=fields.join('\n');
+  if(item.status==='pending'){
+   const actions=document.createElement('div');
+   for(const [status,label,cls] of [['approved','Бекитүү',''],['rejected','Четке кагуу','danger']]){
+    const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;
+    b.addEventListener('click',()=>review(item.id,status));actions.append(b);
+   }card.append(actions);
+  }$('requestsList').append(card);
+ }
+ }catch(e){message('Ката: '+e.message);}finally{setBusy(false);}}
+async function review(id,status){
+ const verb=status==='approved'?'бекитүүнү':'четке кагууну';
+ if(!confirm(`№${id} арызды ${verb} ырастайсызбы? Бул тесттик D1 базасында статусун өзгөртөт.`))return;
+ setBusy(true);message('Чечим сакталууда...');
+ try{const d=await api('/permission-review',{method:'POST',body:JSON.stringify({id,status})});if(!d.saved)throw Error('Чечим сакталган жок.');await loadRequests();message(`№${id} арыз: ${status}. Чечим сакталды.`);}catch(e){message('Ката: '+e.message);}finally{setBusy(false);}
+}
+</script></body></html>
