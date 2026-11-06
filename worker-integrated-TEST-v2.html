@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ky"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Кадамжай GPS — TEST v2</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#f1f5f9;margin:0;padding:16px;color:#172033}.box{max-width:440px;margin:20px auto;background:white;border-radius:14px;padding:20px;box-shadow:0 4px 20px #0001}h2{font-size:21px;margin:0 0 8px}.muted{color:#64748b;font-size:13px}input,button{width:100%;box-sizing:border-box;padding:13px;margin-top:10px;border-radius:9px;font-size:16px}input{border:1px solid #cbd5e1}button{border:0;background:#1d4ed8;color:white;font-weight:650;cursor:pointer}button.secondary{background:#475569}button.out{background:#b91c1c}button:disabled{opacity:.5;cursor:wait}#status,#diagnostics{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8fafc;padding:12px;border-radius:9px;margin-top:12px;font-size:14px;line-height:1.5}#diagnostics{background:#eff6ff}#sessionPanel{display:none}.hint{font-size:12px;color:#475569;margin-top:10px}
+</style></head><body><main class="box">
+<h2>🧪 GPS Tracker — TEST v2</h2><p class="muted">Тесттик Firebase жана D1 гана. Негизги жумуш каттоосу эмес.</p>
+<section id="loginPanel"><label for="pin">Тесттик 4 орундуу PIN</label><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="PIN"><button id="loginBtn" type="button">1. PIN менен кирүү</button></section>
+<section id="sessionPanel"><button id="checkBtn" class="secondary" type="button">2. Сессияны текшерүү</button><button id="gpsBtn" class="secondary" type="button">3. GPS диагностикасы (каттабайт)</button><button id="inBtn" type="button">4. Жумушка келдим — TEST</button><button id="outBtn" class="out" type="button">5. Жумуштан кеттим — TEST</button><button id="logoutBtn" class="secondary" type="button">Сессиядан чыгуу</button></section>
+<div id="status" role="status" aria-live="polite">PIN киргизип баштаңыз. GPS автоматтык түрдө иштетилбейт.</div><div id="diagnostics" style="display:none" aria-live="polite"></div>
+<p class="hint">GPS тактыгы 100 метрден ашса, сервер каттоону кабыл албайт. Бул версия GPS маалыматтарын жасалмалап өзгөртпөйт. Координаттар экранга чыгарылбайт.</p>
+</main><script>
+'use strict';
+const API_URL='https://kadamjay-pin-test.umataly.workers.dev';
+const $=id=>document.getElementById(id);
+const buttons=['loginBtn','checkBtn','gpsBtn','inBtn','outBtn','logoutBtn'];
+let busy=false;
+const status=s=>{$('status').textContent=s;};
+function showSession(active){$('loginPanel').style.display=active?'none':'block';$('sessionPanel').style.display=active?'block':'none';}
+function setBusy(v){busy=v;for(const id of buttons)$(id).disabled=v;}
+function token(){return sessionStorage.getItem('testSessionV2');}
+function clearSession(){sessionStorage.removeItem('testSessionV2');sessionStorage.removeItem('pending_in_v2');sessionStorage.removeItem('pending_out_v2');showSession(false);}
+async function api(path,payload,auth){
+ const headers={'Content-Type':'application/json'};
+ if(auth)headers.Authorization='Bearer '+auth;
+ let response;
+ try{response=await fetch(API_URL+path,{method:'POST',headers,body:JSON.stringify(payload||{})});}
+ catch{throw Error('NETWORK_OR_CORS_ERROR');}
+ const data=await response.json().catch(()=>({error:'INVALID_SERVER_RESPONSE'}));
+ if(!response.ok){const err=Error(data.error||('HTTP_'+response.status));err.status=response.status;throw err;}
+ return data;
+}
+async function action(fn){if(busy)return;setBusy(true);try{await fn();}catch(e){if(e.status===401){clearSession();status('❌ Сессия жараксыз же мөөнөтү бүттү. Кайра PIN менен кириңиз.');}else status('❌ '+e.message);}finally{setBusy(false);}}
+$('loginBtn').onclick=()=>action(async()=>{
+ const pin=$('pin').value.trim();if(!/^\d{4}$/.test(pin))throw Error('4 орундуу PIN жазыңыз');
+ status('PIN текшерилүүдө...');
+ const result=await api('/verify-pin',{pin});
+ if(result.verified!==true||result.testOnly!==true||typeof result.sessionToken!=='string')throw Error('TEST_SESSION_REQUIRED');
+ sessionStorage.setItem('testSessionV2',result.sessionToken);$('pin').value='';showSession(true);
+ status('✅ PIN туура. Тесттик сессия алынды. GPS али текшериле элек.');
+});
+$('checkBtn').onclick=()=>action(async()=>{
+ status('Сессия текшерилүүдө...');const r=await api('/session-check',{},token());
+ if(r.valid!==true||r.testOnly!==true)throw Error('SESSION_CHECK_FAILED');
+ status('✅ Сессия жарактуу. GPSсиз текшерилди.');
+});
+function readGps(){return new Promise((resolve,reject)=>{
+ if(!navigator.geolocation)return reject(Error('Браузерде геолокация жок'));
+ navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy,gpsTimestamp:p.timestamp}),e=>reject(Error('GPS: '+e.message)),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+});}
+function validateGps(p){
+ const age=Math.abs(Date.now()-p.gpsTimestamp);
+ const errors=[];
+ if(!Number.isFinite(p.lat)||Math.abs(p.lat)>90||!Number.isFinite(p.lng)||Math.abs(p.lng)>180)errors.push('координат жараксыз');
+ if(!Number.isFinite(p.accuracy)||p.accuracy<=0||p.accuracy>100)errors.push('тактык 100 метр талабына жооп бербейт');
+ if(!Number.isFinite(p.gpsTimestamp)||age>60000)errors.push('GPS убактысы 60 секунддан эски');
+ return {age,errors};
+}
+function diagnostic(p){const d=validateGps(p);$('diagnostics').style.display='block';$('diagnostics').textContent='GPS тактыгы: '+(Number.isFinite(p.accuracy)?p.accuracy.toFixed(1):'белгисиз')+' м\nGPS убакыт айырмасы: '+(Number.isFinite(d.age)?(d.age/1000).toFixed(1):'белгисиз')+' сек\nКоординаттар: '+(Number.isFinite(p.lat)&&Number.isFinite(p.lng)?'алынды':'жараксыз')+'\nНатыйжа: '+(d.errors.length?'❌ '+d.errors.join('; '):'✅ GPS негизги форматтык талаптарга жооп берет');return d;}
+$('gpsBtn').onclick=()=>action(async()=>{status('GPS алынууда (серверге каттоо жөнөтүлбөйт)...');const p=await readGps();const d=diagnostic(p);status(d.errors.length?'⚠️ GPS диагностикасы талапка жооп берген жок.':'✅ GPS диагностикасы өттү. Бул жумушка келүүнү каттабайт.');});
+async function attendance(type){
+ const auth=token();if(!auth)throw Error('SESSION_MISSING');
+ status('GPS алынууда...');const p=await readGps();const d=diagnostic(p);
+ if(d.errors.length)throw Error('GPS каттоого жараксыз: '+d.errors.join('; '));
+ const key='pending_'+type+'_v2';let eventId=sessionStorage.getItem(key);
+ if(!eventId){eventId=crypto.randomUUID();sessionStorage.setItem(key,eventId);}
+ status('Тесттик каттоо серверге жөнөтүлүүдө...');
+ const result=await api('/attendance',{type,eventId,...p},auth);
+ if(result.saved!==true||result.testOnly!==true)throw Error('TEST_SAVE_NOT_CONFIRMED');
+ sessionStorage.removeItem(key);
+ status('✅ '+(type==='in'?'Тесттик келүү':'Тесттик кетүү')+' серверде катталды.'+(result.duplicate?' (кайталанган окуя)':''));
+}
+$('inBtn').onclick=()=>action(()=>attendance('in'));
+$('outBtn').onclick=()=>action(async()=>{if(confirm('Тесттик кетүүнү каттайсызбы?'))await attendance('out');});
+$('logoutBtn').onclick=()=>{if(busy)return;clearSession();$('diagnostics').style.display='none';status('Сессия браузерден тазаланды. Сервердеги сессия мөөнөтү бүткөнчө жарактуу болушу мүмкүн.');};
+showSession(!!token());
+</script></body></html>
