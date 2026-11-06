@@ -1,0 +1,25 @@
+
+{
+  "id": "/gps-tracker/",
+  "name": "Кадамжай ЖДПБ GPS",
+  "short_name": "Кадамжай ЖДПБ",
+  "start_url": "/gps-tracker/worker.html",
+  "scope": "/gps-tracker/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "icons": [
+    {
+      "src": "./pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
