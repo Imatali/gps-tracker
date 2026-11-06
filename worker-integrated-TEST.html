@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>GPS TEST — Катталуу</title>
+
+<!-- PWA v1116 -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+
+<meta property="og:title" content="Кадамжай ЖДПБ - Кирүү">
+<meta property="og:description" content="Жумушка келүүнү белгилөө">
+<meta property="og:image" content="https://imatali.github.io/gps-tracker/icon.png?v=1010">
+<meta property="og:type" content="website">
+<link rel="icon" href="icon.png?v=1010">
+<link rel="apple-touch-icon" href="icon.png?v=1010">
+
+<style>
+body {
+  font-family:system-ui,-apple-system,sans-serif;
+  background:#f1f5f9;
+  padding:16px;
+  margin:0;
+}
+.box {
+  background:#fff;
+  max-width:400px;
+  margin:20px auto;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 4px 20px #0001;
+}
+input,button {
+  width:100%;
+  padding:14px;
+  margin-top:12px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:18px;
+  box-sizing:border-box;
+}
+button {
+  background:#1d4ed8;
+  color:#fff;
+  border:0;
+  font-weight:700;
+  cursor:pointer;
+}
+button:disabled {background:#94a3b8}
+button.out {
+  background:#ef4444;
+  display:none;
+  margin-top:16px;
+}
+#log {
+  font-size:13px;
+  background:#f8fafc;
+  padding:10px;
+  border-radius:8px;
+  margin-top:12px;
+  min-height:20px;
+  word-break:break-word;
+}
+.small-link {
+  display:block;
+  text-align:center;
+  margin-top:20px;
+  font-size:13px;
+  color:#64748b;
+  text-decoration:underline;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+<div class="box">
+  <h3 id="title">📍 Жумушка келдим</h3>
+
+  <input id="pin" type="tel" inputmode="numeric"
+         maxlength="4" placeholder="4 орундуу ПИН">
+
+  <button id="btn" onclick="login()">Кирүү</button>
+  <button id="previewBtn" type="button" onclick="previewSchedule()" style="background:#e0e7ff;color:#1e40af">📅 Графикти көрүү</button>
+
+  <div id="log">📅 Графикти GPSсиз көрүүгө болот.</div>
+  <div id="info"></div>
+  <div id="scheduleInfo" style="font-size:13px;background:#eff6ff;border-radius:8px;padding:10px;margin-top:12px;display:none"></div>
+
+  <button id="outBtn" class="out" onclick="leaveWork()">
+    🚪 Жумуштан кеттим
+  </button>
+
+   <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
+    TEST ONLY — негизги каттоо эмес
+  </div>
+</div>
+
+<script>
+// TEST ONLY. Set exact Cloudflare test Worker URL before deployment.
+const API_URL = 'https://kadamjay-pin-test.umataly.workers.dev';
+const logEl=document.getElementById('log'),pinInput=document.getElementById('pin');
+const btn=document.getElementById('btn'),outBtn=document.getElementById('outBtn');
+const previewBtn=document.getElementById('previewBtn');
+let busy=false;
+function log(s){logEl.textContent=s;}
+function setBusy(v){busy=v;btn.disabled=v;outBtn.disabled=v;previewBtn.disabled=v;}
+async function api(path,payload,token){
+ const headers={'Content-Type':'application/json'};
+ if(token)headers.Authorization='Bearer '+token;
+ const response=await fetch(API_URL+path,{method:'POST',headers,body:JSON.stringify(payload||{})});
+ const data=await response.json().catch(()=>({error:'INVALID_RESPONSE'}));
+ if(!response.ok)throw Error(data.error||'SERVER_ERROR');
+ return data;
+}
+function gps(){return new Promise((resolve,reject)=>{
+ if(!navigator.geolocation)return reject(Error('GPS жок'));
+ navigator.geolocation.getCurrentPosition(p=>resolve({lat:p.coords.latitude,lng:p.coords.longitude,accuracy:p.coords.accuracy,gpsTimestamp:p.timestamp}),
+ e=>reject(Error('GPS катасы: '+e.message)),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+});}
+function refreshUI(){
+ const active=!!sessionStorage.getItem('testSession');
+ document.getElementById('title').textContent=active?'🧪 Тесттик каттоо':'🧪 Тест: жумушка келдим';
+ pinInput.style.display=active?'none':'block';btn.style.display=active?'none':'block';
+ outBtn.style.display=active?'block':'none';previewBtn.style.display='none';
+ document.getElementById('scheduleInfo').style.display='none';
+ log(active?'Тесттик сессия бар.':'Тесттик PIN киргизиңиз. Негизги Firebase колдонулбайт.');
+}
+async function login(){
+ if(busy)return;
+ const pin=pinInput.value.trim();if(!/^\d{4}$/.test(pin))return alert('4 орундуу PIN жазыңыз');
+ setBusy(true);
+ try{
+   log('PIN серверде текшерилүүдө...');
+   const data=await api('/verify-pin',{pin});
+   if(!data.testOnly||!data.sessionToken)throw Error('TEST_SESSION_REQUIRED');
+   sessionStorage.setItem('testSession',data.sessionToken);
+   await api('/session-check',{},data.sessionToken);
+   await sendAttendance('in',data.sessionToken);
+   refreshUI();log('✅ Тесттик келүү катталды');
+ }catch(e){log('❌ '+e.message);alert(e.message);}finally{setBusy(false);}
+}
+async function sendAttendance(type,token){
+ log('GPS алынууда...');const position=await gps();
+ const key='pending_'+type;
+ let eventId=sessionStorage.getItem(key);
+ if(!eventId){eventId=crypto.randomUUID();sessionStorage.setItem(key,eventId);}
+ const result=await api('/attendance',{type,eventId,...position},token);
+ if(result.saved)sessionStorage.removeItem(key);
+ return result;
+}
+async function leaveWork(){
+ if(busy)return;if(!confirm('Тесттик кетүүнү каттайсызбы?'))return;
+ setBusy(true);
+ try{
+  const token=sessionStorage.getItem('testSession');if(!token)throw Error('SESSION_MISSING');
+  await sendAttendance('out',token);sessionStorage.removeItem('testSession');
+  refreshUI();log('✅ Тесттик кетүү катталды');
+ }catch(e){log('❌ '+e.message);alert(e.message);}finally{setBusy(false);}
+}
+function previewSchedule(){alert('Бул коопсуз тесттик версияда графикти көрүү өчүрүлгөн. Негизги worker-original.html өзгөртүлгөн жок.');}
+refreshUI();
+</script>
+</body></html>
