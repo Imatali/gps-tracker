@@ -81,7 +81,8 @@ button.out {
   <input id="pin" type="tel" inputmode="numeric"
          maxlength="4" placeholder="4 орундуу ПИН">
 
-  <button id="btn" onclick="login()">Кирүү</button>
+  <button id="btn" onclick="login()">PIN менен кирүү</button>
+   <button id="inBtn" type="button" onclick="arriveWork()" style="display:none;background:#16a34a">📍 Жумушка келдим</button>
   <button id="previewBtn" type="button" onclick="previewSchedule()" style="background:#e0e7ff;color:#1e40af">📅 Графикти көрүү</button>
 
   <div id="log">📅 Графикти GPSсиз көрүүгө болот.</div>
@@ -102,10 +103,10 @@ button.out {
 const API_URL = 'https://kadamjay-pin-test.umataly.workers.dev';
 const logEl=document.getElementById('log'),pinInput=document.getElementById('pin');
 const btn=document.getElementById('btn'),outBtn=document.getElementById('outBtn');
-const previewBtn=document.getElementById('previewBtn');
+const previewBtn=document.getElementById('previewBtn'),inBtn=document.getElementById('inBtn');
 let busy=false;
 function log(s){logEl.textContent=s;}
-function setBusy(v){busy=v;btn.disabled=v;outBtn.disabled=v;previewBtn.disabled=v;}
+function setBusy(v){busy=v;btn.disabled=v;outBtn.disabled=v;inBtn.disabled=v;previewBtn.disabled=v;}
 async function api(path,payload,token){
  const headers={'Content-Type':'application/json'};
  if(token)headers.Authorization='Bearer '+token;
@@ -123,9 +124,9 @@ function refreshUI(){
  const active=!!sessionStorage.getItem('testSession');
  document.getElementById('title').textContent=active?'🧪 Тесттик каттоо':'🧪 Тест: жумушка келдим';
  pinInput.style.display=active?'none':'block';btn.style.display=active?'none':'block';
- outBtn.style.display=active?'block':'none';previewBtn.style.display='none';
+ outBtn.style.display=active?'block':'none';inBtn.style.display=active?'block':'none';previewBtn.style.display='none';
  document.getElementById('scheduleInfo').style.display='none';
- log(active?'Тесттик сессия бар.':'Тесттик PIN киргизиңиз. Негизги Firebase колдонулбайт.');
+ log(active?'PIN сессиясы бар. Катталуу үчүн «Жумушка келдим» басыңыз.':'Тесттик PIN киргизиңиз. Негизги Firebase колдонулбайт.');
 }
 async function login(){
  if(busy)return;
@@ -149,6 +150,12 @@ async function sendAttendance(type,token){
  const result=await api('/attendance',{type,eventId,...position},token);
  if(result.saved)sessionStorage.removeItem(key);
  return result;
+}
+async function arriveWork(){
+ if(busy)return;setBusy(true);
+ try{const token=sessionStorage.getItem('testSession');if(!token)throw Error('SESSION_MISSING');
+ await sendAttendance('in',token);log('✅ Тесттик келүү катталды');
+ }catch(e){log('❌ '+e.message);alert(e.message);}finally{setBusy(false);}
 }
 async function leaveWork(){
  if(busy)return;if(!confirm('Тесттик кетүүнү каттайсызбы?'))return;
