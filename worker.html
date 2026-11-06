@@ -8,8 +8,13 @@
 <meta property="og:description" content="Жумушка келүүнү белгилөө">
 <meta property="og:image" content="https://imatali.github.io/gps-tracker/icon.png?v=1010">
 <meta property="og:type" content="website">
-<link rel="icon" href="icon.png?v=1010">
-<link rel="apple-touch-icon" href="icon.png?v=1010">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Кадамжай ЖДПБ">
+<link rel="icon" type="image/png" sizes="192x192" href="./pwa-icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="./pwa-icon-192.png">
 
 <style>
 body {
@@ -591,6 +596,15 @@ log('🔎 ПИН текшерилүүдө...');
 
 } catch (error) {
   log('Firebase катасы: ' + error.message);
+}
+</script>
+<script>
+// PWA каттоо: PIN, GPS жана Firebase логикасынан өзүнчө.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .catch(error => console.warn('PWA каттоо ишке ашкан жок:', error));
+  });
 }
 </script>
 </body>
