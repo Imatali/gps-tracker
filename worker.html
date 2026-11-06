@@ -93,7 +93,7 @@ button.out {
   </button>
 
    <div style="font-size:10px;color:#aaa;margin-top:12px;text-align:center">
-    v1116 GPS + Firebase + 7 күндүк график
+    v444 GPS жаңыртуу + Firebase + 7 күндүк график
   </div>
 </div>
 
@@ -302,6 +302,60 @@ try {
     }
   };
 
+  // GPS heartbeat: каттоо тарыхынан өзүнчө, тиркеме активдүү болгондо гана.
+  const GPS_POLL_MS = 60 * 1000;
+  let gpsPollTimer = null;
+  let gpsPollBusy = false;
+  let gpsPollWorkerId = null;
+
+  async function sendGpsHeartbeat() {
+    if (gpsPollBusy || busy || document.hidden || !navigator.onLine) return;
+    const pin = localStorage.getItem('myPin');
+    const workerId = localStorage.getItem('myWorkerId');
+    if (!pin || !workerId || workerId !== gpsPollWorkerId) return;
+    gpsPollBusy = true;
+    try {
+      await authReady;
+      const pos = await getGPS();
+      if (localStorage.getItem('myWorkerId') !== workerId) return;
+      // Так эмес координатаны «жаңы ишенимдүү GPS» катары сактабайбыз.
+      if (!Number.isFinite(Number(pos.accuracy)) || pos.accuracy > MAX_GPS_ACCURACY || pos.accuracy <= 0) return;
+      const ref = db.ref('osh/gpsStatus/byPin/' + pin);
+      await ref.set({
+        workerId, lat: pos.lat, lng: pos.lng,
+        accuracy: pos.accuracy,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+    } catch (err) {
+      // GPS өчкөндө акыркы ийгиликтүү текшерүүнүн убактысын жаңыртпайбыз.
+      console.warn('GPS жаңыртуу ишке ашкан жок:', err.message);
+    } finally {
+      gpsPollBusy = false;
+    }
+  }
+
+  function stopGpsHeartbeat() {
+    if (gpsPollTimer !== null) clearInterval(gpsPollTimer);
+    gpsPollTimer = null;
+    gpsPollWorkerId = null;
+  }
+  function startGpsHeartbeat() {
+    const workerId = localStorage.getItem('myWorkerId');
+    if (!workerId) { stopGpsHeartbeat(); return; }
+    if (gpsPollWorkerId === workerId && gpsPollTimer !== null) return;
+    stopGpsHeartbeat();
+    gpsPollWorkerId = workerId;
+    gpsPollTimer = setInterval(sendGpsHeartbeat, GPS_POLL_MS);
+    // Каттоодон же тиркеме кайра ачылгандан кийин GPSти жаңыртуу.
+    setTimeout(sendGpsHeartbeat, 0);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && gpsPollWorkerId) sendGpsHeartbeat();
+  });
+  window.addEventListener('online', () => {
+    if (gpsPollWorkerId) sendGpsHeartbeat();
+  });
+
   function refreshUI() {
     const myPin = localStorage.getItem('myPin');
     const myWorkerId = localStorage.getItem('myWorkerId');
@@ -317,7 +371,9 @@ try {
       outBtn.style.display = 'block';
       previewBtn.style.display = 'none';
       showTodaySchedule(myPin);
+      startGpsHeartbeat();
     } else {
+      stopGpsHeartbeat();
       document.getElementById('title').innerText =
         '📍 Жумушка келдим';
 
@@ -579,6 +635,9 @@ log('🔎 ПИН текшерилүүдө...');
       // Кетүү тарыхына окуя кошулат
       await db.ref('osh/attendance').push().set(event);
 
+      stopGpsHeartbeat();
+      // Эски heartbeat башка каттоого тиешелүү болуп калбашы үчүн тазалайбыз.
+      await db.ref('osh/gpsStatus/byPin/' + pin).remove().catch(err => console.warn('GPS абалын тазалоо:', err.message));
       localStorage.removeItem('myWorkerId');
 
       log('🚪 Жумуштан кетүү катталды');
