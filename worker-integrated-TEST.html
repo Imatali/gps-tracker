@@ -112,7 +112,7 @@ async function api(path,payload,token){
  if(token)headers.Authorization='Bearer '+token;
  const response=await fetch(API_URL+path,{method:'POST',headers,body:JSON.stringify(payload||{})});
  const data=await response.json().catch(()=>({error:'INVALID_RESPONSE'}));
- if(!response.ok)throw Error(data.error||'SERVER_ERROR');
+ if(!response.ok)throw Error(data.detail ? data.error+': '+data.detail : (data.error||'SERVER_ERROR'));
  return data;
 }
 function gps(){return new Promise((resolve,reject)=>{
@@ -138,15 +138,20 @@ async function login(){
    if(!data.testOnly||!data.sessionToken)throw Error('TEST_SESSION_REQUIRED');
    sessionStorage.setItem('testSession',data.sessionToken);
    await api('/session-check',{},data.sessionToken);
-   await sendAttendance('in',data.sessionToken);
-   refreshUI();log('✅ Тесттик келүү катталды');
+   refreshUI();log('✅ PIN текшерилди. «Жумушка келдим» басып GPSти текшериңиз.');
  }catch(e){log('❌ '+e.message);alert(e.message);}finally{setBusy(false);}
 }
 async function sendAttendance(type,token){
  log('GPS алынууда...');const position=await gps();
+ const acc=Math.round(position.accuracy),age=Math.round((Date.now()-position.gpsTimestamp)/1000);
+ log('GPS тактыгы: '+acc+' м; маалыматтын жашы: '+age+' сек.');
+ if(!Number.isFinite(position.lat)||!Number.isFinite(position.lng)||!Number.isFinite(position.accuracy)||position.accuracy<=0)throw Error('GPS маалыматы жараксыз');
+ if(position.accuracy>100)throw Error('GPS тактыгы '+acc+' м. 100 метрден жакшыраак GPS керек. Телефондон же ачык жерде текшериңиз.');
+ if(Math.abs(Date.now()-position.gpsTimestamp)>60000)throw Error('GPS маалыматы 60 секунддан эски. Кайра аракет кылыңыз.');
  const key='pending_'+type;
  let eventId=sessionStorage.getItem(key);
  if(!eventId){eventId=crypto.randomUUID();sessionStorage.setItem(key,eventId);}
+ log('GPS тактыгы: '+acc+' м. Сервер текшерүүдө...');
  const result=await api('/attendance',{type,eventId,...position},token);
  if(result.saved)sessionStorage.removeItem(key);
  return result;
