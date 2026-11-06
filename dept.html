@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="authGate"><div id="authBox"><h2>🔒 Администратордун кирүүсү</h2><p id="authInfo">Firebase текшерилүүдө...</p><form id="authForm" hidden><input id="authEmail" type="email" autocomplete="username" placeholder="Электрондук почта" required><input id="authPassword" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn green" type="submit">Кирүү</button></form><p id="authError" role="alert"></p><button class="btn dark" id="authReturn" type="button">← Админ барагына кайтуу</button></div></div>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v1107 (аймактарды оңдоо)</div></div><div><select id="areaType" class="btn dark">
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v443 (GPS эскирүү белгиси)</div></div><div><select id="areaType" class="btn dark">
   <option value="work">🟦 Жумуш аймагы</option>
   <option value="registration">🟩 Каттоочу аймак</option>
   <option value="home">🟥 Үй аймагы (PIN)</option>
@@ -116,6 +116,7 @@ if (dataListening) {
   dataListening = false;
 }
 workerMarkers.clearLayers();
+lastAttendanceData = null;
 clearRegistrationAreas();
 unsavedAreaChanges = false;
 
@@ -137,59 +138,79 @@ map.getPane('workerPane').style.zIndex = 650;
 const workerMarkers = L.layerGroup().addTo(map);
 
 
+// Картада эски GPS жазуусу жашыл бойдон калбашы үчүн.
+// Бул азырынча attendance окуясынын убактысын пайдаланат; worker.html
+// өзүнчө GPS heartbeat жибергенге чейин «жаңы GPS» деп кепилденбейт.
+const GPS_WARNING_MS = 2 * 60 * 1000;
+const GPS_STALE_MS = 5 * 60 * 1000;
+let lastAttendanceData = null;
+let gpsRefreshTimer = null;
+
 function showWorkerLocations(data) {
+  lastAttendanceData = data;
   workerMarkers.clearLayers();
-
   const latest = {};
-
   Object.values(data || {}).forEach(item => {
     if (!item || !item.pin || !item.time) return;
-
     const pin = String(item.pin);
     const lat = Number(item.lat);
     const lng = Number(item.lng);
-
+    const t = Number(item.time);
     if (item.lat == null || item.lng == null ||
         !Number.isFinite(lat) || !Number.isFinite(lng) ||
+        !Number.isFinite(t) || t <= 0 ||
         Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
-
-    if (!latest[pin] || Number(item.time) > Number(latest[pin].time)) {
-      latest[pin] = item;
-    }
+    if (!latest[pin] || t > Number(latest[pin].time)) latest[pin] = item;
   });
 
+  const now = Date.now();
   Object.values(latest).forEach(item => {
     if (normalize(item.bolum) !== normalize(deptId)) return;
-
     const isWorking = item.type === 'in';
-    const color = isWorking ? '#16a34a' : '#dc2626';
-    const time = new Date(Number(item.time)).toLocaleString('ky-KG');
-
-    const marker = L.circleMarker(
-      [Number(item.lat), Number(item.lng)],
-      {
-        pane: 'workerPane',
-        radius: 9,
-        color: '#ffffff',
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 1
-      }
-    ).addTo(workerMarkers);
-
+    const timestamp = Number(item.time);
+    const age = Math.max(0, now - timestamp);
+    let color, state;
+    if (!isWorking) {
+      color = '#64748b';
+      state = '⚪ Жумуштан кеткен';
+    } else if (timestamp > now + 60 * 1000) {
+      color = '#dc2626';
+      state = '🔴 Убакыт туура эмес — текшерүү керек';
+    } else if (age >= GPS_STALE_MS) {
+      color = '#dc2626';
+      state = '🔴 GPS маалыматы эскирди — текшерүү керек';
+    } else if (age >= GPS_WARNING_MS) {
+      color = '#eab308';
+      state = '🟡 GPS жаңырган жок — текшерүү керек';
+    } else {
+      color = '#16a34a';
+      state = '🟢 Акыркы каттоо жаңы (үзгүлтүксүз GPS азырынча жок)';
+    }
+    const time = new Date(timestamp).toLocaleString('ky-KG');
+    const marker = L.circleMarker([Number(item.lat), Number(item.lng)], {
+      pane: 'workerPane', radius: 9, color: '#ffffff', weight: 2,
+      fillColor: color, fillOpacity: 1
+    }).addTo(workerMarkers);
     const popup = document.createElement('div');
     const name = document.createElement('strong');
     name.textContent = item.name || 'Кызматкер';
-
     const details = document.createElement('div');
-    details.textContent =
-      (isWorking ? '🟢 Жумушта' : '🔴 Жумуштан кеткен') +
-      ' | Акыркы GPS: ' + time;
-
+    details.textContent = state + ' | Акыркы каттоо/GPS: ' + time;
     popup.append(name, details);
     marker.bindPopup(popup);
   });
 }
+
+// Firebase жаңы окуя жөнөтпөсө да, карта ар 15 секундда эскирүүнү эсептейт.
+function startGpsAgeRefresh() {
+  if (gpsRefreshTimer) return;
+  gpsRefreshTimer = setInterval(() => {
+    if (adminAuthorized && dataListening && lastAttendanceData !== null) {
+      showWorkerLocations(lastAttendanceData);
+    }
+  }, 15000);
+}
+startGpsAgeRefresh();
 
 let tempPoly=null;
 let drawing=false;
