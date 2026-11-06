@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="authGate"><div id="authBox"><h2>🔒 Администратордун кирүүсү</h2><p id="authInfo">Firebase текшерилүүдө...</p><form id="authForm" hidden><input id="authEmail" type="email" autocomplete="username" placeholder="Электрондук почта" required><input id="authPassword" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn green" type="submit">Кирүү</button></form><p id="authError" role="alert"></p><button class="btn dark" id="authReturn" type="button">← Админ барагына кайтуу</button></div></div>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v443 (GPS эскирүү белгиси)</div></div><div><select id="areaType" class="btn dark">
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v444 (GPS эскирүү белгиси)</div></div><div><select id="areaType" class="btn dark">
   <option value="work">🟦 Жумуш аймагы</option>
   <option value="registration">🟩 Каттоочу аймак</option>
   <option value="home">🟥 Үй аймагы (PIN)</option>
@@ -138,14 +138,28 @@ map.getPane('workerPane').style.zIndex = 650;
 const workerMarkers = L.layerGroup().addTo(map);
 
 
-// Картада эски GPS жазуусу жашыл бойдон калбашы үчүн.
-// Бул азырынча attendance окуясынын убактысын пайдаланат; worker.html
-// өзүнчө GPS heartbeat жибергенге чейин «жаңы GPS» деп кепилденбейт.
+// GPS абалы каттоо тарыхынан өзүнчө сакталат.
 const GPS_WARNING_MS = 2 * 60 * 1000;
 const GPS_STALE_MS = 5 * 60 * 1000;
 let lastAttendanceData = null;
+let lastGpsStatusData = null;
 let gpsRefreshTimer = null;
 
+function gpsInsideWorkArea(lat, lng) {
+  if (!Array.isArray(remoteAreas) || !remoteAreas.length) return null;
+  return remoteAreas.some(ring => {
+    if (!Array.isArray(ring) || ring.length < 3) return false;
+    let inside = false;
+    for (let i=0,j=ring.length-1;i<ring.length;j=i++) {
+      const a=ring[i], b=ring[j];
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      const ay=Number(a[0]), ax=Number(a[1]), by=Number(b[0]), bx=Number(b[1]);
+      if (![ay,ax,by,bx].every(Number.isFinite)) return false;
+      if ((ay>lat)!==(by>lat) && lng < (bx-ax)*(lat-ay)/(by-ay)+ax) inside=!inside;
+    }
+    return inside;
+  });
+}
 function showWorkerLocations(data) {
   lastAttendanceData = data;
   workerMarkers.clearLayers();
@@ -153,13 +167,8 @@ function showWorkerLocations(data) {
   Object.values(data || {}).forEach(item => {
     if (!item || !item.pin || !item.time) return;
     const pin = String(item.pin);
-    const lat = Number(item.lat);
-    const lng = Number(item.lng);
     const t = Number(item.time);
-    if (item.lat == null || item.lng == null ||
-        !Number.isFinite(lat) || !Number.isFinite(lng) ||
-        !Number.isFinite(t) || t <= 0 ||
-        Math.abs(lat) > 90 || Math.abs(lng) > 180) return;
+    if (!Number.isFinite(t) || t <= 0) return;
     if (!latest[pin] || t > Number(latest[pin].time)) latest[pin] = item;
   });
 
@@ -167,27 +176,33 @@ function showWorkerLocations(data) {
   Object.values(latest).forEach(item => {
     if (normalize(item.bolum) !== normalize(deptId)) return;
     const isWorking = item.type === 'in';
-    const timestamp = Number(item.time);
-    const age = Math.max(0, now - timestamp);
+    const gps = (lastGpsStatusData || {})[String(item.pin)];
+    // Мурунку кызматкердин же эски сессиянын GPSин колдонбоо.
+    const validGps = isWorking && gps && gps.workerId === item.workerId &&
+      Number.isFinite(Number(gps.updatedAt)) && Number(gps.updatedAt) > 0 &&
+      Number.isFinite(Number(gps.lat)) && Number.isFinite(Number(gps.lng)) &&
+      Math.abs(Number(gps.lat)) <= 90 && Math.abs(Number(gps.lng)) <= 180 &&
+      Number(gps.accuracy) > 0 && Number(gps.accuracy) <= 100;
+    const gpsTime = validGps ? Number(gps.updatedAt) : 0;
+    const age = gpsTime ? Math.max(0, now - gpsTime) : Infinity;
     let color, state;
     if (!isWorking) {
-      color = '#64748b';
-      state = '⚪ Жумуштан кеткен';
-    } else if (timestamp > now + 60 * 1000) {
-      color = '#dc2626';
-      state = '🔴 Убакыт туура эмес — текшерүү керек';
-    } else if (age >= GPS_STALE_MS) {
-      color = '#dc2626';
-      state = '🔴 GPS маалыматы эскирди — текшерүү керек';
+      color = '#64748b'; state = '⚪ Жумуштан кеткен';
+    } else if (!validGps || gpsTime > now + 60000 || age >= GPS_STALE_MS) {
+      color = '#dc2626'; state = '🔴 GPS текшерүүсү жок же эскирди';
     } else if (age >= GPS_WARNING_MS) {
-      color = '#eab308';
-      state = '🟡 GPS жаңырган жок — текшерүү керек';
+      color = '#eab308'; state = '🟡 GPS жаңырган жок';
+    } else if (gpsInsideWorkArea(Number(gps.lat), Number(gps.lng)) === false) {
+      color = '#dc2626'; state = '🔴 GPS жаңы, бирок жумуш аймагынан тышкары';
+    } else if (gpsInsideWorkArea(Number(gps.lat), Number(gps.lng)) === null) {
+      color = '#eab308'; state = '🟡 GPS жаңы, жумуш аймагы текшериле элек';
     } else {
-      color = '#16a34a';
-      state = '🟢 Акыркы каттоо жаңы (үзгүлтүксүз GPS азырынча жок)';
+      color = '#16a34a'; state = '🟢 GPS жаңы, жумуш аймагында';
     }
-    const time = new Date(timestamp).toLocaleString('ky-KG');
-    const marker = L.circleMarker([Number(item.lat), Number(item.lng)], {
+    const lat = validGps ? Number(gps.lat) : Number(item.lat);
+    const lng = validGps ? Number(gps.lng) : Number(item.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat)>90 || Math.abs(lng)>180) return;
+    const marker = L.circleMarker([lat,lng], {
       pane: 'workerPane', radius: 9, color: '#ffffff', weight: 2,
       fillColor: color, fillOpacity: 1
     }).addTo(workerMarkers);
@@ -195,13 +210,12 @@ function showWorkerLocations(data) {
     const name = document.createElement('strong');
     name.textContent = item.name || 'Кызматкер';
     const details = document.createElement('div');
-    details.textContent = state + ' | Акыркы каттоо/GPS: ' + time;
+    const time = gpsTime ? new Date(gpsTime).toLocaleString('ky-KG') : 'маалымат жок';
+    details.textContent = state + ' | Акыркы GPS: ' + time;
     popup.append(name, details);
     marker.bindPopup(popup);
   });
 }
-
-// Firebase жаңы окуя жөнөтпөсө да, карта ар 15 секундда эскирүүнү эсептейт.
 function startGpsAgeRefresh() {
   if (gpsRefreshTimer) return;
   gpsRefreshTimer = setInterval(() => {
@@ -266,6 +280,13 @@ function startDataListeners() {
       showWorkers(snap.val());
     }, error => {
       status.textContent = 'Firebase PIN окуу катасы: ' + error.message;
+    });
+
+    db.ref('osh/gpsStatus/byPin').on('value', snap => {
+      lastGpsStatusData = snap.val() || {};
+      if (lastAttendanceData !== null) showWorkerLocations(lastAttendanceData);
+    }, error => {
+      status.textContent = 'GPS статусун окуу катасы: ' + error.message;
     });
 
     db.ref('osh/attendance').on('value', snap => {
@@ -401,6 +422,7 @@ function loadAreas(){
     remoteLoaded=true;
     if(value && Array.isArray(value.polygons)){
       remoteAreas=value.polygons;
+       if (lastAttendanceData !== null) showWorkerLocations(lastAttendanceData);
       if(!drawing && !unsavedAreaChanges){replaceAreas(remoteAreas);msg.textContent='✅ Firebase: '+areas.length+' аймак жүктөлдү';}
     }else{
       remoteAreas=null;
