@@ -341,7 +341,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1113 (Simplified dashboard)
+  Кадамжай ЖДПБ | Admin v1114 (Firebase departments)
 </div>
 </div>
 
@@ -388,10 +388,13 @@ authForm.addEventListener('submit', async event => {
   } finally { button.disabled = false; }
 });
 
-let depts = JSON.parse(
-  localStorage.getItem('myDepts') ||
-  '["Администрация","Бухгалтерия","КДО","Терапия","ГСВ №1","ГСВ №2","ГСВ №3","ГСВ №7"]'
-);
+// Бөлүмдөрдүн негизги булагы — Firebase osh/departments.
+let depts = [];
+function departmentNames(value) {
+  const entries = value && typeof value === 'object' ? Object.values(value) : [];
+  return [...new Set(entries.map(v => typeof v === 'string' ? v : v?.name)
+    .filter(v => typeof v === 'string' && v.trim()).map(v => v.trim()))];
+}
 
 const colors = [
   "border-t-blue-500","border-t-amber-400",
@@ -501,9 +504,6 @@ window.saveDefaultSchedule = async function() {
 };
 
 
-function saveDepts() {
-  localStorage.setItem('myDepts', JSON.stringify(depts));
-}
 
 function localDateString(timestamp) {
   const d = new Date(timestamp);
@@ -559,6 +559,10 @@ function stopListeners() {
 function startListeners() {
   if (listening) return;
   listening = true;
+  subscribe('osh/departments', snapshot => {
+    depts = departmentNames(snapshot.val());
+    render();
+  });
   subscribe('osh/settings/defaultSchedule', snapshot => {
     const stored = snapshot.val();
     defaultSchedule = stored && Array.isArray(stored.workDays)
@@ -1040,36 +1044,43 @@ window.resetPin = async function(pin) {
   }
 };
 
-// БӨЛҮМДҮ ӨЧҮРҮҮ
+// Бөлүмдөр Firebase'де сакталат. PIN жазууларына тийбейбиз.
 window.delDept = async function(dept) {
   ensureAdmin();
-  if (!confirm(
-    '"' + dept + '" бөлүмүн тизмеден өчүрөсүзбү? ' +
-    'Бул аракет бөлүмгө тиешелүү PIN-коддорду өчүрбөйт.'
-  )) return;
-
-  depts = depts.filter(d => d !== dept);
-  saveDepts();
-  render();
-  fillNewWorkerSchedule();
+  if (!confirm('"' + dept + '" бөлүмүн тизмеден өчүрөсүзбү? PIN-коддор өчүрүлбөйт.')) return;
+  try {
+    const result = await db.ref('osh/departments').transaction(current => {
+      if (!current || typeof current !== 'object') return;
+      const next = Array.isArray(current) ? [...current] : {...current};
+      for (const key of Object.keys(next)) {
+        const item = next[key];
+        if ((typeof item === 'string' ? item : item?.name) === dept) {
+          if (Array.isArray(next)) delete next[key]; else delete next[key];
+        }
+      }
+      return next;
+    }, undefined, false);
+    if (!result.committed) throw new Error('Бөлүмдөрдүн тизмеси жаңырган жок');
+  } catch (error) { alert('Өчүрүү катасы: ' + error.message); }
 };
 
-window.addDept = function() {
+window.addDept = async function() {
   ensureAdmin();
-  const dept = prompt('Жаңы бөлүмдүн атын жазыңыз:');
-  if (!dept || !dept.trim()) return;
-
-  const name = dept.trim();
-
-  if (depts.includes(name)) {
-    alert('Бул бөлүм бар');
-    return;
-  }
-
-  depts.push(name);
-  saveDepts();
-  render();
-  fillNewWorkerSchedule();
+  const name = prompt('Жаңы бөлүмдүн атын жазыңыз:')?.trim();
+  if (!name) return;
+  if (depts.includes(name)) { alert('Бул бөлүм бар'); return; }
+  try {
+    const result = await db.ref('osh/departments').transaction(current => {
+      const next = current && typeof current === 'object'
+        ? (Array.isArray(current) ? [...current] : {...current}) : {};
+      if (departmentNames(next).includes(name)) return;
+      const numericKeys = Object.keys(next).filter(k => /^\d+$/.test(k)).map(Number);
+      const nextKey = String(Math.max(0, ...numericKeys) + 1);
+      next[nextKey] = {id: Number(nextKey), name};
+      return next;
+    }, undefined, false);
+    if (!result.committed) alert('Бөлүм буга чейин кошулган же сактоо токтотулган');
+  } catch (error) { alert('Кошуу катасы: ' + error.message); }
 };
 
 window.filterDept = function(dept) {
