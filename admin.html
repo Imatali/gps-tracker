@@ -58,11 +58,16 @@ th,td{vertical-align:top}
   </div>
 
   <!-- КӨРСӨТКҮЧТӨР -->
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 mt-3">
     <div class="bg-green-50 border border-green-200 px-3 py-2 rounded-xl text-center">
       <div class="text-[11px] font-bold text-green-800">🟢 Жумушта</div>
       <div id="f_working" class="text-[28px] font-black text-green-700">0</div>
     </div>
+
+    <button type="button" onclick="showOutsideWorkers()" class="bg-orange-50 border border-orange-300 px-3 py-2 rounded-xl text-center hover:bg-orange-100" title="GPS боюнча аймактын сыртында жүргөндөрдүн тизмеси">
+      <div class="text-[11px] font-bold text-orange-800">📍 Сырттагылар</div>
+      <div id="f_outside" class="text-[28px] font-black text-orange-700">0</div>
+    </button>
 
     <div class="bg-orange-50 border border-orange-200 px-3 py-2 rounded-xl text-center">
       <div class="text-[11px] font-bold text-orange-800">🕘 Кечиккендер</div>
@@ -88,6 +93,12 @@ th,td{vertical-align:top}
       <div class="text-[11px] font-bold text-red-700">❌ Келбегендер</div>
       <div id="f_absent" class="text-[28px] font-black text-red-700">0</div>
     </div>
+  </div>
+
+  <div id="outsidePanel" class="hidden mt-3 rounded-xl border border-orange-200 bg-orange-50 p-3">
+    <div class="flex items-center justify-between gap-2"><b class="text-sm">📍 Аймактын сыртында (жаңы GPS)</b><button type="button" onclick="document.getElementById('outsidePanel').classList.add('hidden')" class="border rounded px-2 py-1">✕</button></div>
+    <div id="outsideList" class="text-sm mt-2"></div>
+    <p class="text-xs text-gray-600 mt-2">Бул тизмеге акыркы 2 мүнөттө жаңырган, тактыгы 100 мден жакшы GPS менен аймактан сыртта экени ырасталган кызматкерлер гана кирет. GPS эскирсе, «сыртта» деп эсептелбейт.</p>
   </div>
 
   <div class="flex justify-end mt-3">
@@ -412,6 +423,8 @@ let allPins = {};
 let allWorkers = {};
 let allLogs = {};
 let allAttendance = {};
+let allGpsStatus = {};
+let allDeptAreas = {};
 const FALLBACK_DEFAULT_SCHEDULE = {
   start:'08:30', lunchS:'12:00', lunchE:'13:00', end:'17:30',
   workDays:[1,2,3,4,5]
@@ -562,7 +575,7 @@ function stopListeners() {
   subscriptions.length = 0;
   listening = false;
   dailyLogsRef = null;
-  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {}; deptSchedules = {}; workerSchedules = {};
+  allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {}; allGpsStatus = {}; allDeptAreas = {}; deptSchedules = {}; workerSchedules = {};
 }
 function subscribeDailyLogs() {
   const today = localDateString(Date.now());
@@ -615,6 +628,8 @@ function startListeners() {
   subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
   subscribe('osh/workers', snapshot => { allWorkers = snapshot.val() || {}; render(); });
   subscribeDailyLogs();
+  subscribe('osh/gpsStatus/byPin', snapshot => { allGpsStatus = snapshot.val() || {}; render(); });
+  subscribe('osh/deptAreas/byName', snapshot => { allDeptAreas = snapshot.val() || {}; render(); });
   subscribe('osh/attendance', snapshot => {
     allAttendance = snapshot.val() || {}; renderAttendance(); render();
   });
@@ -672,6 +687,67 @@ function currentWorkerStatusByPin() {
   return latest;
 }
 
+// Картадагы v444 эрежеси: 2 мүнөттөн жаңы, 100 м же жакшы GPS,
+// ошол эле workerId, жана бөлүмдүн Firebase'де сакталган жумуш полигоны.
+// GPS жок/эски же полигон жок болсо, «сыртта» деп эсептелбейт.
+const OUTSIDE_GPS_FRESH_MS = 2 * 60 * 1000;
+function pointInWorkPolygons(lat, lng, polygons) {
+  if (!Array.isArray(polygons) || !polygons.length) return null;
+  return polygons.some(ring => {
+    if (!Array.isArray(ring) || ring.length < 3) return false;
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i], b = ring[j];
+      if (!Array.isArray(a) || !Array.isArray(b) || a.length < 2 || b.length < 2) return false;
+      const ay = Number(a[0]), ax = Number(a[1]), by = Number(b[0]), bx = Number(b[1]);
+      if (![ay, ax, by, bx].every(Number.isFinite)) return false;
+      if ((ay > lat) !== (by > lat) && lng < (bx - ax) * (lat - ay) / (by - ay) + ax) inside = !inside;
+    }
+    return inside;
+  });
+}
+function outsideWorkersNow(statusByPin) {
+  const latestAttendance = {};
+  for (const event of Object.values(allAttendance)) {
+    if (!event || !event.pin || !event.time) continue;
+    const pin = String(event.pin), t = Number(event.time);
+    if (!Number.isFinite(t) || t <= 0) continue;
+    if (!latestAttendance[pin] || t > Number(latestAttendance[pin].time)) latestAttendance[pin] = event;
+  }
+  const now = Date.now(), result = [];
+  for (const [pin, pinData] of Object.entries(allPins)) {
+    if (!pinData || !depts.includes(pinData.bolum) || statusByPin[pin]?.inside !== true) continue;
+    const event = latestAttendance[pin], gps = allGpsStatus[pin];
+    if (!event || event.type !== 'in' || !gps || gps.workerId !== event.workerId) continue;
+    const time = Number(gps.updatedAt), lat = Number(gps.lat), lng = Number(gps.lng), accuracy = Number(gps.accuracy);
+    if (!Number.isFinite(time) || time <= 0 || time > now + 60000 || now - time >= OUTSIDE_GPS_FRESH_MS ||
+        !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 ||
+        !Number.isFinite(accuracy) || accuracy <= 0 || accuracy > 100) continue;
+    const area = allDeptAreas[encodeURIComponent(pinData.bolum)];
+    if (pointInWorkPolygons(lat, lng, area?.polygons) !== false) continue;
+    result.push({pin, name: pinData.name || event.name || 'Кызматкер', dept: pinData.bolum, time});
+  }
+  return result.sort((a,b) => a.dept.localeCompare(b.dept) || a.name.localeCompare(b.name));
+}
+function updateOutsidePanel(workers) {
+  const list = document.getElementById('outsideList');
+  if (!workers.length) { list.textContent = 'Азыр жаңы GPS менен сыртта экени ырасталган кызматкер жок.'; return; }
+  list.replaceChildren();
+  for (const w of workers) {
+    const row = document.createElement('div'); row.className = 'border-b border-orange-200 py-2';
+    const b = document.createElement('b'); b.textContent = w.name;
+    const detail = document.createElement('span');
+    detail.textContent = ' — ' + w.dept + ' | Акыркы GPS: ' + new Date(w.time).toLocaleString('ky-KG');
+    row.append(b, detail); list.appendChild(row);
+  }
+}
+window.showOutsideWorkers = function() {
+  ensureAdmin();
+  const panel = document.getElementById('outsidePanel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) updateOutsidePanel(outsideWorkersNow(currentWorkerStatusByPin()));
+};
+
 // БӨЛҮМДӨРДҮ ЖАНА PIN ТАБЛИЦАСЫН КӨРСӨТҮҮ
 function render() {
   document.getElementById('deptCount').innerText = depts.length;
@@ -714,6 +790,9 @@ function render() {
     }
   });
 
+  const outsideWorkers = outsideWorkersNow(statusByPin);
+  document.getElementById('f_outside').innerText = outsideWorkers.length;
+  if (!document.getElementById('outsidePanel').classList.contains('hidden')) updateOutsidePanel(outsideWorkers);
   document.getElementById('f_working').innerText = working;
   document.getElementById('f_late').innerText = late;
   document.getElementById('f_lunchOut').innerText = lunchOut;
