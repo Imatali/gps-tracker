@@ -58,7 +58,12 @@ th,td{vertical-align:top}
   </div>
 
   <!-- КӨРСӨТКҮЧТӨР -->
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 mt-3">
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mt-3">
+    <div class="bg-green-50 border border-green-200 px-3 py-2 rounded-xl text-center">
+      <div class="text-[11px] font-bold text-green-800">🟢 Жумушта</div>
+      <div id="f_working" class="text-[28px] font-black text-green-700">0</div>
+    </div>
+
     <div class="bg-orange-50 border border-orange-200 px-3 py-2 rounded-xl text-center">
       <div class="text-[11px] font-bold text-orange-800">🕘 Кечиккендер</div>
       <div id="f_late" class="text-[28px] font-black text-orange-700">0</div>
@@ -341,7 +346,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1114 (Firebase departments)
+  Кадамжай ЖДПБ | Admin v1115 (daily status + working counter)
 </div>
 </div>
 
@@ -542,6 +547,8 @@ function timeString(timestamp) {
 
 // Маалыматтар администратор текшерилгенден кийин гана жүктөлөт.
 let listening = false;
+let logDay = localDateString(Date.now());
+let dailyLogsRef = null;
 const subscriptions = [];
 function subscribe(path, callback) {
   const ref = db.ref(path);
@@ -554,8 +561,38 @@ function stopListeners() {
   subscriptions.forEach(ref => ref.off());
   subscriptions.length = 0;
   listening = false;
+  dailyLogsRef = null;
   allPins = {}; allWorkers = {}; allLogs = {}; allAttendance = {}; deptSchedules = {}; workerSchedules = {};
 }
+function subscribeDailyLogs() {
+  const today = localDateString(Date.now());
+  if (dailyLogsRef) {
+    dailyLogsRef.off();
+    const index = subscriptions.indexOf(dailyLogsRef);
+    if (index >= 0) subscriptions.splice(index, 1);
+  }
+  logDay = today;
+  allLogs = {};
+  dailyLogsRef = db.ref('osh/logs/' + today);
+  dailyLogsRef.on('value', snapshot => {
+    allLogs = snapshot.val() || {};
+    render();
+  }, error => { authStatus.textContent = 'Firebase окуу катасы: ' + error.message; });
+  subscriptions.push(dailyLogsRef);
+}
+// Барак түнү бою ачык калса, дата жана күндүк статистика жаңыланат.
+setInterval(() => {
+  if (!adminAuthorized) return;
+  const today = localDateString(Date.now());
+  if (today !== logDay) {
+    document.getElementById('today').innerText = new Date().toLocaleDateString('ky-KG');
+    document.getElementById('attendanceDate').value = today;
+    subscribeDailyLogs();
+    renderAttendance();
+  }
+  render();
+}, 60000);
+
 function startListeners() {
   if (listening) return;
   listening = true;
@@ -577,11 +614,9 @@ function startListeners() {
   subscribe('osh/workerSchedules', snapshot => { workerSchedules = snapshot.val() || {}; showWorkerSchedule(); render(); });
   subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
   subscribe('osh/workers', snapshot => { allWorkers = snapshot.val() || {}; render(); });
-  subscribe('osh/logs/' + localDateString(Date.now()), snapshot => {
-    allLogs = snapshot.val() || {}; render();
-  });
+  subscribeDailyLogs();
   subscribe('osh/attendance', snapshot => {
-    allAttendance = snapshot.val() || {}; renderAttendance();
+    allAttendance = snapshot.val() || {}; renderAttendance(); render();
   });
 }
 auth.onAuthStateChanged(async user => {
@@ -605,25 +640,34 @@ auth.onAuthStateChanged(async user => {
   }
 });
 
-// Ар бир учурдагы PIN үчүн акыркы белгилүү каттоо абалын табуу.
-// Эски/өчүрүлгөн PIN жана кайталанган worker жазуулары эсептелбейт.
+// Бүгүнкү иш абалын окуялар боюнча аныктайбыз. Мурунку күндүн
+// "inside:true" мааниси жаңы күндө автоматтык "Жумушта" болбойт.
+// Бул маалымат Firebase'ге жазылбайт: панелдеги эсеп гана өзгөрөт.
 function currentWorkerStatusByPin() {
+  const today = localDateString(Date.now());
   const latest = {};
-  for (const [key, w] of Object.entries(allWorkers)) {
-    if (!w || typeof w !== 'object') continue;
-    const pin = String(w.pin ?? '');
-    if (!Object.prototype.hasOwnProperty.call(allPins, pin) || !allPins[pin]) continue;
-    // Эски форматтагы inside жок жазуу иште деп эсептелбейт.
-    if (typeof w.inside !== 'boolean') continue;
-    const time = Math.max(
-      Number(w.time) || 0,
-      Number(w.leaveTime) || 0,
-      Number(w.ts) || 0
-    );
+  function consider(pin, inside, time, source) {
+    if (!Object.prototype.hasOwnProperty.call(allPins, pin) || !allPins[pin]) return;
+    if (!Number.isFinite(time) || time <= 0 || localDateString(time) !== today) return;
+    // Бирдей убакыт болсо чыгуу (false) артыкчылыктуу.
     if (!latest[pin] || time > latest[pin].time ||
-        (time === latest[pin].time && w.inside === false)) {
-      latest[pin] = { inside: w.inside, time, key };
+        (time === latest[pin].time && inside === false)) {
+      latest[pin] = {inside, time, source};
     }
+  }
+  for (const w of Object.values(allWorkers)) {
+    if (!w || typeof w !== 'object' || typeof w.inside !== 'boolean') continue;
+    const pin = String(w.pin ?? '');
+    const time = w.inside
+      ? Math.max(Number(w.time) || 0, Number(w.ts) || 0)
+      : Math.max(Number(w.leaveTime) || 0, Number(w.time) || 0, Number(w.ts) || 0);
+    consider(pin, w.inside, time, 'workers');
+  }
+  for (const event of Object.values(allAttendance)) {
+    if (!event || typeof event !== 'object') continue;
+    const type = String(event.type || '').toLowerCase();
+    if (type !== 'in' && type !== 'out') continue;
+    consider(String(event.pin ?? ''), type === 'in', Number(event.time), 'attendance');
   }
   return latest;
 }
@@ -643,7 +687,7 @@ function render() {
   updateNewRoleOptions();
   updateDeptScheduleOptions();
 
-  let late = 0, lunchOut = 0, lunchIn = 0, early = 0, absent = 0;
+  let working = 0, late = 0, lunchOut = 0, lunchIn = 0, early = 0, absent = 0;
 
   const statusByPin = currentWorkerStatusByPin();
   const pins = Object.keys(allPins);
@@ -655,7 +699,7 @@ function render() {
 
     const log = allLogs[pin];
 
-    if (!activeWorker) absent++;
+    if (activeWorker) working++; else absent++;
 
     if (log) {
       if (log.late) late++;
@@ -665,6 +709,7 @@ function render() {
     }
   });
 
+  document.getElementById('f_working').innerText = working;
   document.getElementById('f_late').innerText = late;
   document.getElementById('f_lunchOut').innerText = lunchOut;
   document.getElementById('f_lunchIn').innerText = lunchIn;
