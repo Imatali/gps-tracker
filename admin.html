@@ -690,7 +690,12 @@ function render() {
   let working = 0, late = 0, lunchOut = 0, lunchIn = 0, early = 0, absent = 0;
 
   const statusByPin = currentWorkerStatusByPin();
-  const pins = Object.keys(allPins);
+  // Статистика бөлүмдөрдүн карточкаларындагы ошол эле кызматкерлерди санайт.
+  // Бөлүмгө бекитилбеген эски PIN жазуулары жалпы санга кошулбайт.
+  const deptSet = new Set(depts);
+  const pins = Object.keys(allPins).filter(pin =>
+    allPins[pin] && deptSet.has(allPins[pin].bolum)
+  );
 
   pins.forEach(pin => {
     const pinData = allPins[pin];
