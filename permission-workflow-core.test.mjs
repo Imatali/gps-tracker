@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {validateRequest,mayReview,approvedMinutesInShift} from './permission-workflow-core.mjs';
+const employee={workerId:'e1',role:'employee',department:'A'};
+const head={workerId:'h1',role:'head',department:'A'};
+const director={workerId:'d1',role:'director',department:'HQ'};
+assert.equal(mayReview(head,employee,{status:'pending'}),true);
+assert.equal(mayReview(head,{workerId:'e2',role:'employee',department:'B'},{status:'pending'}),false);
+assert.equal(mayReview(head,head,{status:'pending'}),false);
+assert.equal(mayReview(director,head,{status:'pending'}),true);
+assert.equal(mayReview(director,employee,{status:'pending'}),false);
+assert.throws(()=>validateRequest({from_time:'2026-11-16T09:00:00',to_time:'2026-11-16T10:00:00',reason:'x'}));
+assert.equal(validateRequest({from_time:'2026-11-16T09:00:00+06:00',to_time:'2026-11-16T10:00:00+06:00',reason:' x '}).reason,'x');
+assert.equal(approvedMinutesInShift([{status:'approved',from_time:'2026-11-16T09:00:00Z',to_time:'2026-11-16T10:00:00Z'},{status:'approved',from_time:'2026-11-16T09:30:00Z',to_time:'2026-11-16T10:30:00Z'}],'2026-11-16T09:00:00Z','2026-11-16T11:00:00Z'),90);
+console.log('Permission core tests passed (8 assertions)');
