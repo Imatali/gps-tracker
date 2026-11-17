@@ -891,7 +891,11 @@ function render() {
 
     table += `
       <tr class="border-t">
-        <td class="p-2 font-medium">${escapeHTML(v.name || '')}</td>
+        <td class="p-2 font-medium">
+          <div>${escapeHTML(v.name || '')}</div>
+          <button type="button" data-edit-name-pin="${escapeAttr(pin)}" onclick="editPinName(this.dataset.editNamePin)"
+            class="mt-1 bg-blue-50 border border-blue-200 text-blue-700 rounded px-2 py-1 text-[11px]">✏️ Аты-жөнүн түзөтүү</button>
+        </td>
         <td class="p-2">${escapeHTML(v.bolum || '')}</td>
         <td class="p-2">
           <div class="text-[11px] mb-1">${escapeHTML(roleLabel)}</div>
@@ -1050,6 +1054,39 @@ window.savePinRole = async function(pin) {
   } catch (error) {
     alert('Ролду сактоо катасы: ' + error.message);
     render();
+  } finally {
+    if (button) button.disabled = false;
+  }
+};
+
+// Кызматкердин аты-жөнүн гана өзгөртүү; PIN, телефон жана график сакталат.
+window.editPinName = async function(pin) {
+  ensureAdmin();
+  pin = String(pin);
+  const current = allPins[pin];
+  if (!current) { alert('Кызматкер табылган жок'); return; }
+  const previousName = String(current.name || '');
+  const answer = prompt('Кызматкердин туура аты-жөнүн жазыңыз:', previousName);
+  if (answer === null) return;
+  const newName = answer.trim().replace(/\s+/g, ' ');
+  if (!newName || newName.length > 150 || /[\u0000-\u001f\u007f]/.test(newName)) {
+    alert('Аты-жөнүн туура жазыңыз (1–150 белги).'); return;
+  }
+  if (newName === previousName) return;
+  if (!confirm('«' + previousName + '» → «' + newName + '» деп өзгөртөсүзбү?')) return;
+  const button = [...document.querySelectorAll('[data-edit-name-pin]')]
+    .find(el => el.dataset.editNamePin === pin);
+  if (button) button.disabled = true;
+  try {
+    // Транзакция бир гана name талаасына тийет жана параллелдүү өзгөрүүлөрдү текшерет.
+    const result = await db.ref('osh/pins/' + pin + '/name').transaction(name => {
+      if (name !== previousName) return;
+      return newName;
+    }, undefined, false);
+    if (!result.committed) throw new Error('Аты-жөнү башка жерден өзгөргөн. Баракты жаңыртып, кайра аракет кылыңыз.');
+    alert('✅ Аты-жөнү сакталды.');
+  } catch (error) {
+    alert('Аты-жөнүн сактоо катасы: ' + error.message);
   } finally {
     if (button) button.disabled = false;
   }
