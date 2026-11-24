@@ -2,7 +2,7 @@
 <html lang="ky">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Отчёт — Кадамжай ЖДПБ v1110</title>
+<title>Отчёт — Кадамжай ЖДПБ v1118</title>
 <style>
 *{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f8fafc;color:#172033;margin:0;padding:12px}.wrap{max-width:1450px;margin:auto}.header,.panel,.auth{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 10px #0001}.header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.filters{display:grid;grid-template-columns:120px 170px minmax(140px,1fr) minmax(170px,1.5fr) repeat(3,auto);gap:8px;margin-bottom:12px}.input,.btn{padding:11px;border-radius:9px;font-size:14px}.input{width:100%;border:1px solid #cbd5e1;background:white}.btn{border:0;font-weight:bold;cursor:pointer;background:#2563eb;color:white}.btn.green{background:#16a34a}.btn.dark{background:#334155}.btn.gray{background:#e2e8f0;color:#172033}.btn:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.stat{background:#fff;padding:16px;border-radius:12px;text-align:center;border:1px solid #e2e8f0}.stat small{font-size:12px;color:#64748b}.stat b{display:block;font-size:27px;margin-top:6px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:11px;border-bottom:1px solid #e2e8f0;text-align:left;white-space:nowrap}th{background:#f1f5f9}#status{font-size:13px;color:#475569;margin-bottom:12px}.auth{max-width:440px;margin:60px auto}.auth input{margin:6px 0}.hidden{display:none!important}.muted{font-size:12px;color:#64748b}.late{color:#c2410c;font-weight:bold}.ok{color:#15803d;font-weight:bold}.absent{color:#b91c1c;font-weight:bold}@media(max-width:850px){.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.filters .btn{width:100%}}
 @media print{.filters,.header button,#status,.auth{display:none!important}body{background:white;padding:0}.panel,.stat{box-shadow:none}}
@@ -11,7 +11,7 @@
 <body>
 <section id="authBox" class="auth"><h2>🔐 Отчётко кирүү</h2><p id="authStatus" class="muted">Firebase текшерилүүдө...</p><form id="authForm" class="hidden"><input class="input" id="email" type="email" autocomplete="username" placeholder="Электрондук почта" required><input class="input" id="password" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn" type="submit" id="loginBtn">Кирүү</button></form></section>
 <main id="app" class="wrap hidden">
-<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1110 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
+<div class="header"><div><b>📊 Отчёт — Кадамжай ЖДПБ</b><div class="muted">Firebase · v1118 · күндүк табель</div></div><div><button class="btn gray" id="backBtn">← Админ</button> <button class="btn dark" id="logoutBtn">🚪 Чыгуу</button></div></div>
 <div class="filters"><select class="input" id="mode"><option value="day">Күндүк</option><option value="week">Жумалык</option><option value="month">Айлык</option><option value="number">Число боюнча табель</option></select><input class="input" type="date" id="date"><select class="input" id="dept"><option value="all">Бардык бөлүмдөр</option></select><input class="input" id="search" placeholder="🔎 Аты / PIN издөө"><button class="btn" id="refreshBtn">🔃 Жаңылоо</button><button class="btn green" id="csvBtn">📥 Excel (.xlsx)</button><button class="btn dark" id="printBtn">🖨️ PDF</button></div>
 <div id="periodNote" class="muted" style="margin-bottom:8px"></div><div id="status">Firebase'ден маалымат жүктөлүүдө...</div>
 <div class="stats"><div class="stat"><small>БАРДЫГЫ</small><b id="s_all">0</b></div><div class="stat"><small>КЕЛДИ</small><b id="s_in">0</b></div><div class="stat"><small>КЕЧИКТИ</small><b id="s_late">0</b></div><div class="stat"><small>КЕЛБЕДИ</small><b id="s_abs">0</b></div></div>
@@ -36,7 +36,7 @@ const localDate=t=>{const d=new Date(t);return [d.getFullYear(),String(d.getMont
 const clock=t=>t?new Date(t).toLocaleTimeString('ky-KG',{hour:'2-digit',minute:'2-digit'}):'—';
 const minutes=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(t||'');return m?Number(m[1])*60+Number(m[2]):null};
 $('date').value=localDate(Date.now());
-$('backBtn').onclick=()=>location.href='admin.html?v=1113';
+$('backBtn').onclick=()=>location.href='admin.html?v=1118';
 $('logoutBtn').onclick=()=>auth.signOut();
 $('printBtn').onclick=()=>window.print();
 $('mode').onchange=render;$('date').onchange=render;$('dept').onchange=render;$('search').oninput=render;$('refreshBtn').onclick=()=>{if(authorized)render()};
@@ -69,6 +69,18 @@ function counted(first,last,windows,date){
  const a=(first-midnight)/60000,b=(last-midnight)/60000;
  return Math.round(windows.reduce((sum,[x,y])=>sum+Math.max(0,Math.min(b,y)-Math.max(a,x)),0));
 }
+function attendanceDay(ev,schedule,date,now){
+ const plan=planFor(schedule,date), first=ev.ins.length?Math.min(...ev.ins):null;
+ const last=ev.outs.length?Math.max(...ev.outs):null;
+ const minute=t=>{const d=new Date(t);return d.getHours()*60+d.getMinutes()};
+ const today=localDate(now), start=minutes(schedule?.start), end=minutes(schedule?.end);
+ const late=plan.mins>0&&first!==null&&minute(first)>start;
+ const early=plan.mins>0&&first!==null&&last!==null&&last>first&&minute(last)<end;
+ const absent=plan.mins>0&&first===null&&(date<today||(date===today&&minute(now)>start));
+ const midnight=new Date(date+'T00:00:00').getTime();
+ const worked=plan.mins===0?0:first===null||last===null||last<=first||plan.mins===null?null:Math.round(plan.windows.reduce((sum,[x,y])=>sum+Math.max(0,Math.min((last-midnight)/60000,y)-Math.max((first-midnight)/60000,x)),0));
+ return {first,last,late,early,absent,planned:plan.mins,worked,lateMinutes:late?minute(first)-start:0,earlyMinutes:early?end-minute(last):0};
+}
 function rangeDates(date,mode){
  const d=new Date(date+'T12:00:00');if(Number.isNaN(d.getTime()))return [];
  let from=new Date(d),to=new Date(d);
@@ -79,13 +91,13 @@ function rangeDates(date,mode){
 function render(){
  if(!authorized)return;
  if(!readyPins||!readyAttendance||!readySchedules){$('status').textContent='⏳ Маалымат жүктөлүүдө...';return}
- const date=$('date').value,mode=$('mode').value,dates=rangeDates(date,mode),today=localDate(Date.now()),selected=$('dept').value,q=$('search').value.trim().toLocaleLowerCase();
+ const now=Date.now(); const date=$('date').value,mode=$('mode').value,dates=rangeDates(date,mode),today=localDate(Date.now()),selected=$('dept').value,q=$('search').value.trim().toLocaleLowerCase();
  if(!dates.length)return;
  const depts=[...new Set(Object.values(pins).filter(v=>v&&typeof v==='object').map(v=>String(v.bolum||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ky'));
  $('dept').replaceChildren();const all=document.createElement('option');all.value='all';all.textContent='Бардык бөлүмдөр';$('dept').append(all);depts.forEach(d=>{const opt=document.createElement('option');opt.value=d;opt.textContent=d;$('dept').append(opt)});$('dept').value=selected==='all'||depts.includes(selected)?selected:'all';
  const dateSet=new Set(dates),events={};
  for(const e of Object.values(attendance)){
-  if(!e||typeof e!=='object'||!e.pin||!Number.isFinite(Number(e.time)))continue;
+  if(!e||typeof e!=='object'||!e.pin||!Number.isFinite(Number(e.time))||Number(e.time)>now)continue;
   const day=localDate(Number(e.time));if(!dateSet.has(day))continue;
   const pin=String(e.pin);if(!events[pin])events[pin]={};if(!events[pin][day])events[pin][day]={ins:[],outs:[]};
   if(e.type==='in')events[pin][day].ins.push(Number(e.time));if(e.type==='out')events[pin][day].outs.push(Number(e.time));
@@ -93,12 +105,10 @@ function render(){
  const workers=Object.entries(pins).filter(([pin,v])=>v&&typeof v==='object'&&($('dept').value==='all'||String(v.bolum||'')===$('dept').value)&&(!q||(String(v.name||'')+' '+pin+' '+String(v.bolum||'')).toLocaleLowerCase().includes(q)));
  rows=workers.map(([pin,v])=>{
   const daily=dates.map(day=>{
-   const ev=events[pin]?.[day]||{ins:[],outs:[]};const first=ev.ins.length?Math.min(...ev.ins):null,last=ev.outs.length?Math.max(...ev.outs):null;
-   const resolved=scheduleFor(pin,v,day),plan=planFor(resolved.schedule,day),start=minutes(resolved.schedule?.start),arrival=first!=null?new Date(first):null;
-   const late=plan.mins>0&&!!arrival&&start!==null&&(arrival.getHours()*60+arrival.getMinutes()>start);
-   const worked=plan.mins===0?0:counted(first,last,plan.windows,day);
-   const review=day>today?'Келе элек күн':plan.mins===null?'График катасы':plan.mins===0?(first||last?'Эс алуудагы каттоо':'—'):worked===null?'Каттоо жетишсиз':'Алдын ала';
-   return {day,first,last,late,source:resolved.source,planned:plan.mins,worked,review,status:day>today?'Келе элек күн':plan.mins===0?'Эс алуу':!first?'Каттоо жок':late?'Кечикти':'Убагында'};
+   const ev=events[pin]?.[day]||{ins:[],outs:[]};
+   const resolved=scheduleFor(pin,v,day),d=attendanceDay(ev,resolved.schedule,day,now);
+   const review=day>today?'Келе элек күн':d.planned===null?'График катасы':d.planned===0?(d.first||d.last?'Эс алуудагы каттоо':'—'):d.worked===null?'Каттоо жетишсиз':'Алдын ала';
+   return {...d,day,source:resolved.source,review,status:day>today?'Келе элек күн':d.planned===null?'График катасы':d.planned===0?'Эс алуу':d.absent?'Каттоо жок':d.first===null?'График баштала элек':([d.late?'Кечикти':'',d.early?'Эрте кетти':''].filter(Boolean).join(' / ')||'Убагында')};
   });
   if(mode==='day'){
    const d=daily[0];return{pin,name:String(v.name||''),dept:String(v.bolum||''),timeIn:d.first,timeOut:d.last,late:d.late,source:d.source,planned:d.planned,worked:d.worked,review:d.review,phone:v.deviceId?'Байланган':'Байланган эмес',status:d.status,daily};
@@ -106,7 +116,7 @@ function render(){
   const elapsed=daily.filter(d=>d.day<=today),planKnown=elapsed.every(d=>d.planned!==null),planned=planKnown?elapsed.reduce((a,d)=>a+d.planned,0):null;
   const worked=elapsed.some(d=>d.worked!==null)?elapsed.reduce((a,d)=>a+(d.worked||0),0):null;
   const incomplete=elapsed.filter(d=>d.planned>0&&d.worked===null).length;
-  const missing=elapsed.filter(d=>d.planned>0&&!d.first).length;
+  const missing=elapsed.filter(d=>d.absent).length;
   const lateDays=elapsed.filter(d=>d.late).length;
   const future=daily.some(d=>d.day>today);
   return{pin,name:String(v.name||''),dept:String(v.bolum||''),planned,worked,missing,lateDays,incomplete,daysWithEntry:elapsed.filter(d=>d.first).length,review:!planKnown?'График катасы':incomplete?'Текшерүү керек':future?'Алдын ала':'Алдын ала',phone:v.deviceId?'Байланган':'Байланган эмес',daily};
@@ -126,7 +136,7 @@ function render(){
   }else if(mode==='day'){
    head.innerHTML='<tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>PIN</th><th>Кирди</th><th>Чыкты</th><th>Статус</th><th>График булагы</th><th>План</th><th>Катталган саат*</th><th>Текшерүү</th><th>Телефон</th></tr>';
   $('tbody').innerHTML=rows.length?rows.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.dept)}</td><td>${escapeHtml(r.pin)}</td><td>${clock(r.timeIn)}</td><td>${clock(r.timeOut)}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.source)}</td><td>${fmtDuration(r.planned)}</td><td>${fmtDuration(r.worked)}</td><td>${escapeHtml(r.review)}</td><td>${escapeHtml(r.phone)}</td></tr>`).join(''):'<tr><td colspan="12">Маалымат табылган жок</td></tr>';
-  $('s_all').textContent=rows.length;$('s_in').textContent=rows.filter(r=>r.timeIn).length;$('s_late').textContent=rows.filter(r=>r.late).length;$('s_abs').textContent=rows.filter(r=>!r.timeIn&&r.planned>0&&date<=today).length;
+  $('s_all').textContent=rows.length;$('s_in').textContent=rows.filter(r=>r.timeIn).length;$('s_late').textContent=rows.filter(r=>r.late).length;$('s_abs').textContent=rows.filter(r=>r.daily[0].absent).length;
   $('s_in').previousElementSibling.textContent='КЕЛДИ';$('s_late').previousElementSibling.textContent='КЕЧИКТИ';$('s_abs').previousElementSibling.textContent='КАТТОО ЖОК';
  }else{
   head.innerHTML='<tr><th>№</th><th>Аты-жөнү</th><th>Бөлүм</th><th>PIN</th><th>План*</th><th>Катталган саат*</th><th>Кирген күн</th><th>Каттоо жок күн</th><th>Кечиккен күн</th><th>Текшерүү</th><th>Телефон</th></tr>';
@@ -141,13 +151,13 @@ function numberCell(d,today){
  if(d.day>today)return '';
  if(d.planned===null)return '?';
  if(d.planned===0)return 'Э';
- if(d.worked===null)return d.first!==null?'К':'КЖ';
+ if(d.worked===null)return d.first!==null?'К':d.absent?'КЖ':'';
  return Number((d.worked/60).toFixed(2));
 }
 const MONTH_KY=['','январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 async function numberWorkbook(){
  if(typeof ExcelJS==='undefined')throw Error('ExcelJS китепканасы жүктөлгөн жок. Интернетти текшериңиз.');
- const date=$('date').value,year=Number(date.slice(0,4)),month=Number(date.slice(5,7));
+ const now=Date.now(); const date=$('date').value,year=Number(date.slice(0,4)),month=Number(date.slice(5,7));
  const monthDays=new Date(year,month,0).getDate(),today=localDate(Date.now());
  const groups=new Map();
  for(const r of rows){if(!groups.has(r.dept))groups.set(r.dept,[]);groups.get(r.dept).push(r)}

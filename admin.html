@@ -41,7 +41,7 @@ th,td{vertical-align:top}
     </div>
 
     <div class="flex gap-2 flex-wrap">
-      <a href="reports.html?v=1020"
+      <a href="reports.html?v=1118"
          class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[13px] font-bold">
         📊 Отчет
       </a>
@@ -362,7 +362,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1117 (attendance details)
+  Кадамжай ЖДПБ | Admin v1118 (attendance alignment)
 </div>
 </div>
 
@@ -775,24 +775,32 @@ function planFor(schedule,date){
  const a=minutes(schedule.start),b=minutes(schedule.lunchS),c=minutes(schedule.lunchE),d=minutes(schedule.end);
  return {mins:(b-a)+(d-c),windows:[[a,b],[c,d]]};
 }
+function attendanceDay(ev,schedule,date,now){
+ const plan=planFor(schedule,date), first=ev.ins.length?Math.min(...ev.ins):null;
+ const last=ev.outs.length?Math.max(...ev.outs):null;
+ const minute=t=>{const d=new Date(t);return d.getHours()*60+d.getMinutes()};
+ const today=localDateString(now), start=minutes(schedule?.start), end=minutes(schedule?.end);
+ const late=plan.mins>0&&first!==null&&minute(first)>start;
+ const early=plan.mins>0&&first!==null&&last!==null&&last>first&&minute(last)<end;
+ const absent=plan.mins>0&&first===null&&(date<today||(date===today&&minute(now)>start));
+ const midnight=new Date(date+'T00:00:00').getTime();
+ const worked=plan.mins===0?0:first===null||last===null||last<=first||plan.mins===null?null:Math.round(plan.windows.reduce((sum,[x,y])=>sum+Math.max(0,Math.min((last-midnight)/60000,y)-Math.max((first-midnight)/60000,x)),0));
+ return {first,last,late,early,absent,planned:plan.mins,worked,lateMinutes:late?minute(first)-start:0,earlyMinutes:early?end-minute(last):0};
+}
 function dailyDiscipline(pins, now=Date.now()) {
-  const day=localDateString(now), events={}, result={late:[],early:[],arrived:new Set()};
-  for(const e of Object.values(allAttendance)) {
-    if(!e || !e.pin || !Number.isFinite(Number(e.time)) || Number(e.time)>now || localDateString(Number(e.time))!==day) continue;
-    const pin=String(e.pin); const v=events[pin] ||= {first:null,last:null};
-    if(e.type==='in') v.first=v.first===null?Number(e.time):Math.min(v.first,Number(e.time));
-    if(e.type==='out') v.last=v.last===null?Number(e.time):Math.max(v.last,Number(e.time));
-  }
-  const minute=t=>{const d=new Date(t);return d.getHours()*60+d.getMinutes()};
-  for(const pin of pins) {
-    const e=events[pin]; if(!e || e.first===null) continue;
-    result.arrived.add(pin);
-    const {schedule}=scheduleFor(pin,allPins[pin],day);
-    if(!(planFor(schedule,day).mins>0)) continue;
-    if(minute(e.first)>minutes(schedule.start)) result.late.push({pin,planned:schedule.start,actual:timeString(e.first),difference:minute(e.first)-minutes(schedule.start)});
-    if(e.last!==null && e.last>e.first && minute(e.last)<minutes(schedule.end) && minute(e.last)>=minutes(schedule.lunchE)) result.early.push({pin,planned:schedule.end,actual:timeString(e.last),difference:minutes(schedule.end)-minute(e.last)});
-  }
-  return result;
+ const day=localDateString(now),events={},result={late:[],early:[],arrived:new Set(),days:{}};
+ for(const e of Object.values(allAttendance)){
+  if(!e||!e.pin||!Number.isFinite(Number(e.time))||Number(e.time)>now||localDateString(Number(e.time))!==day)continue;
+  const ev=events[String(e.pin)] ||= {ins:[],outs:[]};
+  if(e.type==='in')ev.ins.push(Number(e.time));if(e.type==='out')ev.outs.push(Number(e.time));
+ }
+ for(const pin of pins){
+  const {schedule}=scheduleFor(pin,allPins[pin],day),d=attendanceDay(events[pin]||{ins:[],outs:[]},schedule,day,now);result.days[pin]=d;
+  if(d.first!==null)result.arrived.add(pin);
+  if(d.late)result.late.push({pin,planned:schedule.start,actual:timeString(d.first),difference:d.lateMinutes});
+  if(d.early)result.early.push({pin,planned:schedule.end,actual:timeString(d.last),difference:d.earlyMinutes});
+ }
+ return result;
 }
 
 let attendanceGroups={}, activeCategory=null;
@@ -821,7 +829,7 @@ function render() {
 
   const statusByPin = currentWorkerStatusByPin();
   const deptSet = new Set(depts);
-  const pins = Object.keys(allPins).filter(pin => allPins[pin] && deptSet.has(allPins[pin].bolum));
+  const pins = Object.keys(allPins).filter(pin => allPins[pin] && typeof allPins[pin]==='object');
   const discipline = dailyDiscipline(pins);
   const groups = {working:[],late:discipline.late,early:discipline.early,lunchOut:[],lunchIn:[],absent:[],departed:[]};
   const day=localDateString(Date.now());
@@ -831,7 +839,7 @@ function render() {
     const {schedule}=scheduleFor(pin,allPins[pin],day);
     if(status?.inside===true) groups.working.push({pin,actual:timeString(status.time)});
     else if(discipline.arrived.has(pin)) groups.departed.push({pin,actual:status?timeString(status.time):''});
-    else if(planFor(schedule,day).mins>0 && now.getHours()*60+now.getMinutes()>minutes(schedule.start)) groups.absent.push({pin,planned:schedule.start});
+    if(discipline.days[pin].absent) groups.absent.push({pin,planned:schedule.start});
     if(log?.lunchEarly) groups.lunchOut.push({pin,planned:schedule.lunchS});
     if(log?.lunchLate) groups.lunchIn.push({pin,planned:schedule.lunchE});
   }
