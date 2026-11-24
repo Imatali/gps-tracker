@@ -357,7 +357,7 @@ th,td{vertical-align:top}
 </div>
 
 <div class="text-[11px] text-gray-400 text-center mt-4 mb-6">
-  Кадамжай ЖДПБ | Admin v1115 (daily status + working counter)
+  Кадамжай ЖДПБ | Admin v1116 (attendance counters)
 </div>
 </div>
 
@@ -618,11 +618,11 @@ function startListeners() {
     defaultSchedule = stored && Array.isArray(stored.workDays)
       ? {...FALLBACK_DEFAULT_SCHEDULE, ...stored}
       : {...FALLBACK_DEFAULT_SCHEDULE};
-    showDefaultSchedule();
+    showDefaultSchedule(); render();
   });
   subscribe('osh/deptSchedules', snapshot => {
     deptSchedules = snapshot.val() || {};
-    showDeptSchedule(); fillNewWorkerSchedule();
+    showDeptSchedule(); fillNewWorkerSchedule(); render();
   });
   subscribe('osh/workerSchedules', snapshot => { workerSchedules = snapshot.val() || {}; showWorkerSchedule(); render(); });
   subscribe('osh/pins', snapshot => { allPins = snapshot.val() || {}; render(); });
@@ -749,6 +749,44 @@ window.showOutsideWorkers = function() {
 };
 
 // БӨЛҮМДӨРДҮ ЖАНА PIN ТАБЛИЦАСЫН КӨРСӨТҮҮ
+const minutes=t=>{const m=/^(\d{1,2}):(\d{2})$/.exec(t||'');return m?Number(m[1])*60+Number(m[2]):null};
+const attendanceValidSchedule=s=>s&&Array.isArray(s.workDays)&&['start','lunchS','lunchE','end'].every(k=>minutes(s[k])!==null)&&minutes(s.start)<minutes(s.lunchS)&&minutes(s.lunchS)<=minutes(s.lunchE)&&minutes(s.lunchE)<minutes(s.end);
+function scheduleFor(pin,v,date){
+ const config=workerSchedules[pin]||{};
+ const temp=config.temporary;
+ if(temp&&temp.from<=date&&date<=temp.to&&attendanceValidSchedule(temp.schedule))return {schedule:temp.schedule,source:'Убактылуу'};
+ if(config.mode==='custom'&&attendanceValidSchedule(config.permanent))return {schedule:config.permanent,source:'Жеке туруктуу'};
+ const dept=deptSchedules[encodeURIComponent(v.bolum||'')];
+ if(config.mode==='inherit')return {schedule:attendanceValidSchedule(dept)?dept:defaultSchedule,source:attendanceValidSchedule(dept)?'Бөлүм':'Жалпы'};
+ if(config.mode==='legacy'||!config.mode){if(attendanceValidSchedule(v.schedule))return {schedule:v.schedule,source:'Мурдагы PIN'};}
+ return {schedule:attendanceValidSchedule(dept)?dept:defaultSchedule,source:attendanceValidSchedule(dept)?'Бөлүм':'Жалпы'};
+}
+function planFor(schedule,date){
+ if(!attendanceValidSchedule(schedule))return {mins:null,windows:[]};
+ const day=new Date(date+'T12:00:00').getDay();
+ if(!schedule.workDays.map(Number).includes(day))return {mins:0,windows:[]};
+ const a=minutes(schedule.start),b=minutes(schedule.lunchS),c=minutes(schedule.lunchE),d=minutes(schedule.end);
+ return {mins:(b-a)+(d-c),windows:[[a,b],[c,d]]};
+}
+function dailyDiscipline(pins, now=Date.now()) {
+  const day=localDateString(now), events={}, result={late:0,early:0};
+  for(const e of Object.values(allAttendance)) {
+    if(!e || !e.pin || !Number.isFinite(Number(e.time)) || Number(e.time)>now || localDateString(Number(e.time))!==day) continue;
+    const pin=String(e.pin); const v=events[pin] ||= {first:null,last:null};
+    if(e.type==='in') v.first=v.first===null?Number(e.time):Math.min(v.first,Number(e.time));
+    if(e.type==='out') v.last=v.last===null?Number(e.time):Math.max(v.last,Number(e.time));
+  }
+  const minute=t=>{const d=new Date(t);return d.getHours()*60+d.getMinutes()};
+  for(const pin of pins) {
+    const e=events[pin]; if(!e || e.first===null) continue;
+    const {schedule}=scheduleFor(pin,allPins[pin],day);
+    if(!(planFor(schedule,day).mins>0)) continue;
+    if(minute(e.first)>minutes(schedule.start)) result.late++;
+    if(e.last!==null && e.last>e.first && minute(e.last)<minutes(schedule.end) && minute(e.last)>=minutes(schedule.lunchE)) result.early++;
+  }
+  return result;
+}
+
 function render() {
   document.getElementById('deptCount').innerText = depts.length;
 
@@ -783,13 +821,14 @@ function render() {
     if (activeWorker) working++; else absent++;
 
     if (log) {
-      if (log.late) late++;
+
       if (log.lunchEarly) lunchOut++;
       if (log.lunchLate) lunchIn++;
-      if (log.earlyLeave) early++;
+
     }
   });
 
+  ({late,early}=dailyDiscipline(pins));
   const outsideWorkers = outsideWorkersNow(statusByPin);
   document.getElementById('f_outside').innerText = outsideWorkers.length;
   if (!document.getElementById('outsidePanel').classList.contains('hidden')) updateOutsidePanel(outsideWorkers);
