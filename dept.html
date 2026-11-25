@@ -16,7 +16,7 @@
 </head>
 <body>
 <div id="authGate"><div id="authBox"><h2>🔒 Администратордун кирүүсү</h2><p id="authInfo">Firebase текшерилүүдө...</p><form id="authForm" hidden><input id="authEmail" type="email" autocomplete="username" placeholder="Электрондук почта" required><input id="authPassword" type="password" autocomplete="current-password" placeholder="Сырсөз" required><button class="btn green" type="submit">Кирүү</button></form><p id="authError" role="alert"></p><button class="btn dark" id="authReturn" type="button">← Админ барагына кайтуу</button></div></div>
-<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v444 (GPS эскирүү белгиси)</div></div><div><select id="areaType" class="btn dark">
+<div class="head"><div><strong id="dName">Бөлүм</strong><div class="muted">Firebase боюнча бөлүм • v445 (Сактоо билдирүүлөрү)</div></div><div><select id="areaType" class="btn dark">
   <option value="work">🟦 Жумуш аймагы</option>
   <option value="registration">🟩 Каттоочу аймак</option>
   <option value="home">🟥 Үй аймагы (PIN)</option>
@@ -51,7 +51,7 @@ if (unsavedAreaChanges) {
   
   selectedAreaType = areaTypeSelect.value;
   updateAreaVisibility();
-  msg.textContent = selectedAreaType === 'home' ? 'Үй аймагы: кызматкерди тандаңыз. Эски туура эмес аймактарды сактабаңыз.' : 'Аймак режими алмаштырылды.';
+  msg.textContent = selectedAreaType === 'home' ? 'Үй аймагы: кызматкерди тандаңыз. Эски туура эмес аймактарды сактабаңыз.' : (selectedAreaType === 'registration' ? (registrationAreas.length ? 'Каттоочу аймак картада көрсөтүлдү.' : 'Каттоочу аймак картада жок.') : 'Аймак режими алмаштырылды.');
 });
 const normalize = value => String(value == null ? '' : value).normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase();
 if (!deptId) { title.textContent='Бөлүм көрсөтүлгөн жок'; status.textContent='admin.html аркылуу бөлүмдү тандаңыз (d параметри жок).'; }
@@ -532,12 +532,19 @@ document.getElementById('saveBtn').onclick=async()=>{
       if (!remoteLoaded) {
         throw new Error('Firebase жүктөлүп бүтө элек');
       }
-      if (!unsavedAreaChanges) throw new Error('Жаңы каттоочу аймак чийилген жок');
+      if (!unsavedAreaChanges) {
+        msg.textContent = registrationAreas.length ? 'ℹ️ Жаңы өзгөртүү жок. Аймак кайра сакталган жок.' : '⚠️ Каттоочу аймак чийиле элек.';
+        return;
+      }
+      msg.textContent = '⏳ Сакталууда...';
+      document.getElementById('saveBtn').disabled = true;
       await saveRegistrationAreas();
       unsavedAreaChanges = false;
       msg.textContent = '✅ Каттоочу аймак Firebaseге сакталды';
     } catch (error) {
-      alert('Сактоо катасы: ' + error.message);
+      msg.textContent = '❌ Сактоо катасы: ' + error.message;
+    } finally {
+      document.getElementById('saveBtn').disabled = false;
     }
     return;
   }
